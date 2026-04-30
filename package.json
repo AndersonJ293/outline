@@ -1,0 +1,9 @@
+{
+  "name": "cortacad",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @cortacad/desktop dev",
+    "build": "pnpm --filter @cortacad/desktop build",
+    "tauri": "pnpm --filter @cortacad/desktop tauri"
+  }
+}
