@@ -38,7 +38,7 @@ Before adding behavior in these areas, extract smaller modules/components first.
 - Avoid broad "manager" or "utils" modules unless the responsibility is specific and stable.
 
 Exceeding a target requires an explicit explanation in the final report.
-Exceeding a hard limit should block feature work unless the file is marked as temporary baseline debt in `scripts/quality.sh`.
+Exceeding a hard limit should block feature work.
 
 ## Code Rules
 

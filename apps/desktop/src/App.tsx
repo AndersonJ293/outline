@@ -2,10 +2,15 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import Canvas2D from "./components/Canvas2D";
 import Viewport3D from "./components/Viewport3D";
+import { InspectorPanel } from "./components/app/InspectorPanel";
+import { ModeTabs } from "./components/app/ModeTabs";
+import { SketchToolbar } from "./components/app/SketchToolbar";
+import { StatusBar } from "./components/app/StatusBar";
+import { TopBar } from "./components/app/TopBar";
 import { useStore } from "./stores/useStore";
 import * as commands from "./commands";
 import { generateId } from "./types";
-import type { Entity, Operation, Mesh, SketchImage } from "./types";
+import type { Operation, SketchImage } from "./types";
 
 function formatProjectDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -379,436 +384,76 @@ function App() {
         gridTemplateRows: `var(--topbar-height) var(--tab-height) 1fr`,
       }}
     >
-      {/* Topbar */}
-      <div className="topbar" onMouseDown={handleStartWindowDrag}>
-        <span className="topbar-title">CortaCAD</span>
-        <div className="file-menu" data-no-drag>
-          <button
-            className={`topbar-btn ${fileMenuOpen ? "active" : ""}`}
-            onClick={() => setFileMenuOpen((open) => !open)}
-          >
-            Arquivo
-          </button>
-          {fileMenuOpen && (
-            <div className="file-menu-popover">
-              <button
-                onClick={() => {
-                  setFileMenuOpen(false);
-                  void handleNewProject();
-                }}
-              >
-                <span>Novo</span>
-                <kbd>Ctrl+N</kbd>
-              </button>
-              <button
-                onClick={() => {
-                  setFileMenuOpen(false);
-                  handleOpen();
-                }}
-              >
-                <span>Abrir</span>
-                <kbd>Ctrl+O</kbd>
-              </button>
-              <button
-                onClick={() => {
-                  setFileMenuOpen(false);
-                  handleSave();
-                }}
-                disabled={!project || saving}
-              >
-                <span>Salvar</span>
-                <kbd>Ctrl+S</kbd>
-              </button>
-            </div>
-          )}
-        </div>
-        <span style={{ flex: 1 }} />
-        <span style={{ flex: 1 }} />
-        {!backendConnected && (
-          <span style={{ color: "var(--warning)", fontSize: 11 }}>
-            Backend offline
-          </span>
-        )}
-        <div className="window-controls" data-no-drag>
-          <button
-            className="window-control-btn"
-            onClick={handleMinimizeWindow}
-            tabIndex={-1}
-            title="Minimizar"
-          >
-            <span aria-hidden="true">−</span>
-          </button>
-          <button
-            className="window-control-btn"
-            onClick={handleToggleMaximizeWindow}
-            tabIndex={-1}
-            title="Maximizar"
-          >
-            <span aria-hidden="true">□</span>
-          </button>
-          <button
-            className="window-control-btn close"
-            onClick={handleCloseWindow}
-            tabIndex={-1}
-            title="Fechar"
-          >
-            <span className="close-icon" aria-hidden="true">×</span>
-          </button>
-        </div>
-      </div>
+      <TopBar
+        backendConnected={backendConnected}
+        fileMenuOpen={fileMenuOpen}
+        saving={saving}
+        hasProject={Boolean(project)}
+        onStartWindowDrag={handleStartWindowDrag}
+        onToggleFileMenu={() => setFileMenuOpen((open) => !open)}
+        onNewProject={() => {
+          setFileMenuOpen(false);
+          void handleNewProject();
+        }}
+        onOpenProject={() => {
+          setFileMenuOpen(false);
+          handleOpen();
+        }}
+        onSaveProject={() => {
+          setFileMenuOpen(false);
+          handleSave();
+        }}
+        onMinimizeWindow={handleMinimizeWindow}
+        onToggleMaximizeWindow={handleToggleMaximizeWindow}
+        onCloseWindow={handleCloseWindow}
+      />
 
-      {/* Abas de modo */}
-      <div className="mode-tabs">
-        <button
-          className={`mode-tab ${viewMode === "sketch" ? "active" : ""}`}
-          onClick={() => setViewMode("sketch")}
-        >
-          Sketch
-        </button>
-        <button
-          className={`mode-tab ${viewMode === "solid" ? "active" : ""}`}
-          onClick={() => setViewMode("solid")}
-        >
-          Solid
-        </button>
-        <button
-          className={`mode-tab ${viewMode === "export" ? "active" : ""}`}
-          onClick={() => setViewMode("export")}
-        >
-          Export
-        </button>
-      </div>
+      <ModeTabs viewMode={viewMode} onChange={setViewMode} />
 
-      {/* Toolbar */}
-      <div className="toolbar">
-        {viewMode === "sketch" && (
-          <>
-            <button
-              className={`toolbar-btn ${toolMode === "select" ? "active" : ""}`}
-              onClick={() => setToolMode("select")}
-              title="Selecionar (V)"
-            >
-              ➤
-            </button>
-            <button
-              className={`toolbar-btn ${toolMode === "polyline" ? "active" : ""}`}
-              onClick={() => setToolMode("polyline")}
-              title="Polyline (P)"
-            >
-              ✎
-            </button>
-            <button
-              className={`toolbar-btn ${toolMode === "rectangle" ? "active" : ""}`}
-              onClick={() => setToolMode("rectangle")}
-              title="Retangulo (R)"
-            >
-              ▭
-            </button>
-            <div className="toolbar-divider" />
-            <button
-              className="toolbar-btn"
-              onClick={handleImportImage}
-              title="Importar imagem"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
-                <circle cx="5.5" cy="6" r="1.5" />
-                <path d="M1.5 11.5l3.5-3.5 2.5 2.5 2-2 3.5 3" />
-              </svg>
-            </button>
-            <button
-              className="toolbar-btn"
-              onClick={() => selectEntity(null)}
-              title="Cancelar selecao"
-            >
-              ✕
-            </button>
-          </>
-        )}
-        <div className="toolbar-spacer" />
-        <button className="toolbar-btn" onClick={undo} title="Desfazer (Ctrl+Z)">
-          ↩
-        </button>
-        <button className="toolbar-btn" onClick={redo} title="Refazer (Ctrl+Y)">
-          ↪
-        </button>
-      </div>
+      <SketchToolbar
+        viewMode={viewMode}
+        toolMode={toolMode}
+        onToolModeChange={setToolMode}
+        onImportImage={handleImportImage}
+        onClearSelection={() => selectEntity(null)}
+        onUndo={undo}
+        onRedo={redo}
+      />
 
       {/* Viewport */}
       <div style={{ gridRow: 3, gridColumn: 2, position: "relative", overflow: "hidden" }}>
         {viewMode === "sketch" ? <Canvas2D /> : <Viewport3D />}
 
-        {/* Status bar */}
-        <div className="status-bar">
-          <span>
-            {project
-              ? `${project.project_name} | ${project.sketch.entities.length} entidades`
-              : "Sem projeto"}
-          </span>
-          <span>{statusText}</span>
-          {errorText && <span className="error">{errorText}</span>}
-        </div>
+        <StatusBar project={project} statusText={statusText} errorText={errorText} />
       </div>
 
-      {/* Painel lateral (so aparece quando algo selecionado) */}
-      {(selectedEntityIds.length > 0 || currentMesh) && (
-      <div className="panel-shell">
-        <button
-          className="panel-toggle"
-          onClick={() => setPanelCollapsed((collapsed) => !collapsed)}
-          title={panelCollapsed ? "Mostrar painel" : "Recolher painel"}
-        >
-          {panelCollapsed ? "‹" : "›"}
-        </button>
-        {!panelCollapsed && (
-          <div
-            className="panel-resizer"
-            onMouseDown={handlePanelResizeStart}
-            title="Redimensionar painel"
-          />
-        )}
-      <div className="panel">
-
-        {/* Seção: Entidades */}
-        <div className="panel-section">
-          <h3>
-            Entidades
-            {selectedEntityIds.length > 1 && (
-              <span className="panel-badge">{selectedEntityIds.length} selecionadas</span>
-            )}
-          </h3>
-          {project && project.sketch.entities.length > 0 ? (
-            <div className="entities-list">
-              {project.sketch.entities.map((entity) => (
-                <div
-                  key={entity.id}
-                  className={`entities-list-item ${selectedEntityIds.includes(entity.id) ? "selected" : ""}`}
-                  onClick={() => selectEntity(entity.id)}
-                >
-                  <span>
-                    {entity.type} ({entity.points.length} pts)
-                    {entity.closed ? " 🔒" : ""}
-                  </span>
-                  <button
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--danger)",
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      selectEntity(entity.id, false);
-                      removeSelectedEntities();
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>
-              Use a polyline ou retângulo para desenhar.
-            </p>
-          )}
-        </div>
-
-        {/* Seção: Propriedades (entidade poligonal) */}
-        {selectedEntity && (
-          <div className="panel-section">
-            <h3>Propriedades</h3>
-            <div className="panel-field">
-              <label>Tipo</label>
-              <input value={selectedEntity.type} readOnly />
-            </div>
-            <div className="panel-field">
-              <label>Pontos</label>
-              <input value={`${selectedEntity.points.length}`} readOnly />
-            </div>
-            <div className="panel-field">
-              <label>Fechado</label>
-              <input value={selectedEntity.closed ? "Sim" : "Não"} readOnly />
-            </div>
-          </div>
-        )}
-
-        {/* Seção: Propriedades da imagem */}
-        {selectedImage && (
-          <div className="panel-section">
-            <h3>Imagem</h3>
-            <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 4 }}>
-              <div className="panel-field" style={{ flex: 1 }}>
-                <label>Largura (mm)</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={Math.round(selectedImage.widthMm * 10) / 10}
-                  onChange={(e) => {
-                    const v = Math.max(1, Number(e.target.value));
-                    if (imageLockAspect) {
-                      const ratio = selectedImage.heightMm / selectedImage.widthMm;
-                      updateImage(selectedImage.id, { widthMm: v, heightMm: v * ratio });
-                    } else {
-                      updateImage(selectedImage.id, { widthMm: v });
-                    }
-                  }}
-                />
-              </div>
-              <button
-                style={{
-                  background: "none",
-                  border: "1px solid var(--border)",
-                  color: imageLockAspect ? "var(--accent)" : "var(--text-secondary)",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontSize: 14,
-                  padding: "4px 6px",
-                  marginTop: 14,
-                  lineHeight: 1,
-                }}
-                onClick={() => setImageLockAspect(!imageLockAspect)}
-                title={imageLockAspect ? "Proporção travada" : "Proporção livre"}
-              >
-                {imageLockAspect ? "🔗" : "⛓️"}
-              </button>
-              <div className="panel-field" style={{ flex: 1 }}>
-                <label>Altura (mm)</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={Math.round(selectedImage.heightMm * 10) / 10}
-                  onChange={(e) => {
-                    const v = Math.max(1, Number(e.target.value));
-                    if (imageLockAspect) {
-                      const ratio = selectedImage.widthMm / selectedImage.heightMm;
-                      updateImage(selectedImage.id, { heightMm: v, widthMm: v * ratio });
-                    } else {
-                      updateImage(selectedImage.id, { heightMm: v });
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            <div className="panel-field">
-              <label>Opacidade</label>
-              <input
-                type="range"
-                min={0.05}
-                max={1}
-                step={0.05}
-                value={selectedImage.opacity}
-                onChange={(e) => updateImage(selectedImage.id, { opacity: Number(e.target.value) })}
-              />
-              <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-                {Math.round(selectedImage.opacity * 100)}%
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              <button
-                className="panel-btn-sm"
-                onClick={() => updateImage(selectedImage.id, { mirrorX: !selectedImage.mirrorX })}
-              >
-                {selectedImage.mirrorX ? "↔ Espelhado X" : "↔ Espelhar X"}
-              </button>
-              <button
-                className="panel-btn-sm"
-                onClick={() => updateImage(selectedImage.id, { mirrorY: !selectedImage.mirrorY })}
-              >
-                {selectedImage.mirrorY ? "↕ Espelhado Y" : "↕ Espelhar Y"}
-              </button>
-            </div>
-            <button
-              className={`panel-btn-sm ${imageRefScaleMode ? "active" : ""}`}
-              onClick={() => setImageRefScaleMode(!imageRefScaleMode)}
-            >
-              {imageRefScaleMode ? "Cancelar escala" : "Escala por referência"}
-            </button>
-            <button
-              className="panel-btn-sm"
-              onClick={() => removeSelectedEntities()}
-            >
-              Remover imagem
-            </button>
-          </div>
-        )}
-
-        {/* Seção: Gerar cortador */}
-        <div className="panel-section">
-          <h3>Cortador</h3>
-          <div className="panel-field">
-            <label>Altura (mm)</label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              step={0.5}
-              value={wallHeight}
-              onChange={(e) => setWallHeight(Number(e.target.value))}
-            />
-          </div>
-          <div className="panel-field">
-            <label>Espessura da parede (mm)</label>
-            <input
-              type="number"
-              min={0.4}
-              max={10}
-              step={0.1}
-              value={wallThickness}
-              onChange={(e) => setWallThickness(Number(e.target.value))}
-            />
-          </div>
-          <div className="panel-field">
-            <label>Lado do offset</label>
-            <select
-              value={offsetSide}
-              onChange={(e) =>
-                setOffsetSide(e.target.value as "center" | "inside" | "outside")
-              }
-            >
-              <option value="center">Centralizado</option>
-              <option value="inside">Interno</option>
-              <option value="outside">Externo</option>
-            </select>
-          </div>
-          <button
-            className="panel-btn"
-            onClick={handleGenerateCutter}
-            disabled={!selectedEntity || !selectedEntity.closed}
-          >
-            Gerar Cortador
-          </button>
-        </div>
-
-        {/* Seção: Mesh */}
-        {currentMesh && (
-          <div className="panel-section">
-            <h3>Malha</h3>
-            <div className="panel-field">
-              <label>Vértices</label>
-              <input value={`${currentMesh.vertices.length}`} readOnly />
-            </div>
-            <div className="panel-field">
-              <label>Triângulos</label>
-              <input value={`${currentMesh.triangles.length}`} readOnly />
-            </div>
-            <label className="panel-checkbox">
-              <input
-                type="checkbox"
-                checked={previewWireframe}
-                onChange={(e) => setPreviewWireframe(e.target.checked)}
-              />
-              Wireframe
-            </label>
-            <button className="panel-btn" onClick={handleExportStl}>
-              Exportar STL
-            </button>
-      </div>
-      )}
-      </div>
-      </div>
-      )}
+      <InspectorPanel
+        project={project}
+        selectedEntityIds={selectedEntityIds}
+        selectedEntity={selectedEntity}
+        selectedImage={selectedImage}
+        currentMesh={currentMesh}
+        panelCollapsed={panelCollapsed}
+        imageLockAspect={imageLockAspect}
+        imageRefScaleMode={imageRefScaleMode}
+        wallHeight={wallHeight}
+        wallThickness={wallThickness}
+        offsetSide={offsetSide}
+        previewWireframe={previewWireframe}
+        onTogglePanel={() => setPanelCollapsed((collapsed) => !collapsed)}
+        onResizeStart={handlePanelResizeStart}
+        onSelectEntity={selectEntity}
+        onRemoveSelected={removeSelectedEntities}
+        onUpdateImage={updateImage}
+        onToggleImageLockAspect={() => setImageLockAspect((locked) => !locked)}
+        onSetImageRefScaleMode={setImageRefScaleMode}
+        onSetWallHeight={setWallHeight}
+        onSetWallThickness={setWallThickness}
+        onSetOffsetSide={setOffsetSide}
+        onGenerateCutter={handleGenerateCutter}
+        onSetPreviewWireframe={setPreviewWireframe}
+        onExportStl={handleExportStl}
+      />
 
       {/* Error toast */}
       {errorText && (
