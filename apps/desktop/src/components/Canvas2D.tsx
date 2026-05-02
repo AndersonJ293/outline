@@ -1,9 +1,8 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useStore } from "../stores/useStore";
-import type { Point, Entity } from "../types";
-import { generateId, pointDistance } from "../types";
-import { CLOSE_THRESHOLD } from "../features/sketch/constants";
-import { rectanglePoints, screenToWorld as toWorld, snapToGrid } from "../features/sketch/geometry";
+import type { Point } from "../types";
+import { pointDistance } from "../types";
+import { screenToWorld as toWorld, snapToGrid } from "../features/sketch/geometry";
 import {
   hitTestEntity as hitEntity,
   hitTestImage as hitImage,
@@ -11,6 +10,8 @@ import {
 } from "../features/sketch/hitTest";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
 import { usePanTool } from "../features/sketch/tools/usePanTool";
+import { usePolylineTool } from "../features/sketch/tools/usePolylineTool";
+import { useRectangleTool } from "../features/sketch/tools/useRectangleTool";
 import { useSelectionTool } from "../features/sketch/tools/useSelectionTool";
 import { useSketchRenderer } from "../features/sketch/useSketchRenderer";
 
@@ -54,20 +55,6 @@ export default function Canvas2D() {
   const setStatus = useStore((s) => s.setStatus);
   const imageRefScaleMode = useStore((s) => s.imageRefScaleMode);
   const setImageRefScaleMode = useStore((s) => s.setImageRefScaleMode);
-
-  const confirmPendingRectangle = useCallback(() => {
-    const pending = pendingRectangle.current;
-    if (!pending) return;
-    const entity: Entity = {
-      id: generateId(),
-      type: "rectangle",
-      points: pending.points,
-      closed: true,
-    };
-    addEntity(entity);
-    pendingRectangle.current = null;
-    setStatus("Retângulo confirmado");
-  }, [addEntity, setStatus]);
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -113,6 +100,30 @@ export default function Canvas2D() {
     setStatus,
   });
 
+  const { handlePolylineMouseDown } = usePolylineTool({
+    viewport,
+    drawingPoints,
+    isDrawing,
+    closeToStart,
+    addEntity,
+    setStatus,
+  });
+
+  const {
+    confirmPendingRectangle,
+    handlePendingRectangleClick,
+    startRectangle,
+    updateRectanglePreview,
+    finishRectangle,
+    cancelPendingRectangle,
+  } = useRectangleTool({
+    drawingPoints,
+    isDrawing,
+    pendingRectangle,
+    addEntity,
+    setStatus,
+  });
+
   // Mouse handlers
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -121,16 +132,7 @@ export default function Canvas2D() {
       const world = screenToWorld(e.clientX, e.clientY);
       const snapped = snapToGrid(world);
 
-      if (pendingRectangle.current) {
-        const confirm = pendingRectangle.current.confirmPoint;
-        const dx = (confirm.x - world.x) * viewport.zoom;
-        const dy = (confirm.y - world.y) * viewport.zoom;
-        if (Math.sqrt(dx * dx + dy * dy) < 18) {
-          confirmPendingRectangle();
-          return;
-        }
-        pendingRectangle.current = null;
-      }
+      if (handlePendingRectangleClick(world, viewport.zoom)) return;
 
       if (toolMode === "select") {
         if (imageRefScaleMode) {
@@ -168,47 +170,29 @@ export default function Canvas2D() {
       }
 
       if (toolMode === "polyline") {
-        if (!isDrawing.current) {
-          // Inicia polyline
-          isDrawing.current = true;
-          closeToStart.current = false;
-          drawingPoints.current = [snapped];
-          setStatus(`Polyline: ponto 1 em (${snapped.x.toFixed(1)}, ${snapped.y.toFixed(1)})`);
-        } else {
-          // Verifica se clicou perto do primeiro ponto para fechar
-          const first = drawingPoints.current[0];
-          const dist = pointDistance(snapped, first);
-          const distScreen = dist * viewport.zoom;
-
-          if (distScreen < CLOSE_THRESHOLD && drawingPoints.current.length >= 2) {
-            // Fecha contorno
-            closeToStart.current = true;
-            const entity: Entity = {
-              id: generateId(),
-              type: "polyline",
-              points: drawingPoints.current,
-              closed: true,
-            };
-            addEntity(entity);
-            isDrawing.current = false;
-            setStatus(`Polyline fechada: ${drawingPoints.current.length} pontos`);
-          } else {
-            drawingPoints.current = [...drawingPoints.current, snapped];
-            setStatus(
-              `Polyline: ponto ${drawingPoints.current.length} em (${snapped.x.toFixed(1)}, ${snapped.y.toFixed(1)})`,
-            );
-          }
-        }
+        handlePolylineMouseDown(snapped);
         return;
       }
 
       if (toolMode === "rectangle") {
-        isDrawing.current = true;
-        drawingPoints.current = [snapped, snapped];
+        startRectangle(snapped);
         return;
       }
     },
-    [screenToWorld, toolMode, viewport, project, hitTestImage, selectEntity, addEntity, setStatus, confirmPendingRectangle, imageRefScaleMode, startPan, startSelectionDrag],
+    [
+      screenToWorld,
+      toolMode,
+      viewport,
+      project,
+      hitTestImage,
+      selectEntity,
+      imageRefScaleMode,
+      startPan,
+      startSelectionDrag,
+      handlePendingRectangleClick,
+      handlePolylineMouseDown,
+      startRectangle,
+    ],
   );
 
   const handleMouseMove = useCallback(
@@ -218,10 +202,7 @@ export default function Canvas2D() {
       const world = screenToWorld(e.clientX, e.clientY);
       const snapped = snapToGrid(world);
 
-      if (toolMode === "rectangle" && isDrawing.current && drawingPoints.current.length === 2) {
-        drawingPoints.current[1] = snapped;
-        return;
-      }
+      if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
 
       if (isImageMoving.current && imageMoveStartId.current) {
         const dx = world.x - imageMoveStartPos.current.x;
@@ -280,7 +261,16 @@ export default function Canvas2D() {
         canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
       }
     },
-    [screenToWorld, toolMode, project, updateImage, imageRefScaleMode, updatePan, updateSelectionDrag],
+    [
+      screenToWorld,
+      toolMode,
+      project,
+      updateImage,
+      imageRefScaleMode,
+      updatePan,
+      updateSelectionDrag,
+      updateRectanglePreview,
+    ],
   );
 
   const handleMouseUp = useCallback(
@@ -326,25 +316,9 @@ export default function Canvas2D() {
 
       if (toolMode === "select" && finishSelectionDrag(e)) return;
 
-      if (toolMode === "rectangle" && isDrawing.current) {
-        const points = drawingPoints.current;
-        if (points.length === 2) {
-          const p0 = points[0];
-          const p1 = points[1];
-          const width = Math.abs(p1.x - p0.x);
-          const height = Math.abs(p1.y - p0.y);
-          if (width > 0 && height > 0) {
-            pendingRectangle.current = {
-              points: rectanglePoints(p0, p1),
-              confirmPoint: p1,
-            };
-            setStatus(`Retângulo pendente: ${width.toFixed(1)} x ${height.toFixed(1)} mm. Clique no ponto verde ou pressione Enter.`);
-          }
-        }
-        isDrawing.current = false;
-      }
+      if (toolMode === "rectangle" && finishRectangle()) return;
     },
-    [toolMode, viewport, project, updateImage, setStatus, stopPan, finishSelectionDrag],
+    [toolMode, viewport, project, updateImage, setStatus, stopPan, finishSelectionDrag, finishRectangle],
   );
 
   useEffect(() => {
@@ -357,8 +331,7 @@ export default function Canvas2D() {
         }
         if (event.key === "Escape") {
           event.preventDefault();
-          pendingRectangle.current = null;
-          setStatus("Retângulo cancelado");
+          cancelPendingRectangle();
           return;
         }
       }
@@ -377,7 +350,15 @@ export default function Canvas2D() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [confirmPendingRectangle, setStatus, project, updateImage, setImageRefScaleMode, refScalePopup]);
+  }, [
+    confirmPendingRectangle,
+    cancelPendingRectangle,
+    setStatus,
+    project,
+    updateImage,
+    setImageRefScaleMode,
+    refScalePopup,
+  ]);
 
   const handleConfirmRefScale = useCallback(
     (realLengthMm: number) => {
