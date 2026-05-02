@@ -1,14 +1,11 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useStore } from "../stores/useStore";
 import type { Point } from "../types";
-import { pointDistance } from "../types";
 import { screenToWorld as toWorld, snapToGrid } from "../features/sketch/geometry";
-import {
-  hitTestEntity as hitEntity,
-  hitTestImage as hitImage,
-  hitTestImageHandle,
-} from "../features/sketch/hitTest";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
+import type { RefScalePopupState } from "../features/sketch/tools/useImageRefScaleTool";
+import { useImageRefScaleTool } from "../features/sketch/tools/useImageRefScaleTool";
+import { useImageTransformTool } from "../features/sketch/tools/useImageTransformTool";
 import { usePanTool } from "../features/sketch/tools/usePanTool";
 import { usePolylineTool } from "../features/sketch/tools/usePolylineTool";
 import { useRectangleTool } from "../features/sketch/tools/useRectangleTool";
@@ -40,7 +37,7 @@ export default function Canvas2D() {
   const imageRefLineStart = useRef<Point | null>(null);
   const imageRefLineEnd = useRef<Point | null>(null);
   const imageRefScaleImageId = useRef<string | null>(null);
-  const [refScalePopup, setRefScalePopup] = useState<{ imageId: string; lengthMm: number; screenX: number; screenY: number } | null>(null);
+  const [refScalePopup, setRefScalePopup] = useState<RefScalePopupState | null>(null);
   const refScaleInputRef = useRef<HTMLInputElement>(null);
 
   const project = useStore((s) => s.project);
@@ -64,21 +61,6 @@ export default function Canvas2D() {
       return toWorld(sx, sy, rect, viewport);
     },
     [viewport],
-  );
-
-  const hitTestEntity = useCallback(
-    (world: Point): string | null => {
-      if (!project) return null;
-      return hitEntity(project.sketch.entities, world, viewport);
-    },
-    [project, viewport],
-  );
-
-  const hitTestImage = useCallback(
-    (world: Point): string | null => {
-      return hitImage(project?.sketch.images, world);
-    },
-    [project],
   );
 
   const { startPan, updatePan, stopPan, handleWheel } = usePanTool({
@@ -124,6 +106,43 @@ export default function Canvas2D() {
     setStatus,
   });
 
+  const { startImageTransform, updateImageTransform, finishImageTransform } =
+    useImageTransformTool({
+      project,
+      viewport,
+      isImageMoving,
+      imageMoveStartId,
+      imageMoveStartPos,
+      isImageResizing,
+      imageResizeId,
+      imageResizeStart,
+      imageResizeOrigSize,
+      imageResizeHandleType,
+      selectEntity,
+      updateImage,
+    });
+
+  const {
+    startOrUpdateReferenceLine,
+    updateReferenceLine,
+    finishReferenceLine,
+    confirmRefScale,
+    cancelRefScale,
+  } = useImageRefScaleTool({
+    containerRef,
+    project,
+    viewport,
+    imageRefScaleMode,
+    imageRefLineStart,
+    imageRefLineEnd,
+    imageRefScaleImageId,
+    refScalePopup,
+    setRefScalePopup,
+    updateImage,
+    setImageRefScaleMode,
+    setStatus,
+  });
+
   // Mouse handlers
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -135,36 +154,8 @@ export default function Canvas2D() {
       if (handlePendingRectangleClick(world, viewport.zoom)) return;
 
       if (toolMode === "select") {
-        if (imageRefScaleMode) {
-          if (!imageRefLineStart.current) {
-            imageRefLineStart.current = world;
-            imageRefLineEnd.current = world;
-          } else {
-            imageRefLineEnd.current = world;
-          }
-          return;
-        }
-        const imageId = hitTestImage(world);
-          if (imageId && project?.sketch.images) {
-            const img = project.sketch.images.find((i) => i.id === imageId);
-            if (img) {
-              const hitHandle = hitTestImageHandle(img, world, viewport);
-              if (hitHandle) {
-                isImageResizing.current = true;
-                imageResizeId.current = imageId;
-                imageResizeHandleType.current = hitHandle;
-                imageResizeStart.current = world;
-                imageResizeOrigSize.current = { w: img.widthMm, h: img.heightMm };
-                selectEntity(imageId);
-                return;
-              }
-            isImageMoving.current = true;
-            imageMoveStartId.current = imageId;
-            imageMoveStartPos.current = world;
-            if (!e.shiftKey) selectEntity(imageId);
-            return;
-          }
-        }
+        if (startOrUpdateReferenceLine(world)) return;
+        if (startImageTransform(world, e.shiftKey)) return;
         startSelectionDrag(world);
         return;
       }
@@ -183,15 +174,13 @@ export default function Canvas2D() {
       screenToWorld,
       toolMode,
       viewport,
-      project,
-      hitTestImage,
-      selectEntity,
-      imageRefScaleMode,
       startPan,
       startSelectionDrag,
       handlePendingRectangleClick,
       handlePolylineMouseDown,
       startRectangle,
+      startImageTransform,
+      startOrUpdateReferenceLine,
     ],
   );
 
@@ -204,57 +193,14 @@ export default function Canvas2D() {
 
       if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
 
-      if (isImageMoving.current && imageMoveStartId.current) {
-        const dx = world.x - imageMoveStartPos.current.x;
-        const dy = world.y - imageMoveStartPos.current.y;
-        const img = project?.sketch.images?.find((i) => i.id === imageMoveStartId.current);
-        if (img) {
-          updateImage(img.id, { x: img.x + dx, y: img.y + dy });
-        }
-        imageMoveStartPos.current = world;
-        return;
-      }
-
-      if (isImageResizing.current && imageResizeId.current) {
-        const img = project?.sketch.images?.find((i) => i.id === imageResizeId.current);
-        if (img) {
-          const dx = world.x - imageResizeStart.current.x;
-          const dy = world.y - imageResizeStart.current.y;
-          const origW = imageResizeOrigSize.current.w;
-          const origH = imageResizeOrigSize.current.h;
-          const handleType = imageResizeHandleType.current;
-          let newW = origW;
-          let newH = origH;
-
-          if (handleType.startsWith("corner")) {
-            const xDir = handleType.includes("r") ? 1 : -1;
-            const yDir = handleType.includes("b") ? 1 : -1;
-            const d = Math.max(Math.abs(dx * xDir), Math.abs(dy * yDir)) * Math.sign(dx * xDir || dy * yDir);
-            newW = Math.max(5, origW + d);
-            newH = newW * (origH / origW);
-          } else if (handleType === "edge-r" || handleType === "edge-l") {
-            const dir = handleType === "edge-r" ? 1 : -1;
-            newW = Math.max(5, origW + dx * dir);
-            newH = origH;
-          } else {
-            const dir = handleType === "edge-b" ? 1 : -1;
-            newH = Math.max(5, origH + dy * dir);
-            newW = origW;
-          }
-          updateImage(img.id, { widthMm: newW, heightMm: newH });
-        }
-        return;
-      }
+      if (updateImageTransform(world)) return;
 
       if (toolMode === "select" && updateSelectionDrag(world)) return;
 
       if (toolMode === "polyline" && isDrawing.current) {
       }
 
-      if (imageRefScaleMode && imageRefLineStart.current) {
-        imageRefLineEnd.current = world;
-        return;
-      }
+      if (updateReferenceLine(world)) return;
 
       const canvas = canvasRef.current;
       if (canvas) {
@@ -264,12 +210,11 @@ export default function Canvas2D() {
     [
       screenToWorld,
       toolMode,
-      project,
-      updateImage,
-      imageRefScaleMode,
       updatePan,
       updateSelectionDrag,
       updateRectanglePreview,
+      updateImageTransform,
+      updateReferenceLine,
     ],
   );
 
@@ -277,48 +222,14 @@ export default function Canvas2D() {
     (e: React.MouseEvent) => {
       if (stopPan()) return;
 
-      if (isImageMoving.current) {
-        isImageMoving.current = false;
-        imageMoveStartId.current = null;
-        return;
-      }
-
-      if (isImageResizing.current) {
-        isImageResizing.current = false;
-        imageResizeId.current = null;
-        return;
-      }
-
-      if (imageRefScaleMode && imageRefLineStart.current && imageRefLineEnd.current) {
-        const dist = pointDistance(imageRefLineStart.current, imageRefLineEnd.current);
-        const screenDist = dist * viewport.zoom;
-        if (screenDist < 5) {
-          imageRefLineStart.current = null;
-          imageRefLineEnd.current = null;
-          return;
-        }
-        const container = containerRef.current;
-        if (container) {
-          const rect = container.getBoundingClientRect();
-          const endScreen = imageRefLineEnd.current;
-          const sx = (endScreen.x * viewport.zoom + viewport.offsetX);
-          const sy = (endScreen.y * viewport.zoom + viewport.offsetY);
-          setRefScalePopup({
-            imageId: imageRefScaleImageId.current ?? "",
-            lengthMm: dist,
-            screenX: sx,
-            screenY: sy,
-          });
-        }
-        setStatus(`Linha de referência: ${dist.toFixed(2)} mm. Digite o tamanho real.`);
-        return;
-      }
+      if (finishImageTransform()) return;
+      if (finishReferenceLine()) return;
 
       if (toolMode === "select" && finishSelectionDrag(e)) return;
 
       if (toolMode === "rectangle" && finishRectangle()) return;
     },
-    [toolMode, viewport, project, updateImage, setStatus, stopPan, finishSelectionDrag, finishRectangle],
+    [toolMode, stopPan, finishImageTransform, finishReferenceLine, finishSelectionDrag, finishRectangle],
   );
 
   useEffect(() => {
@@ -338,11 +249,7 @@ export default function Canvas2D() {
       if (refScalePopup) {
         if (event.key === "Escape") {
           event.preventDefault();
-          setRefScalePopup(null);
-          imageRefLineStart.current = null;
-          imageRefLineEnd.current = null;
-          setImageRefScaleMode(false);
-          setStatus("Escala por referência cancelada");
+          cancelRefScale();
           return;
         }
       }
@@ -353,34 +260,9 @@ export default function Canvas2D() {
   }, [
     confirmPendingRectangle,
     cancelPendingRectangle,
-    setStatus,
-    project,
-    updateImage,
-    setImageRefScaleMode,
     refScalePopup,
+    cancelRefScale,
   ]);
-
-  const handleConfirmRefScale = useCallback(
-    (realLengthMm: number) => {
-      if (!refScalePopup) return;
-      const img = project?.sketch.images?.find((i) => i.id === refScalePopup.imageId);
-      if (img) {
-        const scale = realLengthMm / refScalePopup.lengthMm;
-        updateImage(img.id, {
-          widthMm: img.widthMm * scale,
-          heightMm: img.heightMm * scale,
-        });
-        setStatus(
-          `Imagem escalada: referência de ${refScalePopup.lengthMm.toFixed(2)} mm → ${realLengthMm.toFixed(2)} mm`,
-        );
-      }
-      setRefScalePopup(null);
-      imageRefLineStart.current = null;
-      imageRefLineEnd.current = null;
-      setImageRefScaleMode(false);
-    },
-    [project, refScalePopup, updateImage, setStatus, setImageRefScaleMode],
-  );
 
   useSketchRenderer({
     canvasRef,
@@ -419,7 +301,7 @@ export default function Canvas2D() {
         <RefScalePopup
           popup={refScalePopup}
           inputRef={refScaleInputRef}
-          onConfirm={handleConfirmRefScale}
+          onConfirm={confirmRefScale}
           onPointerDown={(event) => event.stopPropagation()}
         />
       )}
