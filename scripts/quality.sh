@@ -16,6 +16,9 @@ cargo test
 echo "== Desktop build =="
 pnpm --filter @cortacad/desktop build
 
+echo "== Desktop tests =="
+pnpm --filter @cortacad/desktop test
+
 echo "== Size guard =="
 status=0
 
