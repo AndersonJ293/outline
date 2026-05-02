@@ -2,8 +2,10 @@
   "name": "cortacad",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @cortacad/desktop dev",
+    "dev": "pnpm --filter @cortacad/desktop tauri dev",
+    "dev:web": "pnpm --filter @cortacad/desktop dev",
     "build": "pnpm --filter @cortacad/desktop build",
+    "quality": "bash scripts/quality.sh",
     "tauri": "pnpm --filter @cortacad/desktop tauri"
   }
 }
