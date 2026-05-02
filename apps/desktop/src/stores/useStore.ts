@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   Project,
   Entity,
+  SketchImage,
   Mesh,
   Operation,
   ToolMode,
@@ -18,11 +19,14 @@ interface AppStore {
   setProject: (project: Project) => void;
 
   // Sketch
-  currentEntityId: string | null;
-  selectEntity: (id: string | null) => void;
+  selectedEntityIds: string[];
+  selectEntity: (id: string | null, shiftKey?: boolean) => void;
+  setSelectedEntityIds: (ids: string[]) => void;
   addEntity: (entity: Entity) => void;
+  addImage: (image: SketchImage) => void;
   updateEntity: (id: string, updates: Partial<Entity>) => void;
-  removeEntity: (id: string) => void;
+  updateImage: (id: string, updates: Partial<SketchImage>) => void;
+  removeSelectedEntities: () => void;
 
   // Tool
   toolMode: ToolMode;
@@ -37,6 +41,8 @@ interface AppStore {
   // 3D
   currentMesh: Mesh | null;
   setCurrentMesh: (mesh: Mesh | null) => void;
+  previewWireframe: boolean;
+  setPreviewWireframe: (on: boolean) => void;
 
   // Wall generation params
   wallHeight: number;
@@ -52,6 +58,10 @@ interface AppStore {
   pushUndo: () => void;
   undo: () => void;
   redo: () => void;
+
+  // Imagem
+  imageRefScaleMode: boolean;
+  setImageRefScaleMode: (active: boolean) => void;
 
   // Status
   statusText: string;
@@ -70,19 +80,41 @@ export const useStore = create<AppStore>((set, get) => ({
   project: null,
   projectPath: null,
   setProject: (project) => {
-    set({ project, currentEntityId: null, currentMesh: null });
+    set({ project, selectedEntityIds: [], currentMesh: null });
   },
 
   // Sketch
-  currentEntityId: null,
-  selectEntity: (id) => set({ currentEntityId: id }),
+  selectedEntityIds: [],
+  selectEntity: (id, shiftKey) => {
+    if (id === null) {
+      set({ selectedEntityIds: [] });
+      return;
+    }
+    if (shiftKey) {
+      const current = new Set(get().selectedEntityIds);
+      if (current.has(id)) current.delete(id);
+      else current.add(id);
+      set({ selectedEntityIds: Array.from(current) });
+    } else {
+      set({ selectedEntityIds: [id] });
+    }
+  },
+  setSelectedEntityIds: (ids) => set({ selectedEntityIds: ids }),
 
   addEntity: (entity) => {
     const project = get().project;
     if (!project) return;
     get().pushUndo();
     project.sketch.entities.push(entity);
-    set({ project: { ...project }, currentEntityId: entity.id });
+    set({ project: { ...project }, selectedEntityIds: [entity.id] });
+  },
+
+  addImage: (image) => {
+    const project = get().project;
+    if (!project) return;
+    get().pushUndo();
+    project.sketch.images = [...(project.sketch.images ?? []), image];
+    set({ project: { ...project }, selectedEntityIds: [image.id] });
   },
 
   updateEntity: (id, updates) => {
@@ -94,12 +126,25 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ project: { ...project } });
   },
 
-  removeEntity: (id) => {
+  updateImage: (id, updates) => {
     const project = get().project;
     if (!project) return;
+    const images = project.sketch.images;
+    if (!images) return;
+    const idx = images.findIndex((img) => img.id === id);
+    if (idx === -1) return;
+    images[idx] = { ...images[idx], ...updates };
+    set({ project: { ...project } });
+  },
+
+  removeSelectedEntities: () => {
+    const project = get().project;
+    const ids = get().selectedEntityIds;
+    if (!project || ids.length === 0) return;
     get().pushUndo();
-    project.sketch.entities = project.sketch.entities.filter((e) => e.id !== id);
-    set({ project: { ...project }, currentEntityId: null, currentMesh: null });
+    project.sketch.entities = project.sketch.entities.filter((e) => !ids.includes(e.id));
+    project.sketch.images = (project.sketch.images ?? []).filter((img) => !ids.includes(img.id));
+    set({ project: { ...project }, selectedEntityIds: [], currentMesh: null });
   },
 
   // Tool
@@ -118,6 +163,8 @@ export const useStore = create<AppStore>((set, get) => ({
   // 3D
   currentMesh: null,
   setCurrentMesh: (mesh) => set({ currentMesh: mesh }),
+  previewWireframe: true,
+  setPreviewWireframe: (on) => set({ previewWireframe: on }),
 
   // Wall params
   wallHeight: 15,
@@ -146,7 +193,7 @@ export const useStore = create<AppStore>((set, get) => ({
       project: prev,
       undoStack: undoStack.slice(0, -1),
       redoStack: [...get().redoStack, cloneProject(project)!],
-      currentEntityId: null,
+      selectedEntityIds: [],
       currentMesh: null,
     });
   },
@@ -158,10 +205,14 @@ export const useStore = create<AppStore>((set, get) => ({
       project: next,
       redoStack: redoStack.slice(0, -1),
       undoStack: [...get().undoStack, cloneProject(project)!],
-      currentEntityId: null,
+      selectedEntityIds: [],
       currentMesh: null,
     });
   },
+
+  // Imagem
+  imageRefScaleMode: false,
+  setImageRefScaleMode: (active) => set({ imageRefScaleMode: active }),
 
   // Status
   statusText: "Pronto",

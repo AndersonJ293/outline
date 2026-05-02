@@ -25,9 +25,25 @@ pub fn bounding_box(entity: &Entity) -> Option<(f64, f64, f64, f64)> {
     if entity.points.is_empty() {
         return None;
     }
-    let min_x = entity.points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
-    let max_x = entity.points.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
-    let min_y = entity.points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
-    let max_y = entity.points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
+    let min_x = entity
+        .points
+        .iter()
+        .map(|p| p.x)
+        .fold(f64::INFINITY, f64::min);
+    let max_x = entity
+        .points
+        .iter()
+        .map(|p| p.x)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let min_y = entity
+        .points
+        .iter()
+        .map(|p| p.y)
+        .fold(f64::INFINITY, f64::min);
+    let max_y = entity
+        .points
+        .iter()
+        .map(|p| p.y)
+        .fold(f64::NEG_INFINITY, f64::max);
     Some((min_x, min_y, max_x, max_y))
 }

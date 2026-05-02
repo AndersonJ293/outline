@@ -48,35 +48,37 @@ fn generate_wall_mesh(
     let result = cortacad_core::commands::generate_wall_mesh(&entity, &operation);
 
     match result {
-        cortacad_core::commands::CommandResult { ok: true, value: Some(mesh), .. } => {
-            Ok(GenerateMeshResult {
-                ok: true,
-                mesh: Some(MeshDto {
-                    id: mesh.id,
-                    vertices: mesh.vertices,
-                    triangles: mesh.triangles,
-                }),
-                error: None,
-            })
-        }
-        cortacad_core::commands::CommandResult { error: Some(err), .. } => {
-            Ok(GenerateMeshResult {
-                ok: false,
-                mesh: None,
-                error: Some(CommandErrorDto {
-                    code: err.code,
-                    message: err.message,
-                }),
-            })
-        }
+        cortacad_core::commands::CommandResult {
+            ok: true,
+            value: Some(mesh),
+            ..
+        } => Ok(GenerateMeshResult {
+            ok: true,
+            mesh: Some(MeshDto {
+                id: mesh.id,
+                vertices: mesh.vertices,
+                triangles: mesh.triangles,
+            }),
+            error: None,
+        }),
+        cortacad_core::commands::CommandResult {
+            error: Some(err), ..
+        } => Ok(GenerateMeshResult {
+            ok: false,
+            mesh: None,
+            error: Some(CommandErrorDto {
+                code: err.code,
+                message: err.message,
+            }),
+        }),
         _ => Err("Resultado inesperado".to_string()),
     }
 }
 
 #[tauri::command]
 fn export_stl(mesh_json: String, output_path: String) -> Result<String, String> {
-    let mesh_dto: MeshDto = serde_json::from_str(&mesh_json)
-        .map_err(|e| format!("Erro ao parsear malha: {}", e))?;
+    let mesh_dto: MeshDto =
+        serde_json::from_str(&mesh_json).map_err(|e| format!("Erro ao parsear malha: {}", e))?;
 
     let mesh_data = export::stl::MeshData {
         vertices: mesh_dto.vertices,
@@ -89,10 +91,36 @@ fn export_stl(mesh_json: String, output_path: String) -> Result<String, String> 
     Ok(format!("STL exportado para: {}", output_path))
 }
 
+#[tauri::command]
+fn save_file(path: String, data: String) -> Result<String, String> {
+    std::fs::write(&path, &data).map_err(|e| format!("Erro ao salvar: {}", e))?;
+    Ok(path)
+}
+
+#[tauri::command]
+fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| format!("Erro ao ler: {}", e))
+}
+
+#[tauri::command]
+fn read_image_base64(path: String) -> Result<String, String> {
+    use base64::Engine;
+    let bytes = std::fs::read(&path).map_err(|e| format!("Erro ao ler imagem: {}", e))?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    let lower = path.to_lowercase();
+    let mime = if lower.ends_with(".png") {
+        "image/png"
+    } else {
+        "image/jpeg"
+    };
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             ping,
@@ -100,6 +128,9 @@ pub fn run() {
             validate_closed_profile,
             generate_wall_mesh,
             export_stl,
+            save_file,
+            read_file,
+            read_image_base64,
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao iniciar CortaCAD");

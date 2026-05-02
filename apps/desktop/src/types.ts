@@ -8,14 +8,29 @@ export interface Project {
   operations: Operation[];
 }
 
+export interface SketchImage {
+  id: string;
+  type: "image";
+  x: number;
+  y: number;
+  widthMm: number;
+  heightMm: number;
+  source: string;
+  rotation: number;
+  mirrorX: boolean;
+  mirrorY: boolean;
+  opacity: number;
+}
+
 export interface Sketch {
   plane: string;
   entities: Entity[];
+  images?: SketchImage[];
 }
 
 export interface Entity {
   id: string;
-  entity_type: "polyline" | "rectangle";
+  type: "polyline" | "rectangle";
   points: Point[];
   closed: boolean;
 }
@@ -27,7 +42,7 @@ export interface Point {
 
 export interface Operation {
   id: string;
-  op_type: string;
+  type: string;
   source_entity_id: string;
   height_mm: number;
   wall_thickness_mm: number;
@@ -66,7 +81,7 @@ export interface GenerateMeshResult {
 
 export type ToolMode = "select" | "polyline" | "rectangle";
 
-export type ViewMode = "sketch" | "preview";
+export type ViewMode = "sketch" | "solid" | "export";
 
 export interface ViewportState {
   offsetX: number;

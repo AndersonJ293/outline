@@ -43,3 +43,15 @@ export async function exportStl(
     outputPath,
   });
 }
+
+export async function saveFile(path: string, data: string): Promise<string> {
+  return invoke<string>("save_file", { path, data });
+}
+
+export async function readFile(path: string): Promise<string> {
+  return invoke<string>("read_file", { path });
+}
+
+export async function readImageBase64(path: string): Promise<string> {
+  return invoke<string>("read_image_base64", { path });
+}

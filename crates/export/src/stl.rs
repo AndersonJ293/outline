@@ -60,15 +60,17 @@ pub fn export_stl_ascii(mesh: &MeshData, output_path: &Path, name: &str) -> Resu
 pub fn export_stl_binary(mesh: &MeshData, output_path: &Path) -> Result<(), String> {
     use std::io::Write;
 
-    let mut file = fs::File::create(output_path)
-        .map_err(|e| format!("Erro ao criar STL: {}", e))?;
+    let mut file =
+        fs::File::create(output_path).map_err(|e| format!("Erro ao criar STL: {}", e))?;
 
     // Cabeçalho de 80 bytes
     let header = b"CortaCAD STL Export - cortabiscoito.app";
-    file.write_all(&header[..]).map_err(|e| format!("Erro header: {}", e))?;
+    file.write_all(&header[..])
+        .map_err(|e| format!("Erro header: {}", e))?;
     // Preenche resto do header
     for _ in header.len()..80 {
-        file.write_all(&[0u8]).map_err(|e| format!("Erro header: {}", e))?;
+        file.write_all(&[0u8])
+            .map_err(|e| format!("Erro header: {}", e))?;
     }
 
     // Número de triângulos (u32, little-endian)
@@ -94,24 +96,35 @@ pub fn export_stl_binary(mesh: &MeshData, output_path: &Path) -> Result<(), Stri
         let nz = ux * vy - uy * vx;
         let len = (nx * nx + ny * ny + nz * nz).sqrt();
         let (nx, ny, nz) = if len > 0.0 {
-            (nx as f32 / len as f32, ny as f32 / len as f32, nz as f32 / len as f32)
+            (
+                nx as f32 / len as f32,
+                ny as f32 / len as f32,
+                nz as f32 / len as f32,
+            )
         } else {
             (0.0f32, 0.0f32, 1.0f32)
         };
 
-        file.write_all(&nx.to_le_bytes()).map_err(|e| format!("Erro: {}", e))?;
-        file.write_all(&ny.to_le_bytes()).map_err(|e| format!("Erro: {}", e))?;
-        file.write_all(&nz.to_le_bytes()).map_err(|e| format!("Erro: {}", e))?;
+        file.write_all(&nx.to_le_bytes())
+            .map_err(|e| format!("Erro: {}", e))?;
+        file.write_all(&ny.to_le_bytes())
+            .map_err(|e| format!("Erro: {}", e))?;
+        file.write_all(&nz.to_le_bytes())
+            .map_err(|e| format!("Erro: {}", e))?;
 
         // Vértices
         for v in &[v0, v1, v2] {
-            file.write_all(&(v[0] as f32).to_le_bytes()).map_err(|e| format!("Erro: {}", e))?;
-            file.write_all(&(v[1] as f32).to_le_bytes()).map_err(|e| format!("Erro: {}", e))?;
-            file.write_all(&(v[2] as f32).to_le_bytes()).map_err(|e| format!("Erro: {}", e))?;
+            file.write_all(&(v[0] as f32).to_le_bytes())
+                .map_err(|e| format!("Erro: {}", e))?;
+            file.write_all(&(v[1] as f32).to_le_bytes())
+                .map_err(|e| format!("Erro: {}", e))?;
+            file.write_all(&(v[2] as f32).to_le_bytes())
+                .map_err(|e| format!("Erro: {}", e))?;
         }
 
         // Atributo (2 bytes, zero)
-        file.write_all(&[0u8, 0u8]).map_err(|e| format!("Erro: {}", e))?;
+        file.write_all(&[0u8, 0u8])
+            .map_err(|e| format!("Erro: {}", e))?;
     }
 
     Ok(())
@@ -124,11 +137,7 @@ mod tests {
     #[test]
     fn test_export_ascii() {
         let mesh = MeshData {
-            vertices: vec![
-                [0.0, 0.0, 0.0],
-                [10.0, 0.0, 0.0],
-                [10.0, 10.0, 0.0],
-            ],
+            vertices: vec![[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 10.0, 0.0]],
             triangles: vec![[0, 1, 2]],
         };
 
@@ -144,11 +153,7 @@ mod tests {
     #[test]
     fn test_export_binary() {
         let mesh = MeshData {
-            vertices: vec![
-                [0.0, 0.0, 0.0],
-                [10.0, 0.0, 0.0],
-                [10.0, 10.0, 0.0],
-            ],
+            vertices: vec![[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 10.0, 0.0]],
             triangles: vec![[0, 1, 2]],
         };
 

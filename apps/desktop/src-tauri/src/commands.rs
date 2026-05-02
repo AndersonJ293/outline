@@ -20,6 +20,7 @@ pub struct SketchDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EntityDto {
     pub id: String,
+    #[serde(rename = "type")]
     pub entity_type: String,
     pub points: Vec<PointDto>,
     pub closed: bool,
@@ -34,6 +35,7 @@ pub struct PointDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OperationDto {
     pub id: String,
+    #[serde(rename = "type")]
     pub op_type: String,
     pub source_entity_id: String,
     pub height_mm: f64,
@@ -77,24 +79,34 @@ impl From<&cortacad_core::project::Project> for ProjectDto {
             project_name: p.project_name.clone(),
             sketch: SketchDto {
                 plane: p.sketch.plane.clone(),
-                entities: p.sketch.entities.iter().map(|e| EntityDto {
-                    id: e.id.clone(),
-                    entity_type: e.entity_type.clone(),
-                    points: e.points.iter().map(|pt| PointDto {
-                        x: pt.x,
-                        y: pt.y,
-                    }).collect(),
-                    closed: e.closed,
-                }).collect(),
+                entities: p
+                    .sketch
+                    .entities
+                    .iter()
+                    .map(|e| EntityDto {
+                        id: e.id.clone(),
+                        entity_type: e.entity_type.clone(),
+                        points: e
+                            .points
+                            .iter()
+                            .map(|pt| PointDto { x: pt.x, y: pt.y })
+                            .collect(),
+                        closed: e.closed,
+                    })
+                    .collect(),
             },
-            operations: p.operations.iter().map(|op| OperationDto {
-                id: op.id.clone(),
-                op_type: op.op_type.clone(),
-                source_entity_id: op.source_entity_id.clone(),
-                height_mm: op.height_mm,
-                wall_thickness_mm: op.wall_thickness_mm,
-                offset_side: op.offset_side.clone(),
-            }).collect(),
+            operations: p
+                .operations
+                .iter()
+                .map(|op| OperationDto {
+                    id: op.id.clone(),
+                    op_type: op.op_type.clone(),
+                    source_entity_id: op.source_entity_id.clone(),
+                    height_mm: op.height_mm,
+                    wall_thickness_mm: op.wall_thickness_mm,
+                    offset_side: op.offset_side.clone(),
+                })
+                .collect(),
         }
     }
 }

@@ -1,26 +1,122 @@
-use crate::entities::{Entity, bounding_box};
+use crate::entities::Point;
 
-/// Gera offset simples: expande a bounding box pela espessura.
-/// Futuramente: offset real de curvas.
-pub fn generate_offset_wall(
-    entity: &Entity,
-    thickness: f64,
-    side: &str, // "inside" | "outside" | "center"
-) -> Option<(f64, f64, f64, f64)> {
-    let (min_x, min_y, max_x, max_y) = bounding_box(entity)?;
+pub fn polygon_signed_area(points: &[Point]) -> f64 {
+    let mut area = 0.0;
+    for i in 0..points.len() {
+        let j = (i + 1) % points.len();
+        area += points[i].x * points[j].y;
+        area -= points[j].x * points[i].y;
+    }
+    area / 2.0
+}
 
-    match side {
-        "inside" => {
-            let half = thickness / 2.0;
-            Some((min_x + half, min_y + half, max_x - half, max_y - half))
+fn normalize(x: f64, y: f64) -> (f64, f64) {
+    let len = (x * x + y * y).sqrt();
+    if len < 1e-12 {
+        return (0.0, 0.0);
+    }
+    (x / len, y / len)
+}
+
+fn dot(ax: f64, ay: f64, bx: f64, by: f64) -> f64 {
+    ax * bx + ay * by
+}
+
+fn left_normal(dx: f64, dy: f64) -> (f64, f64) {
+    (-dy, dx)
+}
+
+pub fn compute_offset(points: &[Point], offset_distance: f64) -> Option<Vec<Point>> {
+    if points.len() < 3 {
+        return None;
+    }
+    let n = points.len();
+    let mut result = Vec::with_capacity(n);
+
+    for i in 0..n {
+        let prev = &points[(i + n - 1) % n];
+        let curr = &points[i];
+        let next = &points[(i + 1) % n];
+
+        let in_dx = curr.x - prev.x;
+        let in_dy = curr.y - prev.y;
+        let out_dx = next.x - curr.x;
+        let out_dy = next.y - curr.y;
+
+        let (n1x, n1y) = normalize(left_normal(in_dx, in_dy).0, left_normal(in_dx, in_dy).1);
+        let (n2x, n2y) = normalize(left_normal(out_dx, out_dy).0, left_normal(out_dx, out_dy).1);
+
+        let bisector_x = n1x + n2x;
+        let bisector_y = n1y + n2y;
+        let (bix, biy) = normalize(bisector_x, bisector_y);
+
+        let cos_half = dot(bix, biy, n1x, n1y);
+        if cos_half.abs() < 1e-12 {
+            return None;
         }
-        "outside" => {
-            Some((min_x - thickness, min_y - thickness, max_x + thickness, max_y + thickness))
-        }
-        _ => {
-            // center
-            let half = thickness / 2.0;
-            Some((min_x - half, min_y - half, max_x + half, max_y + half))
-        }
+
+        let scale = offset_distance / cos_half;
+        result.push(Point {
+            x: curr.x + bix * scale,
+            y: curr.y + biy * scale,
+        });
+    }
+
+    Some(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn p(x: f64, y: f64) -> Point {
+        Point { x, y }
+    }
+
+    #[test]
+    fn test_signed_area_ccw() {
+        let pts = vec![p(0.0, 0.0), p(10.0, 0.0), p(10.0, 10.0), p(0.0, 10.0)];
+        let area = polygon_signed_area(&pts);
+        assert!((area - 100.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_signed_area_cw() {
+        let pts = vec![p(0.0, 0.0), p(0.0, 10.0), p(10.0, 10.0), p(10.0, 0.0)];
+        let area = polygon_signed_area(&pts);
+        assert!((area + 100.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_offset_rectangle_outward() {
+        let pts = vec![p(0.0, 0.0), p(40.0, 0.0), p(40.0, 40.0), p(0.0, 40.0)];
+        let area = polygon_signed_area(&pts);
+        let offset_dist = if area > 0.0 { -1.2 } else { 1.2 };
+        let result = compute_offset(&pts, offset_dist).unwrap();
+        assert_eq!(result.len(), 4);
+        assert!(result[0].x < 0.0);
+        assert!(result[0].y < 0.0);
+        assert!(result[2].x > 40.0);
+        assert!(result[2].y > 40.0);
+    }
+
+    #[test]
+    fn test_offset_rectangle_inward() {
+        let pts = vec![p(0.0, 0.0), p(40.0, 0.0), p(40.0, 40.0), p(0.0, 40.0)];
+        let area = polygon_signed_area(&pts);
+        let offset_dist = if area > 0.0 { 1.2 } else { -1.2 };
+        let result = compute_offset(&pts, offset_dist).unwrap();
+        assert_eq!(result.len(), 4);
+        assert!(result[0].x > 0.0);
+        assert!(result[0].y > 0.0);
+        assert!(result[2].x < 40.0);
+        assert!(result[2].y < 40.0);
+    }
+
+    #[test]
+    fn test_offset_thin_inside_invalid() {
+        let pts = vec![p(0.0, 0.0), p(2.0, 0.0), p(2.0, 2.0), p(0.0, 2.0)];
+        let result = compute_offset(&pts, 1.5);
+        assert!(result.is_some());
     }
 }

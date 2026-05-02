@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm dev:web",
     "beforeBuildCommand": "pnpm build"
   },
   "app": {
@@ -17,6 +17,7 @@
         "width": 1280,
         "height": 800,
         "resizable": true,
+        "decorations": false,
         "fullscreen": false
       }
     ],

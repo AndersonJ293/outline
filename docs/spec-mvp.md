@@ -251,91 +251,103 @@ Checklist:
 - comando ping retorna do Rust para o frontend;
 - build Rust passa.
 
-### Fase 1 - Sketch 2D
+### Fase 1 - Sketch 2D ✅
 
 Entregaveis:
 
-- viewport 2D com pan/zoom;
-- grid;
-- snap no grid;
-- polyline;
-- retangulo;
-- selecao simples;
-- apagar entidade;
-- undo/redo basico.
+- [x] viewport 2D com pan/zoom;
+- [x] grid;
+- [x] snap no grid;
+- [x] polyline;
+- [x] retangulo com preview e confirmacao;
+- [x] selecao simples;
+- [x] selecao por linha alem de ponto;
+- [x] selecao retangular multipla com preview;
+- [x] apagar entidade;
+- [x] undo/redo basico.
 
 Checklist:
 
-- desenhar retangulo fechado;
-- desenhar polyline fechada;
-- apagar entidade selecionada;
-- desfazer e refazer desenho.
+- [x] desenhar retangulo fechado;
+- [x] desenhar polyline fechada;
+- [x] selecionar entidade clicando na linha;
+- [x] arrastar area de selecao e selecionar multiplas entidades;
+- [x] apagar entidade selecionada;
+- [x] desfazer e refazer desenho.
 
-### Fase 2 - Projeto Local
+### Fase 2 - Projeto Local ✅
 
 Entregaveis:
 
-- novo projeto;
-- salvar JSON;
-- abrir JSON;
-- manter unidades em mm;
-- preservar sketch no reload.
+- [x] novo projeto;
+- [x] salvar JSON com dialogo Tauri;
+- [x] abrir JSON com dialogo Tauri;
+- [x] manter unidades em mm;
+- [x] importar imagem de referencia PNG/JPG com dialogo Tauri;
+- [x] mover imagem no viewport;
+- [x] redimensionar por arraste de alça de canto;
+- [x] espelhar horizontal/vertical;
+- [x] escala por referencia (traçar linha + definir tamanho real);
+- [x] opacidade configurável no painel.
 
 Checklist:
 
-- criar projeto;
-- desenhar contorno;
-- salvar;
-- fechar app;
-- abrir app;
-- carregar projeto com contorno intacto.
+- [x] criar projeto;
+- [x] desenhar contorno;
+- [x] salvar;
+- [x] fechar app;
+- [x] abrir app;
+- [x] carregar projeto com contorno intacto.
 
-### Fase 3 - Parede e Malha
+### Fase 3 - Parede e Malha ✅
 
 Entregaveis:
 
-- validar contorno fechado simples;
-- gerar offset interno/externo/central;
-- gerar parede com altura e espessura;
-- criar malha triangular fechada.
+- [x] validar contorno fechado simples;
+- [x] gerar offset 2D real (interno/externo/central);
+- [x] gerar parede com altura e espessura seguindo o contorno;
+- [x] criar malha triangular fechada (topo, fundo, paredes interna/externa).
 
 Checklist:
 
-- retangulo 40 x 40 mm gera parede valida;
-- polyline fechada simples gera parede valida;
-- contorno aberto retorna erro claro;
-- altura e espessura alteram a malha corretamente.
+- [x] retangulo 40 x 40 mm gera parede valida (16 vertices, 32 triangulos);
+- [x] polyline fechada simples gera parede valida;
+- [x] contorno aberto retorna erro claro;
+- [x] altura e espessura alteram a malha corretamente;
+- [x] offset centralizado gera paredes interna e externa;
+- [x] offset interno gera parede dentro do contorno;
+- [x] offset externo gera parede fora do contorno.
 
-### Fase 4 - Preview 3D
+### Fase 4 - Preview 3D ✅
 
 Entregaveis:
 
-- Three.js renderiza malha;
-- orbit/pan/zoom;
-- vista top/isometrica simples;
-- alternar wireframe/solid.
+- [x] Three.js renderiza malha;
+- [x] orbit/pan/zoom;
+- [x] vista top/isometrica simples;
+- [x] alternar wireframe/solid.
 
 Checklist:
 
-- malha aparece sem ficar preta/branca em branco;
-- orbit funciona;
-- preview atualiza ao alterar altura/espessura.
+- [x] malha aparece sem ficar preta/branca em branco;
+- [x] orbit funciona;
+- [x] preview atualiza ao alterar altura/espessura.
 
-### Fase 5 - Export STL
+### Fase 5 - Export STL ✅
 
 Entregaveis:
 
-- exportar STL binario ou ASCII;
-- escolher caminho de saida;
-- validar malha antes da exportacao;
-- mostrar erro quando nao houver malha valida.
+- [x] exportar STL binario ou ASCII;
+- [x] escolher caminho de saida com dialogo Tauri;
+- [x] validar malha antes da exportacao;
+- [x] mostrar erro quando nao houver malha valida.
 
 Checklist:
 
-- STL abre no OrcaSlicer, Cura ou PrusaSlicer;
-- unidade interpretada como mm;
-- malha nao tem buracos visiveis;
-- arquivo exportado corresponde ao preview.
+- [ ] STL abre no OrcaSlicer, Cura ou PrusaSlicer;
+- [ ] unidade interpretada como mm;
+- [ ] malha nao tem buracos visiveis;
+- [ ] arquivo exportado corresponde ao preview.
 
 ## 9. Riscos Tecnicos
 
@@ -375,4 +387,3 @@ O MVP esta pronto quando:
 - Cada fase precisa terminar com validacao manual clara.
 - Nao adicionar IA antes do fluxo manual estar funcionando.
 - Nao adicionar `wgpu + egui` antes de existir dor real de performance ou manutencao no viewport web.
-

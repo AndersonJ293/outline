@@ -6,6 +6,7 @@ import { useStore } from "../stores/useStore";
 export default function Viewport3D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const currentMesh = useStore((s) => s.currentMesh);
+  const previewWireframe = useStore((s) => s.previewWireframe);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -128,6 +129,16 @@ export default function Viewport3D() {
     geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+
+    const initialBox = geometry.boundingBox;
+    const center = new THREE.Vector3();
+    if (initialBox) {
+      initialBox.getCenter(center);
+      geometry.translate(-center.x, -center.y, -center.z);
+      geometry.computeBoundingBox();
+      geometry.computeVertexNormals();
+    }
 
     // Material
     const material = new THREE.MeshPhysicalMaterial({
@@ -153,7 +164,34 @@ export default function Viewport3D() {
     const wireframe = new THREE.LineSegments(wireframeGeo, wireframeMat);
     scene.add(wireframe);
     wireframeRef.current = wireframe;
+
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (camera && controls) {
+      const box = new THREE.Box3().setFromObject(mesh);
+      const framedCenter = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxSize = Math.max(size.x, size.y, size.z, 1);
+      const distance = maxSize * 2.2;
+
+      controls.target.copy(framedCenter);
+      camera.position.set(
+        framedCenter.x + distance,
+        framedCenter.y + distance,
+        framedCenter.z + distance,
+      );
+      camera.near = Math.max(distance / 100, 0.1);
+      camera.far = distance * 100;
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
   }, [currentMesh]);
+
+  useEffect(() => {
+    if (wireframeRef.current) {
+      wireframeRef.current.visible = previewWireframe;
+    }
+  }, [previewWireframe]);
 
   return (
     <div

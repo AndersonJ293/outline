@@ -1,4 +1,5 @@
-use crate::project::{Entity, Operation, Mesh};
+use crate::project::{Entity, Mesh, Operation};
+use geometry::entities as geo_entities;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CommandResult<T> {
@@ -50,11 +51,9 @@ pub fn validate_closed_profile(entity: &Entity) -> CommandResult<bool> {
     CommandResult::ok(true)
 }
 
-pub fn generate_wall_mesh(
-    entity: &Entity,
-    operation: &Operation,
-) -> CommandResult<Mesh> {
-    // Validação inicial
+/// Gera malha de parede para cortador usando offset 2D real + extrusão.
+/// Suporta offset interno, externo e centralizado.
+pub fn generate_wall_mesh(entity: &Entity, operation: &Operation) -> CommandResult<Mesh> {
     let validation = validate_closed_profile(entity);
     if !validation.ok {
         return CommandResult::err(
@@ -63,49 +62,116 @@ pub fn generate_wall_mesh(
         );
     }
 
-    // MVP: gera uma malha cúbica simples ao redor do contorno
-    // Versão futura: offset + triangulação real
-    let height = operation.height_mm;
-    let wall_thickness = operation.wall_thickness_mm;
+    let geo_points: Vec<geo_entities::Point> = entity
+        .points
+        .iter()
+        .map(|p| geo_entities::Point { x: p.x, y: p.y })
+        .collect();
 
-    // Encontra bounding box do contorno
-    let min_x = entity.points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
-    let max_x = entity.points.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
-    let min_y = entity.points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
-    let max_y = entity.points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
+    let result = geometry::mesh::generate_wall_mesh(
+        &geo_points,
+        operation.height_mm,
+        operation.wall_thickness_mm,
+        &operation.offset_side,
+    );
 
-    // Gera uma caixa simples representando a parede
-    let (x1, x2) = (min_x - wall_thickness, max_x + wall_thickness);
-    let (y1, y2) = (min_y - wall_thickness, max_y + wall_thickness);
+    match result {
+        Some(mesh_data) => CommandResult::ok(Mesh {
+            id: format!("mesh_{}", operation.id),
+            vertices: mesh_data.vertices,
+            triangles: mesh_data.triangles,
+        }),
+        None => CommandResult::err(
+            "MESH_GENERATION_FAILED",
+            "Não foi possível gerar a malha. Verifique o contorno e os parâmetros.",
+        ),
+    }
+}
 
-    // 8 vértices de um paralelepípedo
-    let vertices = vec![
-        [x1, y1, 0.0],     // 0: fundo inferior esquerdo
-        [x2, y1, 0.0],     // 1: fundo inferior direito
-        [x2, y2, 0.0],     // 2: fundo superior direito
-        [x1, y2, 0.0],     // 3: fundo superior esquerdo
-        [x1, y1, height],  // 4: topo inferior esquerdo
-        [x2, y1, height],  // 5: topo inferior direito
-        [x2, y2, height],  // 6: topo superior direito
-        [x1, y2, height],  // 7: topo superior esquerdo
-    ];
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // 12 triângulos (2 por face)
-    let triangles = vec![
-        // Faces laterais (paredes)
-        [0, 1, 5], [0, 5, 4],  // frente
-        [1, 2, 6], [1, 6, 5],  // direita
-        [2, 3, 7], [2, 7, 6],  // trás
-        [3, 0, 4], [3, 4, 7],  // esquerda
-        // Fundo
-        [0, 3, 2], [0, 2, 1],
-        // Topo
-        [4, 5, 6], [4, 6, 7],
-    ];
+    #[test]
+    fn test_entity_contract_with_type_field() {
+        let json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":10,"y":0},{"x":10,"y":10}],"closed":true}"#;
+        let entity: Entity = serde_json::from_str(json).unwrap();
+        assert_eq!(entity.id, "e1");
+        assert_eq!(entity.entity_type, "polyline");
+        assert_eq!(entity.points.len(), 3);
 
-    CommandResult::ok(Mesh {
-        id: format!("mesh_{}", operation.id),
-        vertices,
-        triangles,
-    })
+        let serialized = serde_json::to_string(&entity).unwrap();
+        assert!(serialized.contains(r#""type":"polyline""#));
+        assert!(!serialized.contains("entity_type"));
+    }
+
+    #[test]
+    fn test_operation_contract_with_type_field() {
+        let json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#;
+        let op: Operation = serde_json::from_str(json).unwrap();
+        assert_eq!(op.id, "op1");
+        assert_eq!(op.op_type, "cookie_cutter_wall");
+
+        let serialized = serde_json::to_string(&op).unwrap();
+        assert!(serialized.contains(r#""type":"cookie_cutter_wall""#));
+        assert!(!serialized.contains("op_type"));
+    }
+
+    #[test]
+    fn test_wall_mesh_rectangle_center() {
+        let entity_json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":40,"y":0},{"x":40,"y":40},{"x":0,"y":40}],"closed":true}"#;
+        let op_json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#;
+        let entity: Entity = serde_json::from_str(entity_json).unwrap();
+        let op: Operation = serde_json::from_str(op_json).unwrap();
+        let result = generate_wall_mesh(&entity, &op);
+        assert!(result.ok);
+        let mesh = result.value.unwrap();
+        assert_eq!(mesh.vertices.len(), 16);
+        assert_eq!(mesh.triangles.len(), 32);
+    }
+
+    #[test]
+    fn test_wall_mesh_rectangle_outside() {
+        let entity_json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":40,"y":0},{"x":40,"y":40},{"x":0,"y":40}],"closed":true}"#;
+        let op_json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"outside"}"#;
+        let entity: Entity = serde_json::from_str(entity_json).unwrap();
+        let op: Operation = serde_json::from_str(op_json).unwrap();
+        let result = generate_wall_mesh(&entity, &op);
+        assert!(result.ok);
+        let mesh = result.value.unwrap();
+        assert_eq!(mesh.vertices.len(), 16);
+    }
+
+    #[test]
+    fn test_wall_mesh_rectangle_inside() {
+        let entity_json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":40,"y":0},{"x":40,"y":40},{"x":0,"y":40}],"closed":true}"#;
+        let op_json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"inside"}"#;
+        let entity: Entity = serde_json::from_str(entity_json).unwrap();
+        let op: Operation = serde_json::from_str(op_json).unwrap();
+        let result = generate_wall_mesh(&entity, &op);
+        assert!(result.ok);
+        assert_eq!(result.value.unwrap().vertices.len(), 16);
+    }
+
+    #[test]
+    fn test_wall_mesh_open_profile_returns_error() {
+        let entity_json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":40,"y":0},{"x":40,"y":40}],"closed":false}"#;
+        let op_json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#;
+        let entity: Entity = serde_json::from_str(entity_json).unwrap();
+        let op: Operation = serde_json::from_str(op_json).unwrap();
+        let result = generate_wall_mesh(&entity, &op);
+        assert!(!result.ok);
+        assert_eq!(result.error.unwrap().code, "PROFILE_NOT_CLOSED");
+    }
+
+    #[test]
+    fn test_wall_mesh_triangle_profile() {
+        let entity_json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":40,"y":0},{"x":20,"y":40}],"closed":true}"#;
+        let op_json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#;
+        let entity: Entity = serde_json::from_str(entity_json).unwrap();
+        let op: Operation = serde_json::from_str(op_json).unwrap();
+        let result = generate_wall_mesh(&entity, &op);
+        assert!(result.ok);
+        assert_eq!(result.value.unwrap().vertices.len(), 12);
+    }
 }
