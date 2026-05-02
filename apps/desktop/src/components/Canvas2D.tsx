@@ -8,9 +8,10 @@ import {
   hitTestEntity as hitEntity,
   hitTestImage as hitImage,
   hitTestImageHandle,
-  selectEntitiesInRect,
 } from "../features/sketch/hitTest";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
+import { usePanTool } from "../features/sketch/tools/usePanTool";
+import { useSelectionTool } from "../features/sketch/tools/useSelectionTool";
 import { useSketchRenderer } from "../features/sketch/useSketchRenderer";
 
 export default function Canvas2D() {
@@ -93,14 +94,29 @@ export default function Canvas2D() {
     [project],
   );
 
+  const { startPan, updatePan, stopPan, handleWheel } = usePanTool({
+    canvasRef,
+    viewport,
+    setViewport,
+    isPanning,
+    panStart,
+  });
+
+  const { startSelectionDrag, updateSelectionDrag, finishSelectionDrag } = useSelectionTool({
+    project,
+    viewport,
+    isSelectDragging,
+    selectDragStart,
+    selectDragEnd,
+    selectEntity,
+    setSelectedEntityIds,
+    setStatus,
+  });
+
   // Mouse handlers
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (e.button === 1 || e.button === 2) {
-        isPanning.current = true;
-        panStart.current = { x: e.clientX - viewport.offsetX, y: e.clientY - viewport.offsetY };
-        return;
-      }
+      if (startPan(e)) return;
 
       const world = screenToWorld(e.clientX, e.clientY);
       const snapped = snapToGrid(world);
@@ -147,9 +163,7 @@ export default function Canvas2D() {
             return;
           }
         }
-        isSelectDragging.current = true;
-        selectDragStart.current = world;
-        selectDragEnd.current = world;
+        startSelectionDrag(world);
         return;
       }
 
@@ -194,18 +208,12 @@ export default function Canvas2D() {
         return;
       }
     },
-    [screenToWorld, snapToGrid, toolMode, viewport, project, hitTestEntity, hitTestImage, selectEntity, addEntity, updateImage, setStatus, confirmPendingRectangle, selectedEntityIds, imageRefScaleMode, setImageRefScaleMode],
+    [screenToWorld, toolMode, viewport, project, hitTestImage, selectEntity, addEntity, setStatus, confirmPendingRectangle, imageRefScaleMode, startPan, startSelectionDrag],
   );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (isPanning.current) {
-        setViewport({
-          offsetX: e.clientX - panStart.current.x,
-          offsetY: e.clientY - panStart.current.y,
-        });
-        return;
-      }
+      if (updatePan(e)) return;
 
       const world = screenToWorld(e.clientX, e.clientY);
       const snapped = snapToGrid(world);
@@ -257,10 +265,7 @@ export default function Canvas2D() {
         return;
       }
 
-      if (toolMode === "select" && isSelectDragging.current) {
-        selectDragEnd.current = world;
-        return;
-      }
+      if (toolMode === "select" && updateSelectionDrag(world)) return;
 
       if (toolMode === "polyline" && isDrawing.current) {
       }
@@ -275,15 +280,12 @@ export default function Canvas2D() {
         canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
       }
     },
-    [screenToWorld, snapToGrid, toolMode, setViewport, project, updateImage, imageRefScaleMode],
+    [screenToWorld, toolMode, project, updateImage, imageRefScaleMode, updatePan, updateSelectionDrag],
   );
 
   const handleMouseUp = useCallback(
     (e: React.MouseEvent) => {
-      if (isPanning.current) {
-        isPanning.current = false;
-        return;
-      }
+      if (stopPan()) return;
 
       if (isImageMoving.current) {
         isImageMoving.current = false;
@@ -322,39 +324,7 @@ export default function Canvas2D() {
         return;
       }
 
-      if (toolMode === "select" && isSelectDragging.current) {
-        isSelectDragging.current = false;
-        const start = selectDragStart.current;
-        const end = selectDragEnd.current;
-        const screenDist = pointDistance(start, end) * viewport.zoom;
-
-        if (screenDist < 5) {
-          const hitId = hitTestEntity(start);
-          selectEntity(hitId, e.shiftKey || false);
-          if (hitId) {
-            const nowSelected = useStore.getState().selectedEntityIds;
-            if (e.shiftKey) {
-              setStatus(nowSelected.includes(hitId) ? "Adicionado à seleção" : "Removido da seleção");
-            } else {
-              setStatus(`Selecionado: ${hitId}`);
-            }
-          } else {
-            setStatus("Nada selecionado");
-          }
-        } else {
-          const ids = project ? selectEntitiesInRect(project.sketch.entities, start, end) : [];
-
-          if (e.shiftKey) {
-            const current = new Set(useStore.getState().selectedEntityIds);
-            for (const id of ids) current.add(id);
-            setSelectedEntityIds(Array.from(current));
-          } else {
-            setSelectedEntityIds(ids);
-          }
-          setStatus(`${ids.length} entidade(s) selecionada(s) por área`);
-        }
-        return;
-      }
+      if (toolMode === "select" && finishSelectionDrag(e)) return;
 
       if (toolMode === "rectangle" && isDrawing.current) {
         const points = drawingPoints.current;
@@ -374,7 +344,7 @@ export default function Canvas2D() {
         isDrawing.current = false;
       }
     },
-    [toolMode, viewport, project, screenToWorld, hitTestEntity, selectEntity, setSelectedEntityIds, updateImage, setStatus, setImageRefScaleMode],
+    [toolMode, viewport, project, updateImage, setStatus, stopPan, finishSelectionDrag],
   );
 
   useEffect(() => {
@@ -408,28 +378,6 @@ export default function Canvas2D() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [confirmPendingRectangle, setStatus, project, updateImage, setImageRefScaleMode, refScalePopup]);
-
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-      const factor = e.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.min(10, Math.max(0.1, viewport.zoom * factor));
-
-      // Zoom no cursor
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      setViewport({
-        zoom: newZoom,
-        offsetX: mx - (mx - viewport.offsetX) * (newZoom / viewport.zoom),
-        offsetY: my - (my - viewport.offsetY) * (newZoom / viewport.zoom),
-      });
-    },
-    [viewport, setViewport],
-  );
 
   const handleConfirmRefScale = useCallback(
     (realLengthMm: number) => {
