@@ -2,11 +2,13 @@ import { useCallback, type MutableRefObject } from "react";
 import type {
   Entity,
   Point,
+  Project,
   SplineControlPoint,
   ViewportState,
 } from "../../../types";
 import { generateId, pointDistance } from "../../../types";
 import { CLOSE_THRESHOLD } from "../constants";
+import { findOpenEndpointAt } from "../chains";
 import { autoHandleFor, sampleSpline } from "../spline";
 
 export interface SplineDrawingState {
@@ -17,6 +19,7 @@ export interface SplineDrawingState {
 
 interface UseSplineToolArgs {
   viewport: ViewportState;
+  project: Project | null;
   isDrawing: MutableRefObject<boolean>;
   splineState: MutableRefObject<SplineDrawingState | null>;
   addEntity: (entity: Entity) => void;
@@ -55,6 +58,7 @@ function rebuildHandles(
 
 export function useSplineTool({
   viewport,
+  project,
   isDrawing,
   splineState,
   addEntity,
@@ -63,33 +67,58 @@ export function useSplineTool({
   const handleSplineMouseDown = useCallback(
     (snapped: Point): boolean => {
       if (!isDrawing.current) {
+        const endpoint = findOpenEndpointAt(snapped, project, viewport.zoom);
+        const firstAnchor = endpoint?.point ?? snapped;
         isDrawing.current = true;
         splineState.current = {
-          anchors: [snapped],
+          anchors: [firstAnchor],
           handleOuts: [{ dx: 0, dy: 0 }],
           closed: false,
         };
-        setStatus(
-          `Spline: anchor 1 at (${snapped.x.toFixed(1)}, ${snapped.y.toFixed(1)})`,
-        );
+        if (endpoint) {
+          setStatus(
+            `Spline: continuing from ${endpoint.end}, anchor 1 at (${firstAnchor.x.toFixed(1)}, ${firstAnchor.y.toFixed(1)})`,
+          );
+        } else {
+          setStatus(
+            `Spline: anchor 1 at (${firstAnchor.x.toFixed(1)}, ${firstAnchor.y.toFixed(1)})`,
+          );
+        }
         return true;
       }
 
       const state = splineState.current;
       if (!state) return false;
 
-      const first = state.anchors[0];
-      const distScreen = pointDistance(snapped, first) * viewport.zoom;
-      if (distScreen < CLOSE_THRESHOLD && state.anchors.length >= 2) {
-        state.closed = true;
-        state.handleOuts = rebuildHandles(state.anchors, state.handleOuts);
-        addEntity(buildSplineEntity(state, DEFAULT_STEPS));
-        isDrawing.current = false;
-        splineState.current = null;
-        setStatus(
-          `Spline closed: ${state.anchors.length} anchors, ${DEFAULT_STEPS} steps/span`,
-        );
-        return true;
+      if (state.anchors.length >= 2) {
+        const first = state.anchors[0];
+        const threshold = CLOSE_THRESHOLD / viewport.zoom;
+        if (pointDistance(snapped, first) < threshold) {
+          state.closed = true;
+          state.anchors = [...state.anchors, first];
+          state.handleOuts = rebuildHandles(state.anchors, state.handleOuts);
+          addEntity(buildSplineEntity(state, DEFAULT_STEPS));
+          isDrawing.current = false;
+          splineState.current = null;
+          setStatus(
+            `Spline closed: ${state.anchors.length} anchors, ${DEFAULT_STEPS} steps/span`,
+          );
+          return true;
+        }
+
+        const endpoint = findOpenEndpointAt(snapped, project, viewport.zoom);
+        if (endpoint) {
+          state.closed = false;
+          state.anchors = [...state.anchors, endpoint.point];
+          state.handleOuts = rebuildHandles(state.anchors, state.handleOuts);
+          addEntity(buildSplineEntity(state, DEFAULT_STEPS));
+          isDrawing.current = false;
+          splineState.current = null;
+          setStatus(
+            `Spline chain closed: ${state.anchors.length} anchors, ${DEFAULT_STEPS} steps/span`,
+          );
+          return true;
+        }
       }
 
       state.anchors = [...state.anchors, snapped];
@@ -99,7 +128,7 @@ export function useSplineTool({
       );
       return true;
     },
-    [addEntity, isDrawing, setStatus, splineState, viewport.zoom],
+    [addEntity, isDrawing, project, setStatus, splineState, viewport.zoom],
   );
 
   const finishSpline = useCallback(
@@ -148,5 +177,10 @@ export function useSplineTool({
     return true;
   }, [isDrawing, setStatus, splineState]);
 
-  return { handleSplineMouseDown, finishSpline, cancelSpline, popSplineAnchor };
+  return {
+    handleSplineMouseDown,
+    finishSpline,
+    cancelSpline,
+    popSplineAnchor,
+  };
 }

@@ -1,6 +1,27 @@
 import type { EntityDragTarget } from "../../stores/types";
 import type { Project, ViewportState } from "../../types";
 import { HANDLE_RADIUS } from "./constants";
+import { chainContour, computeChains } from "./chains";
+
+function drawClosedChainFills(
+  ctx: CanvasRenderingContext2D,
+  project: Project,
+): void {
+  ctx.save();
+  ctx.fillStyle = "rgba(79, 195, 247, 0.08)";
+  for (const chain of computeChains(project)) {
+    const contour = chainContour(chain, project);
+    if (!contour || !contour.closed || contour.points.length < 3) continue;
+    ctx.beginPath();
+    ctx.moveTo(contour.points[0].x, contour.points[0].y);
+    for (let i = 1; i < contour.points.length; i++) {
+      ctx.lineTo(contour.points[i].x, contour.points[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
 
 export function drawEntities(
   ctx: CanvasRenderingContext2D,
@@ -10,6 +31,8 @@ export function drawEntities(
   entityDragTarget: EntityDragTarget | null,
 ): void {
   if (!project) return;
+
+  drawClosedChainFills(ctx, project);
 
   const highlightedSegment =
     entityDragTarget?.kind === "segment" ? entityDragTarget : null;

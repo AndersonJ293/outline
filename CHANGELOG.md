@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smooth closed/open splines that flatten to dense polylines for offset and mesh generation
 - Spline entity: new `spline` type with `controlPoints` and `samplingSteps` (64 steps per span by default)
 - `B` keyboard shortcut to activate the spline tool
+- Open polyline/spline: `Enter` finalizes the entity as open instead of forcing a close
+- Continue chain: clicking near the endpoint of an existing open polyline or spline starts a new segment anchored at that endpoint, across polyline and spline types
+- Close at any anchor: while drawing, clicking on any anchor of any open polyline or spline (including the current segment's anchors) closes the current segment at that anchor and finalizes it as closed
+- Chain segments are preserved: closing on an existing entity's anchor does not replace it; both entities stay and form a closed chain via shared endpoints
 
 ### Changed
 - Project renamed from CortaCAD to Outline

@@ -1,7 +1,8 @@
 import { useCallback } from "react";
+import { chainContour, findChainForEntity } from "../features/sketch/chains";
 import * as commands from "../commands";
 import { generateId } from "../types";
-import type { Mesh, Operation, Project } from "../types";
+import type { Entity, Mesh, Operation, Project } from "../types";
 import { safeFileName } from "./fileNames";
 
 interface UseCutterActionsArgs {
@@ -15,6 +16,25 @@ interface UseCutterActionsArgs {
   setViewMode: (mode: "sketch" | "solid" | "export") => void;
   setStatus: (text: string) => void;
   setError: (text: string | null) => void;
+}
+
+function closedProfileEntity(
+  entity: Entity,
+  project: Project,
+): Entity | null {
+  if (entity.closed && entity.points.length >= 3) {
+    return entity;
+  }
+  const chain = findChainForEntity(entity, project);
+  if (!chain) return null;
+  const contour = chainContour(chain, project);
+  if (!contour || !contour.closed || contour.points.length < 3) return null;
+  return {
+    id: generateId(),
+    type: "polyline",
+    points: contour.points,
+    closed: true,
+  };
 }
 
 export function useCutterActions({
@@ -41,7 +61,8 @@ export function useCutterActions({
       return;
     }
 
-    if (!entity.closed) {
+    const profile = closedProfileEntity(entity, project);
+    if (!profile) {
       setError("The profile must be closed.");
       return;
     }
@@ -49,14 +70,14 @@ export function useCutterActions({
     const operation: Operation = {
       id: generateId(),
       type: "cookie_cutter_wall",
-      source_entity_id: entity.id,
+      source_entity_id: profile.id,
       height_mm: wallHeight,
       wall_thickness_mm: wallThickness,
       offset_side: offsetSide,
     };
 
     try {
-      const result = await commands.generateWallMesh(entity, operation);
+      const result = await commands.generateWallMesh(profile, operation);
       if (result.ok && result.mesh) {
         setCurrentMesh(result.mesh);
         setViewMode("solid");

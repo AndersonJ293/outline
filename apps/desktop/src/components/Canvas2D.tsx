@@ -173,17 +173,20 @@ export default function Canvas2D() {
     lastClickKey,
   });
 
-  const { handlePolylineMouseDown, cancelPolyline, popPolylinePoint } = usePolylineTool({
-    viewport,
-    drawingPoints,
-    isDrawing,
-    closeToStart,
-    addEntity,
-    setStatus,
-  });
+  const { handlePolylineMouseDown, finishPolyline, cancelPolyline, popPolylinePoint } =
+    usePolylineTool({
+      viewport,
+      project,
+      drawingPoints,
+      isDrawing,
+      closeToStart,
+      addEntity,
+      setStatus,
+    });
 
   const { handleSplineMouseDown, finishSpline, cancelSpline, popSplineAnchor } = useSplineTool({
     viewport,
+    project,
     isDrawing,
     splineState,
     addEntity,
@@ -407,6 +410,7 @@ export default function Canvas2D() {
     cancelRefScale,
     cancelPolyline,
     popPolylinePoint,
+    finishPolyline,
     cancelSpline,
     popSplineAnchor,
     finishSpline,

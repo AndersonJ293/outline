@@ -14,6 +14,7 @@ interface UseCanvasKeyboardShortcutsArgs {
   cancelRefScale: () => void;
   cancelPolyline: () => boolean;
   popPolylinePoint: () => boolean;
+  finishPolyline: (close: boolean) => boolean;
   cancelSpline: () => boolean;
   popSplineAnchor: () => boolean;
   finishSpline: (close: boolean) => boolean;
@@ -41,6 +42,7 @@ export function useCanvasKeyboardShortcuts({
   cancelRefScale,
   cancelPolyline,
   popPolylinePoint,
+  finishPolyline,
   cancelSpline,
   popSplineAnchor,
   finishSpline,
@@ -73,9 +75,12 @@ export function useCanvasKeyboardShortcuts({
         }
         if (splineState.current) {
           event.preventDefault();
-          const wantsClose =
-            event.key === "Enter" && splineState.current.anchors.length >= 3;
-          finishSpline(wantsClose);
+          finishSpline(false);
+          setToolMode("select");
+        }
+        if (isPolylineDrawing) {
+          event.preventDefault();
+          finishPolyline(false);
           setToolMode("select");
         }
         return;
@@ -116,6 +121,7 @@ export function useCanvasKeyboardShortcuts({
     cancelRefScale,
     cancelPolyline,
     popPolylinePoint,
+    finishPolyline,
     cancelSpline,
     popSplineAnchor,
     finishSpline,
