@@ -2,9 +2,12 @@ import { useCallback, type MutableRefObject } from "react";
 import type { Point, Project, SketchImage, ViewportState } from "../../../types";
 import { hitTestImage, hitTestImageHandle } from "../hitTest";
 
+export type ImageTransformStartResult = "started" | "locked" | null;
+
 interface UseImageTransformToolArgs {
   project: Project | null;
   viewport: ViewportState;
+  editingImageId: string | null;
   isImageMoving: MutableRefObject<boolean>;
   imageMoveStartId: MutableRefObject<string | null>;
   imageMoveStartPos: MutableRefObject<Point>;
@@ -13,13 +16,17 @@ interface UseImageTransformToolArgs {
   imageResizeStart: MutableRefObject<Point>;
   imageResizeOrigSize: MutableRefObject<{ w: number; h: number }>;
   imageResizeHandleType: MutableRefObject<string>;
+  imageMovePushUndoDone: MutableRefObject<boolean>;
+  imageResizePushUndoDone: MutableRefObject<boolean>;
   selectEntity: (id: string | null, shiftKey?: boolean) => void;
   updateImage: (id: string, updates: Partial<SketchImage>) => void;
+  pushUndo: () => void;
 }
 
 export function useImageTransformTool({
   project,
   viewport,
+  editingImageId,
   isImageMoving,
   imageMoveStartId,
   imageMoveStartPos,
@@ -28,95 +35,148 @@ export function useImageTransformTool({
   imageResizeStart,
   imageResizeOrigSize,
   imageResizeHandleType,
+  imageMovePushUndoDone,
+  imageResizePushUndoDone,
   selectEntity,
   updateImage,
+  pushUndo,
 }: UseImageTransformToolArgs) {
-  const startImageTransform = useCallback((world: Point, shiftKey: boolean): boolean => {
-    const imageId = hitTestImage(project?.sketch.images, world);
-    if (!imageId || !project?.sketch.images) return false;
+  const startImageTransform = useCallback(
+    (world: Point, shiftKey: boolean): ImageTransformStartResult => {
+      const imageId = hitTestImage(project?.sketch.images, world);
+      if (!imageId || !project?.sketch.images) return null;
+      if (imageId !== editingImageId) return "locked";
 
-    const image = project.sketch.images.find((item) => item.id === imageId);
-    if (!image) return false;
+      const image = project.sketch.images.find((item) => item.id === imageId);
+      if (!image) return null;
 
-    const hitHandle = hitTestImageHandle(image, world, viewport);
-    if (hitHandle) {
-      isImageResizing.current = true;
-      imageResizeId.current = imageId;
-      imageResizeHandleType.current = hitHandle;
-      imageResizeStart.current = world;
-      imageResizeOrigSize.current = { w: image.widthMm, h: image.heightMm };
-      selectEntity(imageId);
-      return true;
-    }
-
-    isImageMoving.current = true;
-    imageMoveStartId.current = imageId;
-    imageMoveStartPos.current = world;
-    if (!shiftKey) selectEntity(imageId);
-    return true;
-  }, [
-    project,
-    viewport,
-    isImageMoving,
-    imageMoveStartId,
-    imageMoveStartPos,
-    isImageResizing,
-    imageResizeId,
-    imageResizeStart,
-    imageResizeOrigSize,
-    imageResizeHandleType,
-    selectEntity,
-  ]);
-
-  const updateImageTransform = useCallback((world: Point): boolean => {
-    if (isImageMoving.current && imageMoveStartId.current) {
-      const dx = world.x - imageMoveStartPos.current.x;
-      const dy = world.y - imageMoveStartPos.current.y;
-      const image = project?.sketch.images?.find((item) => item.id === imageMoveStartId.current);
-      if (image) {
-        updateImage(image.id, { x: image.x + dx, y: image.y + dy });
+      const hitHandle = hitTestImageHandle(image, world, viewport);
+      if (hitHandle) {
+        isImageResizing.current = true;
+        imageResizeId.current = imageId;
+        imageResizeHandleType.current = hitHandle;
+        imageResizeStart.current = world;
+        imageResizeOrigSize.current = { w: image.widthMm, h: image.heightMm };
+        imageResizePushUndoDone.current = false;
+        selectEntity(imageId);
+        return "started";
       }
+
+      isImageMoving.current = true;
+      imageMoveStartId.current = imageId;
       imageMoveStartPos.current = world;
-      return true;
-    }
+      imageMovePushUndoDone.current = false;
+      if (!shiftKey) selectEntity(imageId);
+      return "started";
+    },
+    [
+      project,
+      viewport,
+      editingImageId,
+      isImageMoving,
+      imageMoveStartId,
+      imageMoveStartPos,
+      isImageResizing,
+      imageResizeId,
+      imageResizeStart,
+      imageResizeOrigSize,
+      imageResizeHandleType,
+      imageMovePushUndoDone,
+      imageResizePushUndoDone,
+      selectEntity,
+    ],
+  );
 
-    if (isImageResizing.current && imageResizeId.current) {
-      const image = project?.sketch.images?.find((item) => item.id === imageResizeId.current);
-      if (image) {
-        updateImage(image.id, computeImageResize(world, imageResizeStart.current, imageResizeOrigSize.current, imageResizeHandleType.current));
+  const updateImageTransform = useCallback(
+    (world: Point): boolean => {
+      if (isImageMoving.current && imageMoveStartId.current) {
+        const dx = world.x - imageMoveStartPos.current.x;
+        const dy = world.y - imageMoveStartPos.current.y;
+        if (dx !== 0 || dy !== 0) {
+          const image = project?.sketch.images?.find(
+            (item) => item.id === imageMoveStartId.current,
+          );
+          if (image) {
+            if (!imageMovePushUndoDone.current) {
+              pushUndo();
+              imageMovePushUndoDone.current = true;
+            }
+            updateImage(image.id, { x: image.x + dx, y: image.y + dy });
+          }
+          imageMoveStartPos.current = world;
+        }
+        return true;
       }
-      return true;
-    }
 
-    return false;
-  }, [
-    project,
-    updateImage,
-    isImageMoving,
-    imageMoveStartId,
-    imageMoveStartPos,
-    isImageResizing,
-    imageResizeId,
-    imageResizeStart,
-    imageResizeOrigSize,
-    imageResizeHandleType,
-  ]);
+      if (isImageResizing.current && imageResizeId.current) {
+        const dx = world.x - imageResizeStart.current.x;
+        const dy = world.y - imageResizeStart.current.y;
+        if (dx !== 0 || dy !== 0) {
+          const image = project?.sketch.images?.find(
+            (item) => item.id === imageResizeId.current,
+          );
+          if (image) {
+            if (!imageResizePushUndoDone.current) {
+              pushUndo();
+              imageResizePushUndoDone.current = true;
+            }
+            updateImage(
+              image.id,
+              computeImageResize(
+                world,
+                imageResizeStart.current,
+                imageResizeOrigSize.current,
+                imageResizeHandleType.current,
+              ),
+            );
+          }
+        }
+        return true;
+      }
+
+      return false;
+    },
+    [
+      project,
+      updateImage,
+      pushUndo,
+      isImageMoving,
+      imageMoveStartId,
+      imageMoveStartPos,
+      isImageResizing,
+      imageResizeId,
+      imageResizeStart,
+      imageResizeOrigSize,
+      imageResizeHandleType,
+      imageMovePushUndoDone,
+      imageResizePushUndoDone,
+    ],
+  );
 
   const finishImageTransform = useCallback((): boolean => {
     if (isImageMoving.current) {
       isImageMoving.current = false;
       imageMoveStartId.current = null;
+      imageMovePushUndoDone.current = false;
       return true;
     }
 
     if (isImageResizing.current) {
       isImageResizing.current = false;
       imageResizeId.current = null;
+      imageResizePushUndoDone.current = false;
       return true;
     }
 
     return false;
-  }, [isImageMoving, imageMoveStartId, isImageResizing, imageResizeId]);
+  }, [
+    isImageMoving,
+    imageMoveStartId,
+    imageMovePushUndoDone,
+    isImageResizing,
+    imageResizeId,
+    imageResizePushUndoDone,
+  ]);
 
   return { startImageTransform, updateImageTransform, finishImageTransform };
 }

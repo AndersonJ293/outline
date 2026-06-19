@@ -11,6 +11,7 @@ interface UseAppShortcutsArgs {
   handleOpen: () => void;
   handleSave: () => void;
   selectEntity: (id: string | null, shiftKey?: boolean) => void;
+  setEditingImageId: (id: string | null) => void;
   setStatus: (text: string) => void;
   setViewMode: (mode: ViewMode) => void;
   setToolMode: (mode: ToolMode) => void;
@@ -33,6 +34,7 @@ export function useAppShortcuts({
   handleOpen,
   handleSave,
   selectEntity,
+  setEditingImageId,
   setStatus,
   setViewMode,
   setToolMode,
@@ -71,6 +73,7 @@ export function useAppShortcuts({
       }
       if (event.key === "Escape") {
         selectEntity(null);
+        setEditingImageId(null);
       }
       if (event.ctrlKey && event.key === "1") {
         event.preventDefault();
@@ -111,6 +114,7 @@ export function useAppShortcuts({
     handleOpen,
     handleSave,
     selectEntity,
+    setEditingImageId,
     setStatus,
     setViewMode,
     setToolMode,

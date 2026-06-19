@@ -19,7 +19,7 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
   project: null,
   projectPath: null,
   setProject: (project) => {
-    set({ project, selectedEntityIds: [], currentMesh: null });
+    set({ project, selectedEntityIds: [], currentMesh: null, editingImageId: null });
   },
 
   selectedEntityIds: [],
@@ -52,7 +52,11 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     if (!project) return;
     get().pushUndo();
     project.sketch.images = [...(project.sketch.images ?? []), image];
-    set({ project: { ...project }, selectedEntityIds: [image.id] });
+    set({
+      project: { ...project },
+      selectedEntityIds: [image.id],
+      editingImageId: image.id,
+    });
   },
 
   updateEntity: (id, updates) => {
@@ -82,6 +86,14 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     get().pushUndo();
     project.sketch.entities = project.sketch.entities.filter((e) => !ids.includes(e.id));
     project.sketch.images = (project.sketch.images ?? []).filter((img) => !ids.includes(img.id));
-    set({ project: { ...project }, selectedEntityIds: [], currentMesh: null });
+    const editingImageId = get().editingImageId;
+    const nextEditingImageId =
+      editingImageId && ids.includes(editingImageId) ? null : editingImageId;
+    set({
+      project: { ...project },
+      selectedEntityIds: [],
+      currentMesh: null,
+      editingImageId: nextEditingImageId,
+    });
   },
 });

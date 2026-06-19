@@ -8,6 +8,7 @@ interface UseSketchRendererArgs {
   project: Project | null;
   viewport: ViewportState;
   selectedEntityIds: string[];
+  editingImageId: string | null;
   toolMode: ToolMode;
   imageCache: MutableRefObject<Map<string, HTMLImageElement>>;
   isImageResizing: MutableRefObject<boolean>;
@@ -34,6 +35,7 @@ export function useSketchRenderer({
   project,
   viewport,
   selectedEntityIds,
+  editingImageId,
   toolMode,
   imageCache,
   isImageResizing,
@@ -86,6 +88,7 @@ export function useSketchRenderer({
         project,
         viewport,
         selectedEntityIds,
+        editingImageId,
         toolMode,
         imageCache,
         isImageResizing,
@@ -114,5 +117,5 @@ export function useSketchRenderer({
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animId);
     };
-  }, [project, viewport, selectedEntityIds, toolMode, refScalePopup, snapToGridEnabled]);
+  }, [project, viewport, selectedEntityIds, editingImageId, toolMode, refScalePopup, snapToGridEnabled]);
 }

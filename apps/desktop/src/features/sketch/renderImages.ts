@@ -5,7 +5,7 @@ export function drawImages(
   ctx: CanvasRenderingContext2D,
   project: Project | null,
   viewport: ViewportState,
-  selectedEntityIds: string[],
+  editingImageId: string | null,
   imageCache: MutableRefObject<Map<string, HTMLImageElement>>,
   isImageResizing: MutableRefObject<boolean>,
   imageResizeId: MutableRefObject<string | null>,
@@ -26,7 +26,7 @@ export function drawImages(
     const el = cache.get(img.source);
     if (!el || !el.complete || el.naturalWidth === 0) continue;
 
-    const isSelected = selectedEntityIds.includes(img.id);
+    const isEditable = editingImageId === img.id;
     const hw = img.widthMm / 2;
     const hh = img.heightMm / 2;
 
@@ -38,7 +38,7 @@ export function drawImages(
     ctx.drawImage(el, -hw, -hh, img.widthMm, img.heightMm);
     ctx.restore();
 
-    if (!isSelected) continue;
+    if (!isEditable) continue;
 
     ctx.save();
     ctx.translate(img.x, img.y);

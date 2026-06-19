@@ -39,6 +39,8 @@ export default function Canvas2D() {
   const imageResizeStart = useRef<Point>({ x: 0, y: 0 });
   const imageResizeOrigSize = useRef({ w: 0, h: 0 });
   const imageResizeHandleType = useRef<string>("corner-br");
+  const imageMovePushUndoDone = useRef(false);
+  const imageResizePushUndoDone = useRef(false);
   const imageRefLineStart = useRef<Point | null>(null);
   const imageRefLineEnd = useRef<Point | null>(null);
   const imageRefScaleImageId = useRef<string | null>(null);
@@ -62,6 +64,9 @@ export default function Canvas2D() {
   const setStatus = useStore((s) => s.setStatus);
   const imageRefScaleMode = useStore((s) => s.imageRefScaleMode);
   const setImageRefScaleMode = useStore((s) => s.setImageRefScaleMode);
+  const editingImageId = useStore((s) => s.editingImageId);
+  const setEditingImageId = useStore((s) => s.setEditingImageId);
+  const pushUndo = useStore((s) => s.pushUndo);
   const snapToGridEnabled = useStore((s) => s.snapToGrid);
   const setSnapToGrid = useStore((s) => s.setSnapToGrid);
 
@@ -156,6 +161,7 @@ export default function Canvas2D() {
     useImageTransformTool({
       project,
       viewport,
+      editingImageId,
       isImageMoving,
       imageMoveStartId,
       imageMoveStartPos,
@@ -164,8 +170,11 @@ export default function Canvas2D() {
       imageResizeStart,
       imageResizeOrigSize,
       imageResizeHandleType,
+      imageMovePushUndoDone,
+      imageResizePushUndoDone,
       selectEntity,
       updateImage,
+      pushUndo,
     });
 
   const {
@@ -209,7 +218,9 @@ export default function Canvas2D() {
 
       if (toolMode === "select") {
         if (startOrUpdateReferenceLine(world)) return;
-        if (startImageTransform(world, e.shiftKey)) return;
+        const imageResult = startImageTransform(world, e.shiftKey);
+        if (imageResult === "started") return;
+        if (imageResult === "locked") return;
         startSelectionDrag(world);
         return;
       }
@@ -285,11 +296,14 @@ export default function Canvas2D() {
       if (finishImageTransform()) return;
       if (finishReferenceLine()) return;
 
-      if (toolMode === "select" && finishSelectionDrag(e)) return;
+      if (toolMode === "select" && finishSelectionDrag(e)) {
+        setEditingImageId(null);
+        return;
+      }
 
       if (toolMode === "rectangle" && finishRectangle()) return;
     },
-    [toolMode, stopPan, finishImageTransform, finishReferenceLine, finishSelectionDrag, finishRectangle],
+    [toolMode, stopPan, finishImageTransform, finishReferenceLine, finishSelectionDrag, finishRectangle, setEditingImageId],
   );
 
   useEffect(() => {
@@ -345,7 +359,8 @@ export default function Canvas2D() {
     cancelPolyline();
     cancelPendingRectangle();
     cancelReferenceLine();
-  }, [toolMode, cancelPolyline, cancelPendingRectangle, cancelReferenceLine]);
+    setEditingImageId(null);
+  }, [toolMode, cancelPolyline, cancelPendingRectangle, cancelReferenceLine, setEditingImageId]);
 
   useSketchRenderer({
     canvasRef,
@@ -353,6 +368,7 @@ export default function Canvas2D() {
     project,
     viewport,
     selectedEntityIds,
+    editingImageId,
     toolMode,
     imageCache,
     isImageResizing,

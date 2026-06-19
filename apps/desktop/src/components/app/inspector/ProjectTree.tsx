@@ -5,7 +5,12 @@ import s from "./ProjectTree.module.css";
 
 type ProjectTreeProps = Pick<
   InspectorPanelProps,
-  "project" | "selectedEntityIds" | "currentMesh" | "onSelectEntity" | "onRemoveSelected"
+  | "project"
+  | "selectedEntityIds"
+  | "currentMesh"
+  | "onSelectEntity"
+  | "onSetEditingImageId"
+  | "onRemoveSelected"
 >;
 
 type CategoryId = "sketch" | "images" | "operations" | "mesh";
@@ -35,6 +40,7 @@ export function ProjectTree({
   selectedEntityIds,
   currentMesh,
   onSelectEntity,
+  onSetEditingImageId,
   onRemoveSelected,
 }: ProjectTreeProps) {
   const [collapsed, setCollapsed] = useState<Record<CategoryId, boolean>>(COLLAPSED_DEFAULT);
@@ -62,7 +68,10 @@ export function ProjectTree({
               key={entity.id}
               entity={entity}
               selected={selectedEntityIds.includes(entity.id)}
-              onSelect={() => onSelectEntity(entity.id)}
+              onSelect={() => {
+                onSelectEntity(entity.id);
+                onSetEditingImageId(null);
+              }}
               onRemove={() => {
                 onSelectEntity(entity.id);
                 onRemoveSelected();
@@ -86,7 +95,10 @@ export function ProjectTree({
               key={image.id}
               image={image}
               selected={selectedEntityIds.includes(image.id)}
-              onSelect={() => onSelectEntity(image.id)}
+              onSelect={() => {
+                onSelectEntity(image.id);
+                onSetEditingImageId(image.id);
+              }}
               onRemove={() => {
                 onSelectEntity(image.id);
                 onRemoveSelected();

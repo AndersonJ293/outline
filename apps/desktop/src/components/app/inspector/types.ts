@@ -16,6 +16,7 @@ export interface InspectorPanelProps {
   onTogglePanel: () => void;
   onResizeStart: (event: React.MouseEvent) => void;
   onSelectEntity: (id: string, shiftKey?: boolean) => void;
+  onSetEditingImageId: (id: string | null) => void;
   onRemoveSelected: () => void;
   onUpdateImage: (id: string, updates: Partial<SketchImage>) => void;
   onToggleImageLockAspect: () => void;

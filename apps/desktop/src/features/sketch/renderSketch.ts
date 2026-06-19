@@ -18,6 +18,7 @@ export interface RenderSketchArgs {
   project: Project | null;
   viewport: ViewportState;
   selectedEntityIds: string[];
+  editingImageId: string | null;
   toolMode: ToolMode;
   imageCache: MutableRefObject<Map<string, HTMLImageElement>>;
   isImageResizing: MutableRefObject<boolean>;
@@ -44,6 +45,7 @@ export function renderSketch({
   project,
   viewport,
   selectedEntityIds,
+  editingImageId,
   toolMode,
   imageCache,
   isImageResizing,
@@ -70,7 +72,7 @@ export function renderSketch({
   ctx.scale(viewport.zoom, viewport.zoom);
 
   drawGrid(ctx, canvas, viewport);
-  drawImages(ctx, project, viewport, selectedEntityIds, imageCache, isImageResizing, imageResizeId);
+  drawImages(ctx, project, viewport, editingImageId, imageCache, isImageResizing, imageResizeId);
   drawReferenceLine(ctx, viewport, imageRefLineStart, imageRefLineEnd);
   drawRefScaleConfirm(ctx, viewport, refScalePopup);
   drawEntities(ctx, project, viewport, selectedEntityIds);

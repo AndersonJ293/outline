@@ -51,6 +51,9 @@ export interface AppStore {
   imageRefScaleMode: boolean;
   setImageRefScaleMode: (active: boolean) => void;
 
+  editingImageId: string | null;
+  setEditingImageId: (id: string | null) => void;
+
   snapToGrid: boolean;
   setSnapToGrid: (on: boolean) => void;
 
