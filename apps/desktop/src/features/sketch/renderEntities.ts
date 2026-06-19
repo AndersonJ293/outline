@@ -40,6 +40,25 @@ export function drawEntities(
     }
     ctx.stroke();
 
+    if (isSelected && entity.type === "spline" && entity.controlPoints) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 152, 0, 0.7)";
+      ctx.fillStyle = "rgba(255, 152, 0, 0.9)";
+      ctx.lineWidth = 1 / viewport.zoom;
+      for (const cp of entity.controlPoints) {
+        const endX = cp.point.x + cp.handleOut.dx;
+        const endY = cp.point.y + cp.handleOut.dy;
+        ctx.beginPath();
+        ctx.moveTo(cp.point.x, cp.point.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(endX, endY, HANDLE_RADIUS / viewport.zoom, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     if (
       highlightedSegment &&
       highlightedSegment.entityId === entity.id
@@ -75,8 +94,12 @@ export function drawEntities(
       ctx.restore();
     }
 
-    for (let i = 0; i < entity.points.length; i++) {
-      const pt = entity.points[i];
+    const displayPoints =
+      entity.type === "spline" && entity.controlPoints
+        ? entity.controlPoints.map((cp) => cp.point)
+        : entity.points;
+    for (let i = 0; i < displayPoints.length; i++) {
+      const pt = displayPoints[i];
       const isActivePoint =
         highlightedPoint &&
         highlightedPoint.entityId === entity.id &&

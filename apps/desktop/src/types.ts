@@ -28,16 +28,28 @@ export interface Sketch {
   images?: SketchImage[];
 }
 
-export interface Entity {
-  id: string;
-  type: "polyline" | "rectangle";
-  points: Point[];
-  closed: boolean;
-}
-
 export interface Point {
   x: number;
   y: number;
+}
+
+export interface SplineHandle {
+  dx: number;
+  dy: number;
+}
+
+export interface SplineControlPoint {
+  point: Point;
+  handleOut: SplineHandle;
+}
+
+export interface Entity {
+  id: string;
+  type: "polyline" | "rectangle" | "spline";
+  points: Point[];
+  closed: boolean;
+  controlPoints?: SplineControlPoint[];
+  samplingSteps?: number;
 }
 
 export interface Operation {
@@ -79,7 +91,7 @@ export interface GenerateMeshResult {
 
 // ── Tool types ──
 
-export type ToolMode = "select" | "polyline" | "rectangle";
+export type ToolMode = "select" | "polyline" | "rectangle" | "spline";
 
 export type ViewMode = "sketch" | "solid" | "export";
 

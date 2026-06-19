@@ -17,13 +17,21 @@ export interface ImageHandleHit {
   handleType: ImageHandleType;
 }
 
+function displayPoints(entity: Entity): Point[] {
+  if (entity.type === "spline" && entity.controlPoints) {
+    return entity.controlPoints.map((cp) => cp.point);
+  }
+  return entity.points;
+}
+
 export function hitTestEntity(
   entities: Entity[],
   world: Point,
   viewport: ViewportState,
 ): string | null {
   for (const entity of entities) {
-    for (const pt of entity.points) {
+    const pts = displayPoints(entity);
+    for (const pt of pts) {
       const dx = (pt.x - world.x) * viewport.zoom;
       const dy = (pt.y - world.y) * viewport.zoom;
       if (Math.sqrt(dx * dx + dy * dy) < HANDLE_RADIUS * 3) {
@@ -31,9 +39,9 @@ export function hitTestEntity(
       }
     }
 
-    for (let i = 0; i < entity.points.length; i++) {
-      const a = entity.points[i];
-      const b = entity.points[i + 1] ?? (entity.closed ? entity.points[0] : null);
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[i + 1] ?? (entity.closed ? pts[0] : null);
       if (!b) continue;
       if (distanceToSegment(world, a, b) * viewport.zoom < LINE_HIT_RADIUS) {
         return entity.id;
@@ -54,8 +62,9 @@ export function hitTestEntityWithPoint(
   viewport: ViewportState,
 ): EntityHit | null {
   for (const entity of entities) {
-    for (let i = 0; i < entity.points.length; i++) {
-      const pt = entity.points[i];
+    const pts = displayPoints(entity);
+    for (let i = 0; i < pts.length; i++) {
+      const pt = pts[i];
       const dx = (pt.x - world.x) * viewport.zoom;
       const dy = (pt.y - world.y) * viewport.zoom;
       if (Math.sqrt(dx * dx + dy * dy) < HANDLE_RADIUS * 3) {
@@ -63,9 +72,9 @@ export function hitTestEntityWithPoint(
       }
     }
 
-    for (let i = 0; i < entity.points.length; i++) {
-      const a = entity.points[i];
-      const b = entity.points[i + 1] ?? (entity.closed ? entity.points[0] : null);
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[i + 1] ?? (entity.closed ? pts[0] : null);
       if (!b) continue;
       if (distanceToSegment(world, a, b) * viewport.zoom < LINE_HIT_RADIUS) {
         return { kind: "segment", entityId: entity.id, segIdx: i };
@@ -131,6 +140,40 @@ export function getHitId(project: Project | null, world: Point, viewport: Viewpo
   );
 }
 
+export interface SplineHandleHit {
+  entityId: string;
+  anchorIndex: number;
+}
+
+export function hitTestSplineHandle(
+  entity: Entity,
+  world: Point,
+  viewport: ViewportState,
+): SplineHandleHit | null {
+  if (entity.type !== "spline" || !entity.controlPoints) return null;
+  const radiusScreen = HANDLE_RADIUS * 3;
+  const radiusWorld = radiusScreen / viewport.zoom;
+
+  for (let i = 0; i < entity.controlPoints.length; i++) {
+    const anchor = entity.controlPoints[i].point;
+    const handleEnd = {
+      x: anchor.x + entity.controlPoints[i].handleOut.dx,
+      y: anchor.y + entity.controlPoints[i].handleOut.dy,
+    };
+    const dx = (handleEnd.x - world.x) * viewport.zoom;
+    const dy = (handleEnd.y - world.y) * viewport.zoom;
+    if (Math.sqrt(dx * dx + dy * dy) < radiusScreen) {
+      return { entityId: entity.id, anchorIndex: i };
+    }
+    if (
+      Math.hypot(anchor.x - world.x, anchor.y - world.y) < radiusWorld * 0.5
+    ) {
+      // skip anchor centers; the entity drag tool owns those
+    }
+  }
+  return null;
+}
+
 export function selectEntitiesInRect(entities: Entity[], start: Point, end: Point): string[] {
   const minX = Math.min(start.x, end.x);
   const maxX = Math.max(start.x, end.x);
@@ -139,7 +182,8 @@ export function selectEntitiesInRect(entities: Entity[], start: Point, end: Poin
   const ids: string[] = [];
 
   for (const entity of entities) {
-    for (const pt of entity.points) {
+    const pts = displayPoints(entity);
+    for (const pt of pts) {
       if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) {
         ids.push(entity.id);
         break;

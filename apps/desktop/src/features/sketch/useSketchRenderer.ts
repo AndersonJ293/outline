@@ -2,6 +2,7 @@ import { useEffect, type RefObject, type MutableRefObject } from "react";
 import type { Point, Project, ToolMode, ViewportState } from "../../types";
 import type { EntityDragTarget } from "../../stores/types";
 import { renderSketch } from "./renderSketch";
+import type { SplineDrawingState } from "./tools/useSplineTool";
 
 interface UseSketchRendererArgs {
   canvasRef: RefObject<HTMLCanvasElement>;
@@ -25,6 +26,7 @@ interface UseSketchRendererArgs {
   selectDragStart: MutableRefObject<Point>;
   selectDragEnd: MutableRefObject<Point>;
   pendingRectangle: MutableRefObject<{ points: Point[]; confirmPoint: Point } | null>;
+  splineState: MutableRefObject<SplineDrawingState | null>;
   cursorWorld: MutableRefObject<Point>;
   snapTarget: MutableRefObject<Point>;
   snapActive: MutableRefObject<boolean>;
@@ -53,6 +55,7 @@ export function useSketchRenderer({
   selectDragStart,
   selectDragEnd,
   pendingRectangle,
+  splineState,
   cursorWorld,
   snapTarget,
   snapActive,
@@ -107,6 +110,7 @@ export function useSketchRenderer({
         selectDragStart,
         selectDragEnd,
         pendingRectangle,
+        splineState,
         cursorWorld,
         snapTarget,
         snapActive,

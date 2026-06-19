@@ -3,6 +3,8 @@ import type { Point, ToolMode, ViewportState } from "../../types";
 import { pointDistance } from "../../types";
 import { CLOSE_THRESHOLD, HANDLE_RADIUS } from "./constants";
 import { rectanglePoints } from "./geometry";
+import { autoHandleFor, sampleSpline } from "./spline";
+import type { SplineDrawingState } from "./tools/useSplineTool";
 
 export function drawReferenceLine(
   ctx: CanvasRenderingContext2D,
@@ -53,8 +55,17 @@ export function drawDrawingPreview(
   isDrawing: MutableRefObject<boolean>,
   drawingPoints: MutableRefObject<Point[]>,
   closeToStart: MutableRefObject<boolean>,
+  splineState: MutableRefObject<SplineDrawingState | null> | null = null,
 ): void {
-  if (!isDrawing.current || drawingPoints.current.length === 0) return;
+  if (!isDrawing.current) return;
+
+  if (toolMode === "spline" && splineState?.current && splineState.current.anchors.length > 0) {
+    drawSplinePreview(ctx, viewport, splineState.current);
+    drawClosePreview(ctx, viewport, splineState.current.anchors);
+    return;
+  }
+
+  if (drawingPoints.current.length === 0) return;
 
   ctx.strokeStyle = "rgba(79, 195, 247, 0.6)";
   ctx.lineWidth = 2 / viewport.zoom;
@@ -174,6 +185,37 @@ function drawPolylinePreview(
   }
   ctx.stroke();
   ctx.setLineDash([]);
+}
+
+function drawSplinePreview(
+  ctx: CanvasRenderingContext2D,
+  viewport: ViewportState,
+  state: SplineDrawingState,
+): void {
+  const anchors = state.anchors;
+  const handles = anchors.map((anchor, i) =>
+    autoHandleFor(anchors[i - 1] ?? null, anchor, anchors[i + 1] ?? null),
+  );
+  const cps = anchors.map((point, i) => ({ point, handleOut: handles[i] }));
+  const samples = sampleSpline(cps, 16, false);
+
+  ctx.strokeStyle = "rgba(79, 195, 247, 0.6)";
+  ctx.lineWidth = 2 / viewport.zoom;
+  ctx.setLineDash([4 / viewport.zoom, 4 / viewport.zoom]);
+  ctx.beginPath();
+  ctx.moveTo(samples[0].x, samples[0].y);
+  for (let i = 1; i < samples.length; i++) {
+    ctx.lineTo(samples[i].x, samples[i].y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  for (const cp of cps) {
+    ctx.fillStyle = "rgba(79, 195, 247, 0.8)";
+    ctx.beginPath();
+    ctx.arc(cp.point.x, cp.point.y, HANDLE_RADIUS / viewport.zoom, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawClosePreview(

@@ -18,12 +18,37 @@ pub struct SketchDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SplineHandleDto {
+    pub dx: f64,
+    pub dy: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SplineControlPointDto {
+    pub point: PointDto,
+    #[serde(rename = "handleOut")]
+    pub handle_out: SplineHandleDto,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EntityDto {
     pub id: String,
     #[serde(rename = "type")]
     pub entity_type: String,
     pub points: Vec<PointDto>,
     pub closed: bool,
+    #[serde(
+        default,
+        rename = "controlPoints",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub control_points: Option<Vec<SplineControlPointDto>>,
+    #[serde(
+        default,
+        rename = "samplingSteps",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub sampling_steps: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +117,21 @@ impl From<&outline_core::project::Project> for ProjectDto {
                             .map(|pt| PointDto { x: pt.x, y: pt.y })
                             .collect(),
                         closed: e.closed,
+                        control_points: e.control_points.as_ref().map(|cps| {
+                            cps.iter()
+                                .map(|cp| SplineControlPointDto {
+                                    point: PointDto {
+                                        x: cp.point.x,
+                                        y: cp.point.y,
+                                    },
+                                    handle_out: SplineHandleDto {
+                                        dx: cp.handle_out.dx,
+                                        dy: cp.handle_out.dy,
+                                    },
+                                })
+                                .collect()
+                        }),
+                        sampling_steps: e.sampling_steps,
                     })
                     .collect(),
             },

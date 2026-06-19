@@ -179,7 +179,12 @@ interface EntityRowProps {
 }
 
 function EntityRow({ entity, selected, onSelect, onRemove }: EntityRowProps) {
-  const icon = entity.type === "rectangle" ? "▭" : "〰";
+  const icon =
+    entity.type === "rectangle"
+      ? "▭"
+      : entity.type === "spline"
+        ? "〰"
+        : "✎";
   const label = `${entity.type} · ${entity.points.length} pts`;
   return (
     <div className={`${s["tree-row"]} ${selected ? s.selected : ""}`}>

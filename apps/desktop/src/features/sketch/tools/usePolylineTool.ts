@@ -61,5 +61,22 @@ export function usePolylineTool({
     return true;
   }, [closeToStart, drawingPoints, isDrawing]);
 
-  return { handlePolylineMouseDown, cancelPolyline };
+  const popPolylinePoint = useCallback((): boolean => {
+    if (drawingPoints.current.length === 0) return false;
+    if (drawingPoints.current.length === 1) {
+      isDrawing.current = false;
+      closeToStart.current = false;
+      drawingPoints.current = [];
+      setStatus("Polyline cancelled");
+      return true;
+    }
+    drawingPoints.current = drawingPoints.current.slice(0, -1);
+    const last = drawingPoints.current[drawingPoints.current.length - 1];
+    setStatus(
+      `Polyline: point ${drawingPoints.current.length} at (${last.x.toFixed(1)}, ${last.y.toFixed(1)})`,
+    );
+    return true;
+  }, [closeToStart, drawingPoints, isDrawing, setStatus]);
+
+  return { handlePolylineMouseDown, cancelPolyline, popPolylinePoint };
 }

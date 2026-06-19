@@ -15,6 +15,9 @@ import { usePanTool } from "../features/sketch/tools/usePanTool";
 import { usePolylineTool } from "../features/sketch/tools/usePolylineTool";
 import { useRectangleTool } from "../features/sketch/tools/useRectangleTool";
 import { useSelectionTool } from "../features/sketch/tools/useSelectionTool";
+import { useSplineHandleDragTool } from "../features/sketch/tools/useSplineHandleDragTool";
+import { useSplineTool, type SplineDrawingState } from "../features/sketch/tools/useSplineTool";
+import { useCanvasKeyboardShortcuts } from "../features/sketch/useCanvasKeyboardShortcuts";
 import { useSketchRenderer } from "../features/sketch/useSketchRenderer";
 import s from "./Canvas2D.module.css";
 
@@ -40,6 +43,12 @@ export default function Canvas2D() {
   const entityPushUndoDone = useRef(false);
   const lastClickTime = useRef(0);
   const lastClickKey = useRef("");
+  const splineState = useRef<SplineDrawingState | null>(null);
+  const isHandleDragging = useRef(false);
+  const handleDragEntityId = useRef<string | null>(null);
+  const handleDragAnchorIndex = useRef<number | null>(null);
+  const handleDragStart = useRef<Point>({ x: 0, y: 0 });
+  const handlePushUndoDone = useRef(false);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const isImageMoving = useRef(false);
   const imageMoveStartId = useRef<string | null>(null);
@@ -164,7 +173,7 @@ export default function Canvas2D() {
     lastClickKey,
   });
 
-  const { handlePolylineMouseDown, cancelPolyline } = usePolylineTool({
+  const { handlePolylineMouseDown, cancelPolyline, popPolylinePoint } = usePolylineTool({
     viewport,
     drawingPoints,
     isDrawing,
@@ -172,6 +181,28 @@ export default function Canvas2D() {
     addEntity,
     setStatus,
   });
+
+  const { handleSplineMouseDown, finishSpline, cancelSpline, popSplineAnchor } = useSplineTool({
+    viewport,
+    isDrawing,
+    splineState,
+    addEntity,
+    setStatus,
+  });
+
+  const { tryStartHandleDrag, updateHandleDrag, finishHandleDrag } =
+    useSplineHandleDragTool({
+      project,
+      viewport,
+      updateEntity,
+      pushUndo,
+      setStatus,
+      isHandleDragging,
+      dragEntityId: handleDragEntityId,
+      dragAnchorIndex: handleDragAnchorIndex,
+      dragStart: handleDragStart,
+      pushUndoDone: handlePushUndoDone,
+    });
 
   const {
     confirmPendingRectangle,
@@ -250,6 +281,7 @@ export default function Canvas2D() {
 
       if (toolMode === "select") {
         if (startOrUpdateReferenceLine(world)) return;
+        if (tryStartHandleDrag(world)) return;
         if (tryStartEntityDrag(world)) return;
         const imageResult = startImageTransform(world, e.shiftKey);
         if (imageResult === "started") return;
@@ -260,6 +292,11 @@ export default function Canvas2D() {
 
       if (toolMode === "polyline") {
         handlePolylineMouseDown(snapped);
+        return;
+      }
+
+      if (toolMode === "spline") {
+        handleSplineMouseDown(snapped);
         return;
       }
 
@@ -278,9 +315,12 @@ export default function Canvas2D() {
       startSelectionDrag,
       handlePendingRectangleClick,
       handlePolylineMouseDown,
+      handleSplineMouseDown,
       startRectangle,
       startImageTransform,
       startOrUpdateReferenceLine,
+      tryStartHandleDrag,
+      tryStartEntityDrag,
     ],
   );
 
@@ -295,6 +335,8 @@ export default function Canvas2D() {
       snapActive.current = didSnap;
 
       if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
+
+      if (updateHandleDrag(world)) return;
 
       if (updateEntityDrag(world)) return;
 
@@ -319,6 +361,7 @@ export default function Canvas2D() {
       updatePan,
       updateSelectionDrag,
       updateRectanglePreview,
+      updateHandleDrag,
       updateEntityDrag,
       updateImageTransform,
       updateReferenceLine,
@@ -330,6 +373,7 @@ export default function Canvas2D() {
       if (stopPan()) return;
 
       if (finishImageTransform()) return;
+      if (finishHandleDrag()) return;
       if (finishEntityDrag()) return;
       if (finishReferenceLine()) return;
 
@@ -344,6 +388,7 @@ export default function Canvas2D() {
       toolMode,
       stopPan,
       finishImageTransform,
+      finishHandleDrag,
       finishEntityDrag,
       finishReferenceLine,
       finishSelectionDrag,
@@ -352,69 +397,25 @@ export default function Canvas2D() {
     ],
   );
 
-  useEffect(() => {
-    const isEditableTarget = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false;
-      const tag = target.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-      return target.isContentEditable;
-    };
-
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === "Enter" || event.key === " ") {
-        if (pendingRectangle.current) {
-          event.preventDefault();
-          confirmPendingRectangle();
-        }
-        return;
-      }
-      if (event.key !== "Escape") return;
-
-      if (refScalePopup) {
-        event.preventDefault();
-        cancelRefScale();
-        return;
-      }
-      if (pendingRectangle.current) {
-        event.preventDefault();
-        cancelPendingRectangle();
-        setToolMode("select");
-        return;
-      }
-      if (isEditableTarget(event.target)) return;
-
-      event.preventDefault();
-      cancelPolyline();
-      cancelReferenceLine();
-      setToolMode("select");
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [
+  useCanvasKeyboardShortcuts({
+    pendingRectangle,
+    splineState,
+    drawingPoints,
+    refScalePopup,
     confirmPendingRectangle,
     cancelPendingRectangle,
-    refScalePopup,
     cancelRefScale,
     cancelPolyline,
+    popPolylinePoint,
+    cancelSpline,
+    popSplineAnchor,
+    finishSpline,
     cancelReferenceLine,
     setToolMode,
-  ]);
-
-  useEffect(() => {
-    cancelPolyline();
-    cancelPendingRectangle();
-    cancelReferenceLine();
-    setEditingImageId(null);
-    setEntityDragTarget(null);
-  }, [
     toolMode,
-    cancelPolyline,
-    cancelPendingRectangle,
-    cancelReferenceLine,
     setEditingImageId,
     setEntityDragTarget,
-  ]);
+  });
 
   useSketchRenderer({
     canvasRef,
@@ -438,6 +439,7 @@ export default function Canvas2D() {
     selectDragStart,
     selectDragEnd,
     pendingRectangle,
+    splineState,
     cursorWorld,
     snapTarget,
     snapActive,

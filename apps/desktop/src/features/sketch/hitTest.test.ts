@@ -5,6 +5,7 @@ import {
   hitTestEntityWithPoint,
   hitTestImage,
   hitTestImageHandle,
+  hitTestSplineHandle,
   selectEntitiesInRect,
 } from "./hitTest";
 
@@ -95,6 +96,35 @@ describe("sketch hit testing", () => {
 
     it("returns null when far from any entity", () => {
       expect(hitTestEntityWithPoint(entities, { x: 80, y: 80 }, viewport)).toBeNull();
+    });
+  });
+
+  describe("hitTestSplineHandle", () => {
+    const spline: Entity = {
+      id: "spl",
+      type: "spline",
+      closed: false,
+      points: [],
+      controlPoints: [
+        { point: { x: 0, y: 0 }, handleOut: { dx: 5, dy: 0 } },
+        { point: { x: 20, y: 0 }, handleOut: { dx: 5, dy: 0 } },
+      ],
+      samplingSteps: 8,
+    };
+
+    it("hits the handle endpoint of anchor 0", () => {
+      expect(hitTestSplineHandle(spline, { x: 5, y: 0 }, viewport)).toEqual({
+        entityId: "spl",
+        anchorIndex: 0,
+      });
+    });
+
+    it("ignores plain polylines", () => {
+      expect(hitTestSplineHandle(entities[0], { x: 0, y: 0 }, viewport)).toBeNull();
+    });
+
+    it("returns null when far from any handle", () => {
+      expect(hitTestSplineHandle(spline, { x: 50, y: 50 }, viewport)).toBeNull();
     });
   });
 });

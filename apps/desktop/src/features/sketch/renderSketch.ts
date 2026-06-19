@@ -12,6 +12,7 @@ import {
   drawSelectionArea,
   drawSnapTarget,
 } from "./renderInteraction";
+import type { SplineDrawingState } from "./tools/useSplineTool";
 
 export interface RenderSketchArgs {
   ctx: CanvasRenderingContext2D;
@@ -35,6 +36,7 @@ export interface RenderSketchArgs {
   selectDragStart: MutableRefObject<Point>;
   selectDragEnd: MutableRefObject<Point>;
   pendingRectangle: MutableRefObject<{ points: Point[]; confirmPoint: Point } | null>;
+  splineState: MutableRefObject<SplineDrawingState | null>;
   cursorWorld: MutableRefObject<Point>;
   snapTarget: MutableRefObject<Point>;
   snapActive: MutableRefObject<boolean>;
@@ -63,6 +65,7 @@ export function renderSketch({
   selectDragStart,
   selectDragEnd,
   pendingRectangle,
+  splineState,
   cursorWorld,
   snapTarget,
   snapActive,
@@ -79,7 +82,15 @@ export function renderSketch({
   drawReferenceLine(ctx, viewport, imageRefLineStart, imageRefLineEnd);
   drawRefScaleConfirm(ctx, viewport, refScalePopup);
   drawEntities(ctx, project, viewport, selectedEntityIds, entityDragTarget);
-  drawDrawingPreview(ctx, viewport, toolMode, isDrawing, drawingPoints, closeToStart);
+  drawDrawingPreview(
+    ctx,
+    viewport,
+    toolMode,
+    isDrawing,
+    drawingPoints,
+    closeToStart,
+    splineState,
+  );
   drawSelectionArea(ctx, viewport, isSelectDragging, selectDragStart, selectDragEnd);
   drawPendingRectangle(ctx, viewport, pendingRectangle);
   drawSnapTarget(

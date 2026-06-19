@@ -17,12 +17,37 @@ pub struct Sketch {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SplineHandle {
+    pub dx: f64,
+    pub dy: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SplineControlPoint {
+    pub point: Point,
+    #[serde(rename = "handleOut")]
+    pub handle_out: SplineHandle,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entity {
     pub id: String,
     #[serde(rename = "type")]
     pub entity_type: String,
     pub points: Vec<Point>,
     pub closed: bool,
+    #[serde(
+        default,
+        rename = "controlPoints",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub control_points: Option<Vec<SplineControlPoint>>,
+    #[serde(
+        default,
+        rename = "samplingSteps",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub sampling_steps: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -5,6 +5,9 @@ import {
   applyEntityMove,
   applyPointMove,
   applySegmentMove,
+  applySplineEntityMove,
+  applySplinePointMove,
+  applySplineSegmentMove,
 } from "../entityDrag";
 import type { EntityDragTarget } from "../../../stores/types";
 
@@ -148,22 +151,59 @@ export function useEntityDragTool({
       if (dx === 0 && dy === 0) return true;
 
       let newPoints: Point[] | null = null;
+      let newControlPoints: Entity["controlPoints"] | undefined;
+      const isSpline = entity.type === "spline" && !!entity.controlPoints;
+
       if (mode === "point" && dragPointIndex.current !== null) {
-        newPoints = applyPointMove(
-          entity,
-          dragPointIndex.current,
-          world,
-          dragStart.current,
-        );
+        if (isSpline) {
+          const move = applySplinePointMove(
+            entity,
+            dragPointIndex.current,
+            world,
+            dragStart.current,
+          );
+          if (move) {
+            newPoints = move.points;
+            newControlPoints = move.controlPoints;
+          }
+        } else {
+          newPoints = applyPointMove(
+            entity,
+            dragPointIndex.current,
+            world,
+            dragStart.current,
+          );
+        }
       } else if (mode === "segment" && dragSegIdx.current !== null) {
-        newPoints = applySegmentMove(
-          entity,
-          dragSegIdx.current,
-          world,
-          dragStart.current,
-        );
+        if (isSpline) {
+          const move = applySplineSegmentMove(
+            entity,
+            dragSegIdx.current,
+            world,
+            dragStart.current,
+          );
+          if (move) {
+            newPoints = move.points;
+            newControlPoints = move.controlPoints;
+          }
+        } else {
+          newPoints = applySegmentMove(
+            entity,
+            dragSegIdx.current,
+            world,
+            dragStart.current,
+          );
+        }
       } else if (mode === "entity") {
-        newPoints = applyEntityMove(entity, world, dragStart.current);
+        if (isSpline) {
+          const move = applySplineEntityMove(entity, world, dragStart.current);
+          if (move) {
+            newPoints = move.points;
+            newControlPoints = move.controlPoints;
+          }
+        } else {
+          newPoints = applyEntityMove(entity, world, dragStart.current);
+        }
       }
       if (!newPoints) return false;
 
@@ -171,7 +211,12 @@ export function useEntityDragTool({
         pushUndo();
         pushUndoDone.current = true;
       }
-      updateEntity(entity.id, { points: newPoints });
+      updateEntity(
+        entity.id,
+        newControlPoints
+          ? { points: newPoints, controlPoints: newControlPoints }
+          : { points: newPoints },
+      );
       dragStart.current = world;
       return true;
     },

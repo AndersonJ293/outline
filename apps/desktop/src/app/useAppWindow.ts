@@ -1,33 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, type Window } from "@tauri-apps/api/window";
+import { isTauri } from "@tauri-apps/api/core";
 
 export function useAppWindow() {
   const [panelWidth, setPanelWidth] = useState(260);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const panelResizeStart = useRef<{ x: number; width: number } | null>(null);
-  const appWindow = getCurrentWindow();
+  const appWindowRef = useRef<Window | null>(null);
+
+  useEffect(() => {
+    if (isTauri()) {
+      appWindowRef.current = getCurrentWindow();
+    }
+  }, []);
 
   const handleMinimizeWindow = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
-    void appWindow.minimize();
-  }, [appWindow]);
+    void appWindowRef.current?.minimize();
+  }, []);
 
   const handleToggleMaximizeWindow = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
-    void appWindow.toggleMaximize();
-  }, [appWindow]);
+    void appWindowRef.current?.toggleMaximize();
+  }, []);
 
   const handleCloseWindow = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
-    void appWindow.close();
-  }, [appWindow]);
+    void appWindowRef.current?.close();
+  }, []);
 
   const handleStartWindowDrag = useCallback((event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
     if (target.closest("[data-no-drag]")) return;
     if (event.button !== 0) return;
-    void appWindow.startDragging();
-  }, [appWindow]);
+    void appWindowRef.current?.startDragging();
+  }, []);
 
   const handlePanelResizeStart = useCallback((event: React.MouseEvent) => {
     event.preventDefault();

@@ -47,17 +47,20 @@ export function useAppShortcuts({
       if (isEditableTarget(event.target)) return;
 
       if (event.key === "Delete" || event.key === "Backspace") {
+        if (event.defaultPrevented) return;
         if (selectedEntityIds.length > 0 && project) {
           removeSelectedEntities();
           setStatus(`${selectedEntityIds.length} entit${selectedEntityIds.length === 1 ? "y" : "ies"} removed`);
         }
       }
       if (event.ctrlKey && event.key === "z") {
+        if (event.defaultPrevented) return;
         event.preventDefault();
         undo();
         setStatus("Undo");
       }
       if (event.ctrlKey && event.key === "y") {
+        if (event.defaultPrevented) return;
         event.preventDefault();
         redo();
         setStatus("Redo");
@@ -102,6 +105,9 @@ export function useAppShortcuts({
         } else if (key === "r") {
           event.preventDefault();
           setToolMode("rectangle");
+        } else if (key === "b") {
+          event.preventDefault();
+          setToolMode("spline");
         }
       }
     };

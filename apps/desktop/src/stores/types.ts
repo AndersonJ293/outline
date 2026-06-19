@@ -11,7 +11,8 @@ import type {
 export type EntityDragTarget =
   | { kind: "point"; entityId: string; pointIndex: number }
   | { kind: "segment"; entityId: string; segIdx: number }
-  | { kind: "entity"; entityId: string };
+  | { kind: "entity"; entityId: string }
+  | { kind: "spline-handle"; entityId: string; anchorIndex: number };
 
 export interface AppStore {
   project: Project | null;

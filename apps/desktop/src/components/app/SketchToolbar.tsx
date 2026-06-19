@@ -49,6 +49,13 @@ export function SketchToolbar({
           >
             ▭
           </button>
+          <button
+            className={`${s["toolbar-btn"]} ${toolMode === "spline" ? s.active : ""}`}
+            onClick={() => onToolModeChange("spline")}
+            title="Spline (B)"
+          >
+            〰
+          </button>
           <div className={s["toolbar-divider"]} />
           <button
             className={`${s["toolbar-btn"]} ${snapToGrid ? s.active : ""}`}

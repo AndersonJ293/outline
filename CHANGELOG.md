@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Cubic Bezier spline drawing tool with draggable tangent handles
+- Smooth closed/open splines that flatten to dense polylines for offset and mesh generation
+- Spline entity: new `spline` type with `controlPoints` and `samplingSteps` (64 steps per span by default)
+- `B` keyboard shortcut to activate the spline tool
+
 ### Changed
 - Project renamed from CortaCAD to Outline
 - File extension changed from `.cortacad` to `.outline`
