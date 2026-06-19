@@ -50,6 +50,7 @@ export default function Canvas2D() {
 
   const project = useStore((s) => s.project);
   const toolMode = useStore((s) => s.toolMode);
+  const setToolMode = useStore((s) => s.setToolMode);
   const viewport = useStore((s) => s.viewport);
   const setViewport = useStore((s) => s.setViewport);
   const selectedEntityIds = useStore((s) => s.selectedEntityIds);
@@ -291,26 +292,40 @@ export default function Canvas2D() {
   );
 
   useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      return target.isContentEditable;
+    };
+
     const handler = (event: KeyboardEvent) => {
-      if (pendingRectangle.current) {
-        if (event.key === "Enter" || event.key === " ") {
+      if (event.key === "Enter" || event.key === " ") {
+        if (pendingRectangle.current) {
           event.preventDefault();
           confirmPendingRectangle();
-          return;
         }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          cancelPendingRectangle();
-          return;
-        }
+        return;
       }
+      if (event.key !== "Escape") return;
+
       if (refScalePopup) {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          cancelRefScale();
-          return;
-        }
+        event.preventDefault();
+        cancelRefScale();
+        return;
       }
+      if (pendingRectangle.current) {
+        event.preventDefault();
+        cancelPendingRectangle();
+        setToolMode("select");
+        return;
+      }
+      if (isEditableTarget(event.target)) return;
+
+      event.preventDefault();
+      cancelPolyline();
+      cancelReferenceLine();
+      setToolMode("select");
     };
 
     window.addEventListener("keydown", handler);
@@ -320,6 +335,9 @@ export default function Canvas2D() {
     cancelPendingRectangle,
     refScalePopup,
     cancelRefScale,
+    cancelPolyline,
+    cancelReferenceLine,
+    setToolMode,
   ]);
 
   useEffect(() => {
