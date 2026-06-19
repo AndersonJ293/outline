@@ -322,15 +322,6 @@ html, body, #root {
   min-width: 0;
 }
 
-.panel {
-  height: 100%;
-  padding: 12px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .panel-resizer {
   position: absolute;
   top: 0;
@@ -365,15 +356,13 @@ html, body, #root {
   background: var(--bg-tertiary);
 }
 
-.panel-collapsed .panel {
-  display: none;
-}
-
 .panel-collapsed .panel-shell {
   background: var(--bg-secondary);
 }
 
-.panel h3 {
+.panel-tree-header h3,
+.panel-section h3,
+.panel-details h3 {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -523,6 +512,240 @@ html, body, #root {
 
 .entities-list-item.selected {
   outline: 1px solid var(--accent);
+}
+
+/* Project tree */
+.project-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+
+.tree-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tree-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.tree-chevron {
+  width: 12px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-variant-emoji: text;
+}
+
+.tree-category-icon {
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-emoji: text;
+}
+
+.tree-label {
+  flex: 1;
+  letter-spacing: 0.2px;
+}
+
+.tree-count {
+  font-size: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 8px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.tree-children {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: 18px;
+  padding: 2px 0 4px 0;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 4px;
+}
+
+.tree-row.readonly {
+  opacity: 0.75;
+}
+
+.tree-row:hover:not(.readonly) {
+  background: var(--bg-tertiary);
+}
+
+.tree-row.selected {
+  background: rgba(79, 195, 247, 0.18);
+  outline: 1px solid var(--accent);
+}
+
+.tree-row-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  background: transparent;
+  border: 0;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  border-radius: 4px;
+}
+
+.tree-row.readonly .tree-row-main {
+  cursor: default;
+}
+
+.tree-item-icon {
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  font-variant-emoji: text;
+}
+
+.tree-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-item-badge {
+  color: var(--success);
+  font-size: 8px;
+}
+
+.tree-row-remove {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  visibility: hidden;
+}
+
+.tree-row:hover .tree-row-remove {
+  visibility: visible;
+}
+
+.tree-row-remove:hover {
+  color: var(--danger);
+  background: var(--bg-tertiary);
+}
+
+.tree-empty {
+  padding: 4px 6px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* Panel split (tree + details) */
+.panel-split {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 12px;
+}
+
+.panel-tree {
+  flex: 1 1 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-tree-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.panel-tree-header h3 {
+  margin-bottom: 0;
+}
+
+.panel-tree-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.panel-split.has-details .panel-tree {
+  flex: 1 1 50%;
+}
+
+.panel-split.has-details .panel-details {
+  flex: 1 1 50%;
+  border-top: 1px solid var(--border);
+  padding: 12px 4px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.panel-details-header {
+  position: sticky;
+  top: -12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+  margin: 0 0 4px 0;
+  z-index: 2;
+}
+
+.panel-details-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* Tabs */

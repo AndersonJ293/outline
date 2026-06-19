@@ -1,8 +1,5 @@
-import { CutterSection } from "./inspector/CutterSection";
-import { EntitiesSection } from "./inspector/EntitiesSection";
-import { EntityPropertiesSection } from "./inspector/EntityPropertiesSection";
-import { ImagePropertiesSection } from "./inspector/ImagePropertiesSection";
-import { MeshSection } from "./inspector/MeshSection";
+import { DetailsPanel } from "./inspector/DetailsPanel";
+import { ProjectTree } from "./inspector/ProjectTree";
 import type { InspectorPanelProps } from "./inspector/types";
 
 export function InspectorPanel({
@@ -32,7 +29,7 @@ export function InspectorPanel({
   onSetPreviewWireframe,
   onExportStl,
 }: InspectorPanelProps) {
-  if (selectedEntityIds.length === 0 && !currentMesh) return null;
+  const hasDetails = selectedEntityIds.length > 0 || Boolean(currentMesh);
 
   return (
     <div className="panel-shell">
@@ -46,43 +43,41 @@ export function InspectorPanel({
       {!panelCollapsed && (
         <div className="panel-resizer" onMouseDown={onResizeStart} title="Resize panel" />
       )}
-      <div className="panel">
-        <EntitiesSection
-          project={project}
-          selectedEntityIds={selectedEntityIds}
-          onSelectEntity={onSelectEntity}
-          onRemoveSelected={onRemoveSelected}
-        />
+      <div className={`panel-split ${hasDetails ? "has-details" : ""}`}>
+        <div className="panel-tree">
+          <div className="panel-tree-header">
+            <h3>{project?.project_name ?? "Project"}</h3>
+          </div>
+          <div className="panel-tree-body">
+            <ProjectTree
+              project={project}
+              selectedEntityIds={selectedEntityIds}
+              currentMesh={currentMesh}
+              onSelectEntity={onSelectEntity}
+              onRemoveSelected={onRemoveSelected}
+            />
+          </div>
+        </div>
 
-        {selectedEntity && <EntityPropertiesSection selectedEntity={selectedEntity} />}
-
-        {selectedImage && (
-          <ImagePropertiesSection
+        {hasDetails && (
+          <DetailsPanel
+            selectedEntity={selectedEntity}
             selectedImage={selectedImage}
+            currentMesh={currentMesh}
             imageLockAspect={imageLockAspect}
             imageRefScaleMode={imageRefScaleMode}
+            wallHeight={wallHeight}
+            wallThickness={wallThickness}
+            offsetSide={offsetSide}
+            previewWireframe={previewWireframe}
             onUpdateImage={onUpdateImage}
             onToggleImageLockAspect={onToggleImageLockAspect}
             onSetImageRefScaleMode={onSetImageRefScaleMode}
             onRemoveSelected={onRemoveSelected}
-          />
-        )}
-
-        <CutterSection
-          selectedEntity={selectedEntity}
-          wallHeight={wallHeight}
-          wallThickness={wallThickness}
-          offsetSide={offsetSide}
-          onSetWallHeight={onSetWallHeight}
-          onSetWallThickness={onSetWallThickness}
-          onSetOffsetSide={onSetOffsetSide}
-          onGenerateCutter={onGenerateCutter}
-        />
-
-        {currentMesh && (
-          <MeshSection
-            currentMesh={currentMesh}
-            previewWireframe={previewWireframe}
+            onSetWallHeight={onSetWallHeight}
+            onSetWallThickness={onSetWallThickness}
+            onSetOffsetSide={onSetOffsetSide}
+            onGenerateCutter={onGenerateCutter}
             onSetPreviewWireframe={onSetPreviewWireframe}
             onExportStl={onExportStl}
           />
