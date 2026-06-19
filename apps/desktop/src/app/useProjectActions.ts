@@ -22,14 +22,14 @@ export function useProjectActions({
   const [saving, setSaving] = useState(false);
 
   const handleNewProject = useCallback(async () => {
-    const name = `Cortador ${formatProjectDate()}`;
+    const name = `Projeto ${formatProjectDate()}`;
     try {
       const newProject = await commands.newProject(name);
       setProject(newProject);
-      setStatus(`Novo projeto: "${name}"`);
+      setStatus(`New project: "${name}"`);
       setError(null);
     } catch (err) {
-      setError(`Erro ao criar projeto: ${err}`);
+      setError(`Failed to create project: ${err}`);
     }
   }, [setProject, setStatus, setError]);
 
@@ -38,10 +38,10 @@ export function useProjectActions({
     setSaving(true);
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
-      const fileName = `${safeFileName(project.project_name)}.cortacad`;
+      const fileName = `${safeFileName(project.project_name)}.outline`;
       const filePath = await save({
         defaultPath: fileName,
-        filters: [{ name: "CortaCAD", extensions: ["cortacad"] }],
+        filters: [{ name: "Outline", extensions: ["outline"] }],
       });
       if (!filePath) {
         setSaving(false);
@@ -49,9 +49,9 @@ export function useProjectActions({
       }
       const json = JSON.stringify(project, null, 2);
       await commands.saveFile(filePath, json);
-      setStatus(`Projeto salvo: "${filePath}"`);
+      setStatus(`Project saved: "${filePath}"`);
     } catch (err) {
-      setError(`Erro ao salvar: ${err}`);
+      setError(`Failed to save: ${err}`);
     } finally {
       setSaving(false);
     }
@@ -62,17 +62,17 @@ export function useProjectActions({
       const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({
         multiple: false,
-        filters: [{ name: "CortaCAD", extensions: ["cortacad"] }],
+        filters: [{ name: "Outline", extensions: ["outline"] }],
       });
       if (!selected) return;
       const path = selected as string;
       const text = await commands.readFile(path);
       const openedProject = JSON.parse(text);
       setProject(openedProject);
-      setStatus(`Projeto aberto: "${path}"`);
+      setStatus(`Project opened: "${path}"`);
       setError(null);
     } catch (err) {
-      setError(`Erro ao abrir projeto: ${err}`);
+      setError(`Failed to open project: ${err}`);
     }
   }, [setProject, setStatus, setError]);
 
@@ -90,7 +90,7 @@ export function useProjectActions({
       const el = new window.Image();
       await new Promise<void>((resolve, reject) => {
         el.onload = () => resolve();
-        el.onerror = () => reject(new Error("Falha ao carregar imagem"));
+        el.onerror = () => reject(new Error("Failed to load image"));
         el.src = dataUrl;
       });
 
@@ -113,10 +113,10 @@ export function useProjectActions({
         mirrorY: false,
         opacity: 0.4,
       });
-      setStatus(`Imagem importada: ${Math.round(widthMm)} x ${Math.round(heightMm)} mm`);
+      setStatus(`Image imported: ${Math.round(widthMm)} x ${Math.round(heightMm)} mm`);
       setError(null);
     } catch (err) {
-      setError(`Erro ao importar imagem: ${err}`);
+      setError(`Failed to import image: ${err}`);
     }
   }, [addImage, setStatus, setError]);
 

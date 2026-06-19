@@ -14,13 +14,13 @@ export function MeshSection({
 }: MeshSectionProps) {
   return (
     <div className="panel-section">
-      <h3>Malha</h3>
+      <h3>Mesh</h3>
       <div className="panel-field">
-        <label>Vértices</label>
+        <label>Vertices</label>
         <input value={`${currentMesh.vertices.length}`} readOnly />
       </div>
       <div className="panel-field">
-        <label>Triângulos</label>
+        <label>Triangles</label>
         <input value={`${currentMesh.triangles.length}`} readOnly />
       </div>
       <label className="panel-checkbox">
@@ -32,7 +32,7 @@ export function MeshSection({
         Wireframe
       </label>
       <button className="panel-btn" onClick={onExportStl}>
-        Exportar STL
+        Export STL
       </button>
     </div>
   );

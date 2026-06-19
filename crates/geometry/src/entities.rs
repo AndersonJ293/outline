@@ -15,12 +15,12 @@ pub struct Entity {
     pub closed: bool,
 }
 
-/// Valida se a entidade forma um contorno fechado simples
+/// Checks whether the entity forms a simple closed profile
 pub fn is_closed(entity: &Entity) -> bool {
     entity.closed && entity.points.len() >= 3
 }
 
-/// Calcula a bounding box de um contorno
+/// Computes the bounding box of a profile
 pub fn bounding_box(entity: &Entity) -> Option<(f64, f64, f64, f64)> {
     if entity.points.is_empty() {
         return None;

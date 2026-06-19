@@ -18,12 +18,10 @@ export default function Viewport3D() {
     const container = containerRef.current;
     if (!container) return;
 
-    // Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a2e);
     sceneRef.current = scene;
 
-    // Camera
     const camera = new THREE.PerspectiveCamera(
       45,
       container.clientWidth / container.clientHeight,
@@ -34,21 +32,18 @@ export default function Viewport3D() {
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
     controls.target.set(0, 0, 0);
     controlsRef.current = controls;
 
-    // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
@@ -60,15 +55,12 @@ export default function Viewport3D() {
     backLight.position.set(-10, -5, -10);
     scene.add(backLight);
 
-    // Grid helper
     const gridHelper = new THREE.GridHelper(100, 10, 0x4fc3f7, 0x333355);
     scene.add(gridHelper);
 
-    // Axes helper
     const axesHelper = new THREE.AxesHelper(30);
     scene.add(axesHelper);
 
-    // Resize
     const resize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -78,7 +70,6 @@ export default function Viewport3D() {
     };
     window.addEventListener("resize", resize);
 
-    // Render loop
     const loop = () => {
       controls.update();
       renderer.render(scene, camera);
@@ -95,12 +86,10 @@ export default function Viewport3D() {
     };
   }, []);
 
-  // Update mesh when currentMesh changes
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
 
-    // Remove old mesh
     if (meshRef.current) {
       scene.remove(meshRef.current);
       meshRef.current.geometry.dispose();
@@ -121,7 +110,6 @@ export default function Viewport3D() {
 
     if (!currentMesh) return;
 
-    // Converte malha para Three.js
     const vertices = new Float32Array(currentMesh.vertices.flat());
     const indices = new Uint32Array(currentMesh.triangles.flat());
 
@@ -140,7 +128,6 @@ export default function Viewport3D() {
       geometry.computeVertexNormals();
     }
 
-    // Material
     const material = new THREE.MeshPhysicalMaterial({
       color: 0x4fc3f7,
       metalness: 0.1,
@@ -154,7 +141,6 @@ export default function Viewport3D() {
     scene.add(mesh);
     meshRef.current = mesh;
 
-    // Wireframe overlay
     const wireframeGeo = new THREE.WireframeGeometry(geometry);
     const wireframeMat = new THREE.LineBasicMaterial({
       color: 0x88ddff,

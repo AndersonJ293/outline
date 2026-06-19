@@ -76,7 +76,7 @@ export function useImageRefScaleTool({
         screenY: endScreen.y * viewport.zoom + viewport.offsetY,
       });
     }
-    setStatus(`Linha de referência: ${dist.toFixed(2)} mm. Digite o tamanho real.`);
+    setStatus(`Reference line: ${dist.toFixed(2)} mm. Type the real size.`);
     return true;
   }, [
     containerRef,
@@ -99,7 +99,7 @@ export function useImageRefScaleTool({
         heightMm: image.heightMm * scale,
       });
       setStatus(
-        `Imagem escalada: referência de ${refScalePopup.lengthMm.toFixed(2)} mm → ${realLengthMm.toFixed(2)} mm`,
+        `Image scaled: reference ${refScalePopup.lengthMm.toFixed(2)} mm -> ${realLengthMm.toFixed(2)} mm`,
       );
     }
     setRefScalePopup(null);
@@ -123,7 +123,7 @@ export function useImageRefScaleTool({
     imageRefLineStart.current = null;
     imageRefLineEnd.current = null;
     setImageRefScaleMode(false);
-    setStatus("Escala por referência cancelada");
+    setStatus("Scale by reference cancelled");
     return true;
   }, [
     refScalePopup,

@@ -33,18 +33,18 @@ export function useAppShortcuts({
       if (event.key === "Delete" || event.key === "Backspace") {
         if (selectedEntityIds.length > 0 && project) {
           removeSelectedEntities();
-          setStatus(`${selectedEntityIds.length} entidade(s) removida(s)`);
+          setStatus(`${selectedEntityIds.length} entit${selectedEntityIds.length === 1 ? "y" : "ies"} removed`);
         }
       }
       if (event.ctrlKey && event.key === "z") {
         event.preventDefault();
         undo();
-        setStatus("Desfazer");
+        setStatus("Undo");
       }
       if (event.ctrlKey && event.key === "y") {
         event.preventDefault();
         redo();
-        setStatus("Refazer");
+        setStatus("Redo");
       }
       if (event.ctrlKey && event.key.toLowerCase() === "n") {
         event.preventDefault();

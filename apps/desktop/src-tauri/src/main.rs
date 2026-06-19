@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    cortacad_desktop_lib::run()
+    outline_desktop_lib::run()
 }

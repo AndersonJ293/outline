@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-// ── DTOs para o frontend ──
+// ── DTOs for the frontend ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectDto {
@@ -69,10 +69,10 @@ pub struct GenerateMeshResult {
     pub error: Option<CommandErrorDto>,
 }
 
-// ── Conversões ──
+// ── Conversions ──
 
-impl From<&cortacad_core::project::Project> for ProjectDto {
-    fn from(p: &cortacad_core::project::Project) -> Self {
+impl From<&outline_core::project::Project> for ProjectDto {
+    fn from(p: &outline_core::project::Project) -> Self {
         Self {
             version: p.version,
             units: p.units.clone(),

@@ -24,9 +24,9 @@ export function CutterSection({
 }: CutterSectionProps) {
   return (
     <div className="panel-section">
-      <h3>Cortador</h3>
+      <h3>Cutter</h3>
       <div className="panel-field">
-        <label>Altura (mm)</label>
+        <label>Height (mm)</label>
         <input
           type="number"
           min={1}
@@ -37,7 +37,7 @@ export function CutterSection({
         />
       </div>
       <div className="panel-field">
-        <label>Espessura da parede (mm)</label>
+        <label>Wall thickness (mm)</label>
         <input
           type="number"
           min={0.4}
@@ -48,16 +48,16 @@ export function CutterSection({
         />
       </div>
       <div className="panel-field">
-        <label>Lado do offset</label>
+        <label>Offset side</label>
         <select
           value={offsetSide}
           onChange={(event) =>
             onSetOffsetSide(event.target.value as "center" | "inside" | "outside")
           }
         >
-          <option value="center">Centralizado</option>
-          <option value="inside">Interno</option>
-          <option value="outside">Externo</option>
+          <option value="center">Centered</option>
+          <option value="inside">Inside</option>
+          <option value="outside">Outside</option>
         </select>
       </div>
       <button
@@ -65,7 +65,7 @@ export function CutterSection({
         onClick={onGenerateCutter}
         disabled={!selectedEntity || !selectedEntity.closed}
       >
-        Gerar Cortador
+        Generate Cutter
       </button>
     </div>
   );

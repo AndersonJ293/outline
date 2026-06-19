@@ -39,20 +39,17 @@ pub fn validate_closed_profile(entity: &Entity) -> CommandResult<bool> {
     if !entity.closed {
         return CommandResult::err(
             "PROFILE_NOT_CLOSED",
-            "O contorno precisa estar fechado para gerar um cortador.",
+            "The profile must be closed to generate a wall.",
         );
     }
     if entity.points.len() < 3 {
-        return CommandResult::err(
-            "PROFILE_TOO_SMALL",
-            "O contorno precisa de pelo menos 3 pontos.",
-        );
+        return CommandResult::err("PROFILE_TOO_SMALL", "The profile needs at least 3 points.");
     }
     CommandResult::ok(true)
 }
 
-/// Gera malha de parede para cortador usando offset 2D real + extrusão.
-/// Suporta offset interno, externo e centralizado.
+/// Generates a wall mesh using real 2D offset + extrusion.
+/// Supports inside, outside, and centered offset.
 pub fn generate_wall_mesh(entity: &Entity, operation: &Operation) -> CommandResult<Mesh> {
     let validation = validate_closed_profile(entity);
     if !validation.ok {
@@ -83,7 +80,7 @@ pub fn generate_wall_mesh(entity: &Entity, operation: &Operation) -> CommandResu
         }),
         None => CommandResult::err(
             "MESH_GENERATION_FAILED",
-            "Não foi possível gerar a malha. Verifique o contorno e os parâmetros.",
+            "Could not generate the mesh. Check the profile and parameters.",
         ),
     }
 }

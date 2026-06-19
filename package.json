@@ -1,11 +1,11 @@
 {
-  "name": "cortacad",
+  "name": "outline",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @cortacad/desktop tauri dev",
-    "dev:web": "pnpm --filter @cortacad/desktop dev",
-    "build": "pnpm --filter @cortacad/desktop build",
+    "dev": "pnpm --filter @outline/desktop tauri dev",
+    "dev:web": "pnpm --filter @outline/desktop dev",
+    "build": "pnpm --filter @outline/desktop build",
     "quality": "bash scripts/quality.sh",
-    "tauri": "pnpm --filter @cortacad/desktop tauri"
+    "tauri": "pnpm --filter @outline/desktop tauri"
   }
 }

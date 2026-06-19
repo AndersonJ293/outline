@@ -14,9 +14,9 @@ export function EntitiesSection({
   return (
     <div className="panel-section">
       <h3>
-        Entidades
+        Entities
         {selectedEntityIds.length > 1 && (
-          <span className="panel-badge">{selectedEntityIds.length} selecionadas</span>
+          <span className="panel-badge">{selectedEntityIds.length} selected</span>
         )}
       </h3>
       {project && project.sketch.entities.length > 0 ? (
@@ -52,7 +52,7 @@ export function EntitiesSection({
         </div>
       ) : (
         <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>
-          Use a polyline ou retângulo para desenhar.
+          Use the polyline or rectangle tool to draw.
         </p>
       )}
     </div>

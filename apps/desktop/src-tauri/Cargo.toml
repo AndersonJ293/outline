@@ -1,10 +1,10 @@
 [package]
-name = "cortacad-desktop"
+name = "outline-desktop"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "cortacad_desktop_lib"
+name = "outline_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -17,6 +17,6 @@ tauri-plugin-dialog = "2"
 base64 = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-cortacad-core = { path = "../../../crates/cortacad-core" }
+outline-core = { path = "../../../crates/outline-core" }
 geometry = { path = "../../../crates/geometry" }
 export = { path = "../../../crates/export" }

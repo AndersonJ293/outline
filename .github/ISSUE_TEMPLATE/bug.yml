@@ -1,0 +1,38 @@
+name: Bug report
+about: Report something that is broken
+title: "[bug] "
+labels: ["bug"]
+assignees: []
+---
+
+## What happened
+
+A clear and concise description of what the bug is.
+
+## Steps to reproduce
+
+1. ...
+2. ...
+3. ...
+
+## Expected behavior
+
+What you expected to happen.
+
+## Actual behavior
+
+What actually happened.
+
+## Environment
+
+- OS: [e.g. Windows 11, macOS 15, Ubuntu 24.04]
+- Outline version: [e.g. 0.1.0]
+- Build: [release / dev]
+
+## Screenshots or logs
+
+If applicable, add screenshots or paste relevant console output.
+
+## Additional context
+
+Anything else that might help.

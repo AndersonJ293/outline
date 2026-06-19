@@ -143,7 +143,6 @@ export default function Canvas2D() {
     setStatus,
   });
 
-  // Mouse handlers
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (startPan(e)) return;

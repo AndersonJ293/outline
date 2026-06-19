@@ -39,12 +39,12 @@ export function InspectorPanel({
       <button
         className="panel-toggle"
         onClick={onTogglePanel}
-        title={panelCollapsed ? "Mostrar painel" : "Recolher painel"}
+        title={panelCollapsed ? "Show panel" : "Hide panel"}
       >
         {panelCollapsed ? "‹" : "›"}
       </button>
       {!panelCollapsed && (
-        <div className="panel-resizer" onMouseDown={onResizeStart} title="Redimensionar painel" />
+        <div className="panel-resizer" onMouseDown={onResizeStart} title="Resize panel" />
       )}
       <div className="panel">
         <EntitiesSection

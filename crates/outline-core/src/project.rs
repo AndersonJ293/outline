@@ -66,7 +66,7 @@ impl Project {
 
     pub fn validate(&self) -> Result<(), String> {
         if self.sketch.entities.is_empty() {
-            return Err("Sketch vazio. Desenhe um contorno primeiro.".to_string());
+            return Err("Empty sketch. Draw a profile first.".to_string());
         }
         Ok(())
     }

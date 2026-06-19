@@ -51,12 +51,12 @@ export function useSelectionTool({
       if (hitId) {
         const nowSelected = useStore.getState().selectedEntityIds;
         if (event.shiftKey) {
-          setStatus(nowSelected.includes(hitId) ? "Adicionado à seleção" : "Removido da seleção");
+          setStatus(nowSelected.includes(hitId) ? "Added to selection" : "Removed from selection");
         } else {
-          setStatus(`Selecionado: ${hitId}`);
+          setStatus(`Selected: ${hitId}`);
         }
       } else {
-        setStatus("Nada selecionado");
+        setStatus("Nothing selected");
       }
       return true;
     }
@@ -69,7 +69,7 @@ export function useSelectionTool({
     } else {
       setSelectedEntityIds(ids);
     }
-    setStatus(`${ids.length} entidade(s) selecionada(s) por área`);
+    setStatus(`${ids.length} entit${ids.length === 1 ? "y" : "ies"} selected by area`);
     return true;
   }, [
     project,

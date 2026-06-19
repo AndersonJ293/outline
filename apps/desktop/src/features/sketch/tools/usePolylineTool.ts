@@ -25,7 +25,7 @@ export function usePolylineTool({
       isDrawing.current = true;
       closeToStart.current = false;
       drawingPoints.current = [snapped];
-      setStatus(`Polyline: ponto 1 em (${snapped.x.toFixed(1)}, ${snapped.y.toFixed(1)})`);
+      setStatus(`Polyline: point 1 at (${snapped.x.toFixed(1)}, ${snapped.y.toFixed(1)})`);
       return true;
     }
 
@@ -42,13 +42,13 @@ export function usePolylineTool({
         closed: true,
       });
       isDrawing.current = false;
-      setStatus(`Polyline fechada: ${drawingPoints.current.length} pontos`);
+      setStatus(`Polyline closed: ${drawingPoints.current.length} points`);
       return true;
     }
 
     drawingPoints.current = [...drawingPoints.current, snapped];
     setStatus(
-      `Polyline: ponto ${drawingPoints.current.length} em (${snapped.x.toFixed(1)}, ${snapped.y.toFixed(1)})`,
+      `Polyline: point ${drawingPoints.current.length} at (${snapped.x.toFixed(1)}, ${snapped.y.toFixed(1)})`,
     );
     return true;
   }, [addEntity, closeToStart, drawingPoints, isDrawing, setStatus, viewport]);

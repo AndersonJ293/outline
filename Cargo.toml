@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "apps/desktop/src-tauri",
-    "crates/cortacad-core",
+    "crates/outline-core",
     "crates/geometry",
     "crates/export",
 ]

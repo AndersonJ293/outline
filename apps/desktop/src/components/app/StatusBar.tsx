@@ -10,7 +10,7 @@ export function StatusBar({ project, statusText, errorText }: StatusBarProps) {
   return (
     <div className="status-bar">
       <span>
-        {project ? `${project.project_name} | ${project.sketch.entities.length} entidades` : "Sem projeto"}
+        {project ? `${project.project_name} | ${project.sketch.entities.length} entities` : "No project"}
       </span>
       <span>{statusText}</span>
       {errorText && <span className="error">{errorText}</span>}

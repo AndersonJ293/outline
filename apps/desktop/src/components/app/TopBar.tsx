@@ -29,23 +29,23 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <div className="topbar" onMouseDown={onStartWindowDrag}>
-      <span className="topbar-title">CortaCAD</span>
+      <span className="topbar-title">Outline</span>
       <div className="file-menu" data-no-drag>
         <button className={`topbar-btn ${fileMenuOpen ? "active" : ""}`} onClick={onToggleFileMenu}>
-          Arquivo
+          File
         </button>
         {fileMenuOpen && (
           <div className="file-menu-popover">
             <button onClick={onNewProject}>
-              <span>Novo</span>
+              <span>New</span>
               <kbd>Ctrl+N</kbd>
             </button>
             <button onClick={onOpenProject}>
-              <span>Abrir</span>
+              <span>Open</span>
               <kbd>Ctrl+O</kbd>
             </button>
             <button onClick={onSaveProject} disabled={!hasProject || saving}>
-              <span>Salvar</span>
+              <span>Save</span>
               <kbd>Ctrl+S</kbd>
             </button>
           </div>
@@ -61,7 +61,7 @@ export function TopBar({
           className="window-control-btn"
           onClick={onMinimizeWindow}
           tabIndex={-1}
-          title="Minimizar"
+          title="Minimize"
         >
           <span aria-hidden="true">−</span>
         </button>
@@ -69,7 +69,7 @@ export function TopBar({
           className="window-control-btn"
           onClick={onToggleMaximizeWindow}
           tabIndex={-1}
-          title="Maximizar"
+          title="Maximize"
         >
           <span aria-hidden="true">□</span>
         </button>
@@ -77,7 +77,7 @@ export function TopBar({
           className="window-control-btn close"
           onClick={onCloseWindow}
           tabIndex={-1}
-          title="Fechar"
+          title="Close"
         >
           <span className="close-icon" aria-hidden="true">×</span>
         </button>

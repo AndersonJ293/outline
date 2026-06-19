@@ -8,6 +8,6 @@ export function safeFileName(name: string): string {
       .trim()
       .replace(/[\\/:*?"<>|]+/g, "-")
       .replace(/\s+/g, " ")
-      .replace(/^-+|-+$/g, "") || "cortador"
+      .replace(/^-+|-+$/g, "") || "cutter"
   );
 }

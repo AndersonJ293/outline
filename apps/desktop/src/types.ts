@@ -1,4 +1,4 @@
-// ── Core domain types (espelho dos DTOs Rust) ──
+// ── Core domain types (mirror of Rust DTOs) ──
 
 export interface Project {
   version: number;

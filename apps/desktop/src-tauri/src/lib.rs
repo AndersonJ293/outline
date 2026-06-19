@@ -5,7 +5,7 @@ use commands::*;
 
 #[derive(Debug, Default)]
 pub struct AppState {
-    pub project: Mutex<Option<cortacad_core::project::Project>>,
+    pub project: Mutex<Option<outline_core::project::Project>>,
 }
 
 #[tauri::command]
@@ -15,16 +15,16 @@ fn ping() -> String {
 
 #[tauri::command]
 fn new_project(name: String) -> Result<ProjectDto, String> {
-    let project = cortacad_core::project::Project::new(&name);
+    let project = outline_core::project::Project::new(&name);
     Ok(ProjectDto::from(&project))
 }
 
 #[tauri::command]
 fn validate_closed_profile(entities_json: String) -> Result<ValidateProfileResult, String> {
-    let entity: cortacad_core::project::Entity = serde_json::from_str(&entities_json)
-        .map_err(|e| format!("Erro ao parsear entidade: {}", e))?;
+    let entity: outline_core::project::Entity = serde_json::from_str(&entities_json)
+        .map_err(|e| format!("Failed to parse entity: {}", e))?;
 
-    let result = cortacad_core::commands::validate_closed_profile(&entity);
+    let result = outline_core::commands::validate_closed_profile(&entity);
 
     Ok(ValidateProfileResult {
         ok: result.ok,
@@ -40,15 +40,15 @@ fn generate_wall_mesh(
     entity_json: String,
     operation_json: String,
 ) -> Result<GenerateMeshResult, String> {
-    let entity: cortacad_core::project::Entity = serde_json::from_str(&entity_json)
-        .map_err(|e| format!("Erro ao parsear entidade: {}", e))?;
-    let operation: cortacad_core::project::Operation = serde_json::from_str(&operation_json)
-        .map_err(|e| format!("Erro ao parsear operação: {}", e))?;
+    let entity: outline_core::project::Entity =
+        serde_json::from_str(&entity_json).map_err(|e| format!("Failed to parse entity: {}", e))?;
+    let operation: outline_core::project::Operation = serde_json::from_str(&operation_json)
+        .map_err(|e| format!("Failed to parse operation: {}", e))?;
 
-    let result = cortacad_core::commands::generate_wall_mesh(&entity, &operation);
+    let result = outline_core::commands::generate_wall_mesh(&entity, &operation);
 
     match result {
-        cortacad_core::commands::CommandResult {
+        outline_core::commands::CommandResult {
             ok: true,
             value: Some(mesh),
             ..
@@ -61,7 +61,7 @@ fn generate_wall_mesh(
             }),
             error: None,
         }),
-        cortacad_core::commands::CommandResult {
+        outline_core::commands::CommandResult {
             error: Some(err), ..
         } => Ok(GenerateMeshResult {
             ok: false,
@@ -71,14 +71,14 @@ fn generate_wall_mesh(
                 message: err.message,
             }),
         }),
-        _ => Err("Resultado inesperado".to_string()),
+        _ => Err("Unexpected result".to_string()),
     }
 }
 
 #[tauri::command]
 fn export_stl(mesh_json: String, output_path: String) -> Result<String, String> {
     let mesh_dto: MeshDto =
-        serde_json::from_str(&mesh_json).map_err(|e| format!("Erro ao parsear malha: {}", e))?;
+        serde_json::from_str(&mesh_json).map_err(|e| format!("Failed to parse mesh: {}", e))?;
 
     let mesh_data = export::stl::MeshData {
         vertices: mesh_dto.vertices,
@@ -88,24 +88,24 @@ fn export_stl(mesh_json: String, output_path: String) -> Result<String, String> 
     let path = std::path::Path::new(&output_path);
     export::stl::export_stl_binary(&mesh_data, path)?;
 
-    Ok(format!("STL exportado para: {}", output_path))
+    Ok(format!("STL exported to: {}", output_path))
 }
 
 #[tauri::command]
 fn save_file(path: String, data: String) -> Result<String, String> {
-    std::fs::write(&path, &data).map_err(|e| format!("Erro ao salvar: {}", e))?;
+    std::fs::write(&path, &data).map_err(|e| format!("Failed to save: {}", e))?;
     Ok(path)
 }
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| format!("Erro ao ler: {}", e))
+    std::fs::read_to_string(&path).map_err(|e| format!("Failed to read: {}", e))
 }
 
 #[tauri::command]
 fn read_image_base64(path: String) -> Result<String, String> {
     use base64::Engine;
-    let bytes = std::fs::read(&path).map_err(|e| format!("Erro ao ler imagem: {}", e))?;
+    let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read image: {}", e))?;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
     let lower = path.to_lowercase();
     let mime = if lower.ends_with(".png") {
@@ -133,5 +133,5 @@ pub fn run() {
             read_image_base64,
         ])
         .run(tauri::generate_context!())
-        .expect("Erro ao iniciar CortaCAD");
+        .expect("Failed to start Outline");
 }

@@ -26,7 +26,7 @@ export function SketchToolbar({
           <button
             className={`toolbar-btn ${toolMode === "select" ? "active" : ""}`}
             onClick={() => onToolModeChange("select")}
-            title="Selecionar (V)"
+            title="Select (V)"
           >
             ➤
           </button>
@@ -40,12 +40,12 @@ export function SketchToolbar({
           <button
             className={`toolbar-btn ${toolMode === "rectangle" ? "active" : ""}`}
             onClick={() => onToolModeChange("rectangle")}
-            title="Retangulo (R)"
+            title="Rectangle (R)"
           >
             ▭
           </button>
           <div className="toolbar-divider" />
-          <button className="toolbar-btn" onClick={onImportImage} title="Importar imagem">
+          <button className="toolbar-btn" onClick={onImportImage}             title="Import image">
             <svg
               width="16"
               height="16"
@@ -61,16 +61,16 @@ export function SketchToolbar({
               <path d="M1.5 11.5l3.5-3.5 2.5 2.5 2-2 3.5 3" />
             </svg>
           </button>
-          <button className="toolbar-btn" onClick={onClearSelection} title="Cancelar selecao">
+          <button className="toolbar-btn" onClick={onClearSelection}             title="Clear selection">
             ✕
           </button>
         </>
       )}
       <div className="toolbar-spacer" />
-      <button className="toolbar-btn" onClick={onUndo} title="Desfazer (Ctrl+Z)">
+      <button className="toolbar-btn" onClick={onUndo} title="Undo (Ctrl+Z)">
         ↩
       </button>
-      <button className="toolbar-btn" onClick={onRedo} title="Refazer (Ctrl+Y)">
+      <button className="toolbar-btn" onClick={onRedo} title="Redo (Ctrl+Y)">
         ↪
       </button>
     </div>

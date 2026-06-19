@@ -29,7 +29,7 @@ export function useRectangleTool({
       closed: true,
     });
     pendingRectangle.current = null;
-    setStatus("Retângulo confirmado");
+    setStatus("Rectangle confirmed");
     return true;
   }, [addEntity, pendingRectangle, setStatus]);
 
@@ -74,7 +74,7 @@ export function useRectangleTool({
           confirmPoint: p1,
         };
         setStatus(
-          `Retângulo pendente: ${width.toFixed(1)} x ${height.toFixed(1)} mm. Clique no ponto verde ou pressione Enter.`,
+          `Rectangle pending: ${width.toFixed(1)} x ${height.toFixed(1)} mm. Click the green dot or press Enter.`,
         );
       }
     }
@@ -84,7 +84,7 @@ export function useRectangleTool({
 
   const cancelPendingRectangle = useCallback(() => {
     pendingRectangle.current = null;
-    setStatus("Retângulo cancelado");
+    setStatus("Rectangle cancelled");
   }, [pendingRectangle, setStatus]);
 
   return {

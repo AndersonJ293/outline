@@ -31,18 +31,18 @@ export function useCutterActions({
 }: UseCutterActionsArgs) {
   const handleGenerateCutter = useCallback(async () => {
     if (!project) {
-      setError("Crie um projeto primeiro.");
+      setError("Create a project first.");
       return;
     }
 
     const entity = project.sketch.entities.find((item) => item.id === selectedEntityIds[0]);
     if (!entity) {
-      setError("Selecione um contorno fechado.");
+      setError("Select a closed profile.");
       return;
     }
 
     if (!entity.closed) {
-      setError("O contorno precisa estar fechado.");
+      setError("The profile must be closed.");
       return;
     }
 
@@ -61,14 +61,14 @@ export function useCutterActions({
         setCurrentMesh(result.mesh);
         setViewMode("solid");
         setStatus(
-          `Cortador gerado: ${result.mesh.vertices.length} vértices, ${result.mesh.triangles.length} triângulos`,
+          `Cutter generated: ${result.mesh.vertices.length} vertices, ${result.mesh.triangles.length} triangles`,
         );
         setError(null);
       } else if (result.error) {
         setError(result.error.message);
       }
     } catch (err) {
-      setError(`Erro ao gerar cortador: ${err}`);
+      setError(`Failed to generate cutter: ${err}`);
     }
   }, [
     project,
@@ -84,13 +84,13 @@ export function useCutterActions({
 
   const handleExportStl = useCallback(async () => {
     if (!currentMesh) {
-      setError("Gere um cortador primeiro.");
+      setError("Generate a cutter first.");
       return;
     }
 
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
-      const fileName = `${safeFileName(project?.project_name ?? "cortador")}.stl`;
+      const fileName = `${safeFileName(project?.project_name ?? "cutter")}.stl`;
       const filePath = await save({
         defaultPath: fileName,
         filters: [{ name: "STL", extensions: ["stl"] }],
@@ -100,7 +100,7 @@ export function useCutterActions({
       setStatus(result);
       setError(null);
     } catch (err) {
-      setError(`Erro ao exportar STL: ${err}`);
+      setError(`Failed to export STL: ${err}`);
     }
   }, [currentMesh, project, setStatus, setError]);
 
