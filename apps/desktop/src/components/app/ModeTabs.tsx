@@ -1,4 +1,5 @@
 import type { ViewMode } from "../../types";
+import s from "./ModeTabs.module.css";
 
 interface ModeTabsProps {
   viewMode: ViewMode;
@@ -7,21 +8,21 @@ interface ModeTabsProps {
 
 export function ModeTabs({ viewMode, onChange }: ModeTabsProps) {
   return (
-    <div className="mode-tabs">
+    <div className={s["mode-tabs"]}>
       <button
-        className={`mode-tab ${viewMode === "sketch" ? "active" : ""}`}
+        className={`${s["mode-tab"]} ${viewMode === "sketch" ? s.active : ""}`}
         onClick={() => onChange("sketch")}
       >
         Sketch
       </button>
       <button
-        className={`mode-tab ${viewMode === "solid" ? "active" : ""}`}
+        className={`${s["mode-tab"]} ${viewMode === "solid" ? s.active : ""}`}
         onClick={() => onChange("solid")}
       >
         Solid
       </button>
       <button
-        className={`mode-tab ${viewMode === "export" ? "active" : ""}`}
+        className={`${s["mode-tab"]} ${viewMode === "export" ? s.active : ""}`}
         onClick={() => onChange("export")}
       >
         Export

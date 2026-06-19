@@ -12,6 +12,7 @@ import { StatusBar } from "./components/app/StatusBar";
 import { TopBar } from "./components/app/TopBar";
 import Viewport3D from "./components/Viewport3D";
 import { useStore } from "./stores/useStore";
+import s from "./App.module.css";
 
 function App() {
   const {
@@ -110,7 +111,7 @@ function App() {
 
   return (
     <div
-      className={`app-layout ${panelCollapsed ? "panel-collapsed" : ""}`}
+      className={`${s["app-layout"]} ${panelCollapsed ? s["panel-collapsed"] : ""}`}
       style={{
         gridTemplateColumns: `var(--toolbar-width) 1fr ${panelCollapsed ? 32 : panelWidth}px`,
         gridTemplateRows: `var(--topbar-height) var(--tab-height) 1fr`,
@@ -188,7 +189,7 @@ function App() {
       />
 
       {errorText && (
-        <div className="error-toast" onClick={() => setError(null)}>
+        <div className={s["error-toast"]} onClick={() => setError(null)}>
           {errorText}
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Entity, Mesh, Operation, Project, SketchImage } from "../../../types";
 import type { InspectorPanelProps } from "./types";
+import s from "./ProjectTree.module.css";
 
 type ProjectTreeProps = Pick<
   InspectorPanelProps,
@@ -46,7 +47,7 @@ export function ProjectTree({
   const operations = project?.operations ?? [];
 
   return (
-    <div className="project-tree">
+    <div className={s["project-tree"]}>
       <Category
         id="sketch"
         collapsed={collapsed.sketch}
@@ -132,26 +133,26 @@ function Category({ id, collapsed, count, onToggle, children }: CategoryProps) {
   const def = CATEGORIES.find((c) => c.id === id);
   if (!def) return null;
   return (
-    <div className="tree-section">
+    <div className={s["tree-section"]}>
       <button
         type="button"
-        className="tree-header"
+        className={s["tree-header"]}
         onClick={onToggle}
         aria-expanded={!collapsed}
         title={collapsed ? `Expand ${def.label}` : `Collapse ${def.label}`}
       >
-        <span className="tree-chevron">{collapsed ? "▸" : "▾"}</span>
-        <span className="tree-category-icon">{def.icon}</span>
-        <span className="tree-label">{def.label}</span>
-        <span className="tree-count">{count}</span>
+        <span className={s["tree-chevron"]}>{collapsed ? "▸" : "▾"}</span>
+        <span className={s["tree-category-icon"]}>{def.icon}</span>
+        <span className={s["tree-label"]}>{def.label}</span>
+        <span className={s["tree-count"]}>{count}</span>
       </button>
-      {!collapsed && <div className="tree-children">{children}</div>}
+      {!collapsed && <div className={s["tree-children"]}>{children}</div>}
     </div>
   );
 }
 
 function EmptyRow({ text }: { text: string }) {
-  return <div className="tree-empty">{text}</div>;
+  return <div className={s["tree-empty"]}>{text}</div>;
 }
 
 interface EntityRowProps {
@@ -165,20 +166,20 @@ function EntityRow({ entity, selected, onSelect, onRemove }: EntityRowProps) {
   const icon = entity.type === "rectangle" ? "▭" : "〰";
   const label = `${entity.type} · ${entity.points.length} pts`;
   return (
-    <div className={`tree-row ${selected ? "selected" : ""}`}>
+    <div className={`${s["tree-row"]} ${selected ? s.selected : ""}`}>
       <button
         type="button"
-        className="tree-row-main"
+        className={s["tree-row-main"]}
         onClick={onSelect}
         title={label}
       >
-        <span className="tree-item-icon">{icon}</span>
-        <span className="tree-item-label">{label}</span>
-        {entity.closed && <span className="tree-item-badge" title="Closed">●</span>}
+        <span className={s["tree-item-icon"]}>{icon}</span>
+        <span className={s["tree-item-label"]}>{label}</span>
+        {entity.closed && <span className={s["tree-item-badge"]} title="Closed">●</span>}
       </button>
       <button
         type="button"
-        className="tree-row-remove"
+        className={s["tree-row-remove"]}
         onClick={(event) => {
           event.stopPropagation();
           onRemove();
@@ -201,19 +202,19 @@ interface ImageRowProps {
 function ImageRow({ image, selected, onSelect, onRemove }: ImageRowProps) {
   const label = `image · ${image.widthMm.toFixed(1)}×${image.heightMm.toFixed(1)} mm`;
   return (
-    <div className={`tree-row ${selected ? "selected" : ""}`}>
+    <div className={`${s["tree-row"]} ${selected ? s.selected : ""}`}>
       <button
         type="button"
-        className="tree-row-main"
+        className={s["tree-row-main"]}
         onClick={onSelect}
         title={label}
       >
-        <span className="tree-item-icon">▣</span>
-        <span className="tree-item-label">{label}</span>
+        <span className={s["tree-item-icon"]}>▣</span>
+        <span className={s["tree-item-label"]}>{label}</span>
       </button>
       <button
         type="button"
-        className="tree-row-remove"
+        className={s["tree-row-remove"]}
         onClick={(event) => {
           event.stopPropagation();
           onRemove();
@@ -229,10 +230,10 @@ function ImageRow({ image, selected, onSelect, onRemove }: ImageRowProps) {
 function OperationRow({ op }: { op: Operation }) {
   const label = `${op.type} · ${op.height_mm} mm`;
   return (
-    <div className="tree-row readonly">
-      <span className="tree-row-main">
-        <span className="tree-item-icon">⊞</span>
-        <span className="tree-item-label">{label}</span>
+    <div className={`${s["tree-row"]} ${s.readonly}`}>
+      <span className={s["tree-row-main"]}>
+        <span className={s["tree-item-icon"]}>⊞</span>
+        <span className={s["tree-item-label"]}>{label}</span>
       </span>
     </div>
   );
@@ -241,10 +242,10 @@ function OperationRow({ op }: { op: Operation }) {
 function MeshRow({ mesh }: { mesh: Mesh }) {
   const label = `mesh · ${mesh.vertices.length} v · ${mesh.triangles.length} t`;
   return (
-    <div className="tree-row readonly">
-      <span className="tree-row-main">
-        <span className="tree-item-icon">◇</span>
-        <span className="tree-item-label">{label}</span>
+    <div className={`${s["tree-row"]} ${s.readonly}`}>
+      <span className={s["tree-row-main"]}>
+        <span className={s["tree-item-icon"]}>◇</span>
+        <span className={s["tree-item-label"]}>{label}</span>
       </span>
     </div>
   );

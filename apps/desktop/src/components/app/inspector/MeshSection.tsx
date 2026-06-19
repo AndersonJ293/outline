@@ -1,5 +1,6 @@
 import type { Mesh } from "../../../types";
 import type { InspectorPanelProps } from "./types";
+import s from "./panel-shared.module.css";
 
 type MeshSectionProps = Pick<
   InspectorPanelProps,
@@ -13,17 +14,17 @@ export function MeshSection({
   onExportStl,
 }: MeshSectionProps) {
   return (
-    <div className="panel-section">
+    <div className={s["panel-section"]}>
       <h3>Mesh</h3>
-      <div className="panel-field">
+      <div className={s["panel-field"]}>
         <label>Vertices</label>
         <input value={`${currentMesh.vertices.length}`} readOnly />
       </div>
-      <div className="panel-field">
+      <div className={s["panel-field"]}>
         <label>Triangles</label>
         <input value={`${currentMesh.triangles.length}`} readOnly />
       </div>
-      <label className="panel-checkbox">
+      <label className={s["panel-checkbox"]}>
         <input
           type="checkbox"
           checked={previewWireframe}
@@ -31,7 +32,7 @@ export function MeshSection({
         />
         Wireframe
       </label>
-      <button className="panel-btn" onClick={onExportStl}>
+      <button className={s["panel-btn"]} onClick={onExportStl}>
         Export STL
       </button>
     </div>

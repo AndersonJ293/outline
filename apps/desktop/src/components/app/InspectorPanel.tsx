@@ -1,6 +1,8 @@
 import { DetailsPanel } from "./inspector/DetailsPanel";
 import { ProjectTree } from "./inspector/ProjectTree";
 import type { InspectorPanelProps } from "./inspector/types";
+import s from "./InspectorPanel.module.css";
+import shared from "./inspector/panel-shared.module.css";
 
 export function InspectorPanel({
   project,
@@ -32,23 +34,23 @@ export function InspectorPanel({
   const hasDetails = selectedEntityIds.length > 0 || Boolean(currentMesh);
 
   return (
-    <div className="panel-shell">
+    <div className={s["panel-shell"]}>
       <button
-        className="panel-toggle"
+        className={s["panel-toggle"]}
         onClick={onTogglePanel}
         title={panelCollapsed ? "Show panel" : "Hide panel"}
       >
         {panelCollapsed ? "‹" : "›"}
       </button>
       {!panelCollapsed && (
-        <div className="panel-resizer" onMouseDown={onResizeStart} title="Resize panel" />
+        <div className={s["panel-resizer"]} onMouseDown={onResizeStart} title="Resize panel" />
       )}
-      <div className={`panel-split ${hasDetails ? "has-details" : ""}`}>
-        <div className="panel-tree">
-          <div className="panel-tree-header">
+      <div className={`${shared["panel-split"]} ${hasDetails ? shared["has-details"] : ""}`}>
+        <div className={shared["panel-tree"]}>
+          <div className={shared["panel-tree-header"]}>
             <h3>{project?.project_name ?? "Project"}</h3>
           </div>
-          <div className="panel-tree-body">
+          <div className={shared["panel-tree-body"]}>
             <ProjectTree
               project={project}
               selectedEntityIds={selectedEntityIds}

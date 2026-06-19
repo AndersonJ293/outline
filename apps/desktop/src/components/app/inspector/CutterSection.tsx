@@ -1,4 +1,5 @@
 import type { InspectorPanelProps } from "./types";
+import s from "./panel-shared.module.css";
 
 type CutterSectionProps = Pick<
   InspectorPanelProps,
@@ -23,9 +24,9 @@ export function CutterSection({
   onGenerateCutter,
 }: CutterSectionProps) {
   return (
-    <div className="panel-section">
+    <div className={s["panel-section"]}>
       <h3>Cutter</h3>
-      <div className="panel-field">
+      <div className={s["panel-field"]}>
         <label>Height (mm)</label>
         <input
           type="number"
@@ -36,7 +37,7 @@ export function CutterSection({
           onChange={(event) => onSetWallHeight(Number(event.target.value))}
         />
       </div>
-      <div className="panel-field">
+      <div className={s["panel-field"]}>
         <label>Wall thickness (mm)</label>
         <input
           type="number"
@@ -47,7 +48,7 @@ export function CutterSection({
           onChange={(event) => onSetWallThickness(Number(event.target.value))}
         />
       </div>
-      <div className="panel-field">
+      <div className={s["panel-field"]}>
         <label>Offset side</label>
         <select
           value={offsetSide}
@@ -61,7 +62,7 @@ export function CutterSection({
         </select>
       </div>
       <button
-        className="panel-btn"
+        className={s["panel-btn"]}
         onClick={onGenerateCutter}
         disabled={!selectedEntity || !selectedEntity.closed}
       >

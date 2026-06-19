@@ -1,0 +1,18 @@
+:root {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d2d;
+  --bg-canvas: #1a1a2e;
+  --text-primary: #d4d4d4;
+  --text-secondary: #969696;
+  --accent: #4fc3f7;
+  --accent-hover: #29b6f6;
+  --border: #3c3c3c;
+  --danger: #f44336;
+  --success: #4caf50;
+  --warning: #ff9800;
+  --toolbar-width: 48px;
+  --panel-width: 260px;
+  --topbar-height: 32px;
+  --tab-height: 32px;
+}

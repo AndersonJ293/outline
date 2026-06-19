@@ -1,0 +1,42 @@
+.panel-shell {
+  grid-row: 3;
+  grid-column: 3;
+  position: relative;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  min-width: 0;
+}
+
+.panel-resizer {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 20;
+}
+
+.panel-resizer:hover {
+  background: rgba(79, 195, 247, 0.28);
+}
+
+.panel-toggle {
+  position: absolute;
+  top: 8px;
+  left: -13px;
+  z-index: 25;
+  width: 18px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-right: 0;
+  border-radius: 5px 0 0 5px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.panel-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}

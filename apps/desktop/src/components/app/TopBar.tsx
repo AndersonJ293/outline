@@ -1,3 +1,5 @@
+import s from "./TopBar.module.css";
+
 interface TopBarProps {
   backendConnected: boolean;
   fileMenuOpen: boolean;
@@ -28,14 +30,14 @@ export function TopBar({
   onCloseWindow,
 }: TopBarProps) {
   return (
-    <div className="topbar" onMouseDown={onStartWindowDrag}>
-      <span className="topbar-title">Outline</span>
-      <div className="file-menu" data-no-drag>
-        <button className={`topbar-btn ${fileMenuOpen ? "active" : ""}`} onClick={onToggleFileMenu}>
+    <div className={s.topbar} onMouseDown={onStartWindowDrag}>
+      <span className={s["topbar-title"]}>Outline</span>
+      <div className={s["file-menu"]} data-no-drag>
+        <button className={`${s["topbar-btn"]} ${fileMenuOpen ? s.active : ""}`} onClick={onToggleFileMenu}>
           File
         </button>
         {fileMenuOpen && (
-          <div className="file-menu-popover">
+          <div className={s["file-menu-popover"]}>
             <button onClick={onNewProject}>
               <span>New</span>
               <kbd>Ctrl+N</kbd>
@@ -56,9 +58,9 @@ export function TopBar({
       {!backendConnected && (
         <span style={{ color: "var(--warning)", fontSize: 11 }}>Backend offline</span>
       )}
-      <div className="window-controls" data-no-drag>
+      <div className={s["window-controls"]} data-no-drag>
         <button
-          className="window-control-btn"
+          className={s["window-control-btn"]}
           onClick={onMinimizeWindow}
           tabIndex={-1}
           title="Minimize"
@@ -66,7 +68,7 @@ export function TopBar({
           <span aria-hidden="true">−</span>
         </button>
         <button
-          className="window-control-btn"
+          className={s["window-control-btn"]}
           onClick={onToggleMaximizeWindow}
           tabIndex={-1}
           title="Maximize"
@@ -74,12 +76,12 @@ export function TopBar({
           <span aria-hidden="true">□</span>
         </button>
         <button
-          className="window-control-btn close"
+          className={`${s["window-control-btn"]} ${s.close}`}
           onClick={onCloseWindow}
           tabIndex={-1}
           title="Close"
         >
-          <span className="close-icon" aria-hidden="true">×</span>
+          <span className={s["close-icon"]} aria-hidden="true">×</span>
         </button>
       </div>
     </div>

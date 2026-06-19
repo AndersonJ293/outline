@@ -15,6 +15,7 @@ import { usePolylineTool } from "../features/sketch/tools/usePolylineTool";
 import { useRectangleTool } from "../features/sketch/tools/useRectangleTool";
 import { useSelectionTool } from "../features/sketch/tools/useSelectionTool";
 import { useSketchRenderer } from "../features/sketch/useSketchRenderer";
+import s from "./Canvas2D.module.css";
 
 export default function Canvas2D() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -375,7 +376,7 @@ export default function Canvas2D() {
   return (
     <div
       ref={containerRef}
-      className="viewport"
+      className={s.viewport}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

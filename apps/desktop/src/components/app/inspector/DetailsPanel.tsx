@@ -3,6 +3,7 @@ import { EntityPropertiesSection } from "./EntityPropertiesSection";
 import { ImagePropertiesSection } from "./ImagePropertiesSection";
 import { MeshSection } from "./MeshSection";
 import type { InspectorPanelProps } from "./types";
+import s from "./panel-shared.module.css";
 
 type DetailsPanelProps = Pick<
   InspectorPanelProps,
@@ -59,10 +60,10 @@ export function DetailsPanel(props: DetailsPanelProps) {
         : null;
 
   return (
-    <div className="panel-details">
+    <div className={s["panel-details"]}>
       {headerLabel && (
-        <div className="panel-details-header">
-          <span className="panel-details-title">{headerLabel}</span>
+        <div className={s["panel-details-header"]}>
+          <span className={s["panel-details-title"]}>{headerLabel}</span>
         </div>
       )}
 

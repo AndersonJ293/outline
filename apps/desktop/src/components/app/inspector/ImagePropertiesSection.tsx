@@ -1,5 +1,6 @@
 import type { SketchImage } from "../../../types";
 import type { InspectorPanelProps } from "./types";
+import s from "./panel-shared.module.css";
 
 type ImagePropertiesSectionProps = Pick<
   InspectorPanelProps,
@@ -21,7 +22,7 @@ export function ImagePropertiesSection({
   onRemoveSelected,
 }: ImagePropertiesSectionProps) {
   return (
-    <div className="panel-section">
+    <div className={s["panel-section"]}>
       <h3>Image</h3>
       <ImageSizeFields
         selectedImage={selectedImage}
@@ -29,7 +30,7 @@ export function ImagePropertiesSection({
         onUpdateImage={onUpdateImage}
         onToggleImageLockAspect={onToggleImageLockAspect}
       />
-      <div className="panel-field">
+      <div className={s["panel-field"]}>
         <label>Opacity</label>
         <input
           type="range"
@@ -45,25 +46,25 @@ export function ImagePropertiesSection({
       </div>
       <div style={{ display: "flex", gap: 4 }}>
         <button
-          className="panel-btn-sm"
+          className={s["panel-btn-sm"]}
           onClick={() => onUpdateImage(selectedImage.id, { mirrorX: !selectedImage.mirrorX })}
         >
           {selectedImage.mirrorX ? "↔ Mirrored X" : "↔ Mirror X"}
         </button>
         <button
-          className="panel-btn-sm"
+          className={s["panel-btn-sm"]}
           onClick={() => onUpdateImage(selectedImage.id, { mirrorY: !selectedImage.mirrorY })}
         >
           {selectedImage.mirrorY ? "↕ Mirrored Y" : "↕ Mirror Y"}
         </button>
       </div>
       <button
-        className={`panel-btn-sm ${imageRefScaleMode ? "active" : ""}`}
+        className={`${s["panel-btn-sm"]} ${imageRefScaleMode ? "active" : ""}`}
         onClick={() => onSetImageRefScaleMode(!imageRefScaleMode)}
       >
         {imageRefScaleMode ? "Cancel scale" : "Scale by reference"}
       </button>
-      <button className="panel-btn-sm" onClick={onRemoveSelected}>
+      <button className={s["panel-btn-sm"]} onClick={onRemoveSelected}>
         Remove image
       </button>
     </div>
@@ -78,7 +79,7 @@ function ImageSizeFields({
 }: Pick<ImagePropertiesSectionProps, "selectedImage" | "imageLockAspect" | "onUpdateImage" | "onToggleImageLockAspect">) {
   return (
     <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 4 }}>
-      <div className="panel-field" style={{ flex: 1 }}>
+      <div className={s["panel-field"]} style={{ flex: 1 }}>
         <label>Width (mm)</label>
         <input
           type="number"
@@ -112,7 +113,7 @@ function ImageSizeFields({
       >
         {imageLockAspect ? "🔗" : "⛓️"}
       </button>
-      <div className="panel-field" style={{ flex: 1 }}>
+      <div className={s["panel-field"]} style={{ flex: 1 }}>
         <label>Height (mm)</label>
         <input
           type="number"

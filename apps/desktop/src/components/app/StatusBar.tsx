@@ -1,4 +1,5 @@
 import type { Project } from "../../types";
+import s from "./StatusBar.module.css";
 
 interface StatusBarProps {
   project: Project | null;
@@ -8,12 +9,12 @@ interface StatusBarProps {
 
 export function StatusBar({ project, statusText, errorText }: StatusBarProps) {
   return (
-    <div className="status-bar">
+    <div className={s["status-bar"]}>
       <span>
         {project ? `${project.project_name} | ${project.sketch.entities.length} entities` : "No project"}
       </span>
       <span>{statusText}</span>
-      {errorText && <span className="error">{errorText}</span>}
+      {errorText && <span className={s.error}>{errorText}</span>}
     </div>
   );
 }
