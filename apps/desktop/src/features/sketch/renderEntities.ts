@@ -59,6 +59,22 @@ export function drawEntities(
       }
     }
 
+    if (entityTarget && entityTarget.entityId === entity.id) {
+      ctx.save();
+      ctx.strokeStyle = "#ff9800";
+      ctx.lineWidth = 2.5 / viewport.zoom;
+      ctx.setLineDash([8 / viewport.zoom, 4 / viewport.zoom]);
+      ctx.beginPath();
+      ctx.moveTo(entity.points[0].x, entity.points[0].y);
+      for (let i = 1; i < entity.points.length; i++) {
+        ctx.lineTo(entity.points[i].x, entity.points[i].y);
+      }
+      if (entity.closed) ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
     for (let i = 0; i < entity.points.length; i++) {
       const pt = entity.points[i];
       const isActivePoint =
