@@ -134,11 +134,19 @@ export function useImageRefScaleTool({
     setStatus,
   ]);
 
+  const cancelReferenceLine = useCallback((): boolean => {
+    if (!imageRefLineStart.current && !imageRefLineEnd.current) return false;
+    imageRefLineStart.current = null;
+    imageRefLineEnd.current = null;
+    return true;
+  }, [imageRefLineStart, imageRefLineEnd]);
+
   return {
     startOrUpdateReferenceLine,
     updateReferenceLine,
     finishReferenceLine,
     confirmRefScale,
     cancelRefScale,
+    cancelReferenceLine,
   };
 }

@@ -126,7 +126,7 @@ export default function Canvas2D() {
     setStatus,
   });
 
-  const { handlePolylineMouseDown } = usePolylineTool({
+  const { handlePolylineMouseDown, cancelPolyline } = usePolylineTool({
     viewport,
     drawingPoints,
     isDrawing,
@@ -172,6 +172,7 @@ export default function Canvas2D() {
     finishReferenceLine,
     confirmRefScale,
     cancelRefScale,
+    cancelReferenceLine,
   } = useImageRefScaleTool({
     containerRef,
     project,
@@ -320,6 +321,12 @@ export default function Canvas2D() {
     refScalePopup,
     cancelRefScale,
   ]);
+
+  useEffect(() => {
+    cancelPolyline();
+    cancelPendingRectangle();
+    cancelReferenceLine();
+  }, [toolMode, cancelPolyline, cancelPendingRectangle, cancelReferenceLine]);
 
   useSketchRenderer({
     canvasRef,

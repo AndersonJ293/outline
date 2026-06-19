@@ -83,8 +83,10 @@ export function useRectangleTool({
   }, [drawingPoints, isDrawing, pendingRectangle, setStatus]);
 
   const cancelPendingRectangle = useCallback(() => {
+    if (!pendingRectangle.current) return false;
     pendingRectangle.current = null;
     setStatus("Rectangle cancelled");
+    return true;
   }, [pendingRectangle, setStatus]);
 
   return {

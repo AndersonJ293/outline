@@ -53,5 +53,13 @@ export function usePolylineTool({
     return true;
   }, [addEntity, closeToStart, drawingPoints, isDrawing, setStatus, viewport]);
 
-  return { handlePolylineMouseDown };
+  const cancelPolyline = useCallback((): boolean => {
+    if (!isDrawing.current && drawingPoints.current.length === 0) return false;
+    isDrawing.current = false;
+    closeToStart.current = false;
+    drawingPoints.current = [];
+    return true;
+  }, [closeToStart, drawingPoints, isDrawing]);
+
+  return { handlePolylineMouseDown, cancelPolyline };
 }
