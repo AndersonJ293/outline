@@ -95,6 +95,7 @@ function App() {
     selectEntity,
     setStatus,
     setViewMode,
+    setToolMode,
   });
 
   const selectedEntity =
