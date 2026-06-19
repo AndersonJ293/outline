@@ -47,6 +47,8 @@ function App() {
     setImageRefScaleMode,
     editingImageId,
     setEditingImageId,
+    entityDragTarget,
+    setEntityDragTarget,
     snapToGrid,
     setSnapToGrid,
   } = useStore();
@@ -97,6 +99,7 @@ function App() {
     handleSave,
     selectEntity,
     setEditingImageId,
+    setEntityDragTarget,
     setStatus,
     setViewMode,
     setToolMode,
@@ -155,6 +158,7 @@ function App() {
         onClearSelection={() => {
           selectEntity(null);
           setEditingImageId(null);
+          setEntityDragTarget(null);
         }}
         onToggleSnap={() => setSnapToGrid(!snapToGrid)}
         onUndo={undo}
@@ -183,6 +187,7 @@ function App() {
         onResizeStart={handlePanelResizeStart}
         onSelectEntity={selectEntity}
         onSetEditingImageId={setEditingImageId}
+        onSetEntityDragTarget={setEntityDragTarget}
         onRemoveSelected={removeSelectedEntities}
         onUpdateImage={updateImage}
         onToggleImageLockAspect={() => setImageLockAspect((locked) => !locked)}

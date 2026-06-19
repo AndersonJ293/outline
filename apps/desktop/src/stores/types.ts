@@ -8,6 +8,11 @@ import type {
   ViewportState,
 } from "../types";
 
+export type EntityDragTarget =
+  | { kind: "point"; entityId: string; pointIndex: number }
+  | { kind: "segment"; entityId: string; segIdx: number }
+  | { kind: "entity"; entityId: string };
+
 export interface AppStore {
   project: Project | null;
   projectPath: string | null;
@@ -53,6 +58,9 @@ export interface AppStore {
 
   editingImageId: string | null;
   setEditingImageId: (id: string | null) => void;
+
+  entityDragTarget: EntityDragTarget | null;
+  setEntityDragTarget: (target: EntityDragTarget | null) => void;
 
   snapToGrid: boolean;
   setSnapToGrid: (on: boolean) => void;

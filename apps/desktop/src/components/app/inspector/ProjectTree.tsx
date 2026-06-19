@@ -10,6 +10,7 @@ type ProjectTreeProps = Pick<
   | "currentMesh"
   | "onSelectEntity"
   | "onSetEditingImageId"
+  | "onSetEntityDragTarget"
   | "onRemoveSelected"
 >;
 
@@ -41,6 +42,7 @@ export function ProjectTree({
   currentMesh,
   onSelectEntity,
   onSetEditingImageId,
+  onSetEntityDragTarget,
   onRemoveSelected,
 }: ProjectTreeProps) {
   const [collapsed, setCollapsed] = useState<Record<CategoryId, boolean>>(COLLAPSED_DEFAULT);
@@ -71,6 +73,7 @@ export function ProjectTree({
               onSelect={() => {
                 onSelectEntity(entity.id);
                 onSetEditingImageId(null);
+                onSetEntityDragTarget({ kind: "entity", entityId: entity.id });
               }}
               onRemove={() => {
                 onSelectEntity(entity.id);
@@ -98,6 +101,7 @@ export function ProjectTree({
               onSelect={() => {
                 onSelectEntity(image.id);
                 onSetEditingImageId(image.id);
+                onSetEntityDragTarget(null);
               }}
               onRemove={() => {
                 onSelectEntity(image.id);

@@ -21,6 +21,7 @@ export function InspectorPanel({
   onResizeStart,
   onSelectEntity,
   onSetEditingImageId,
+  onSetEntityDragTarget,
   onRemoveSelected,
   onUpdateImage,
   onToggleImageLockAspect,
@@ -58,6 +59,7 @@ export function InspectorPanel({
               currentMesh={currentMesh}
               onSelectEntity={onSelectEntity}
               onSetEditingImageId={onSetEditingImageId}
+              onSetEntityDragTarget={onSetEntityDragTarget}
               onRemoveSelected={onRemoveSelected}
             />
           </div>

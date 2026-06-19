@@ -54,7 +54,7 @@ describe("entityDrag", () => {
   });
 
   describe("applySegmentMove", () => {
-    it("translates the segment and every point after it", () => {
+    it("moves only the two endpoints of the segment", () => {
       const start: Point = { x: 0, y: 0 };
       const world: Point = { x: 2, y: 3 };
       const result = applySegmentMove(line, 1, world, start);
@@ -62,16 +62,30 @@ describe("entityDrag", () => {
         { x: -5, y: -5 },
         { x: 2, y: 3 },
         { x: 7, y: 8 },
-        { x: 12, y: 13 },
+        { x: 10, y: 10 },
       ]);
     });
 
-    it("leaves earlier points untouched so prior connections stay valid", () => {
+    it("leaves points outside the segment untouched so the rest of the polyline stays put", () => {
       const start: Point = { x: 0, y: 0 };
       const world: Point = { x: 10, y: 0 };
       const result = applySegmentMove(line, 2, world, start);
       expect(result[0]).toEqual({ x: -5, y: -5 });
       expect(result[1]).toEqual({ x: 0, y: 0 });
+      expect(result[2]).toEqual({ x: 15, y: 5 });
+      expect(result[3]).toEqual({ x: 20, y: 10 });
+    });
+
+    it("moves both endpoints of the closing segment in a closed polyline", () => {
+      const start: Point = { x: 10, y: 10 };
+      const world: Point = { x: 12, y: 13 };
+      const result = applySegmentMove(rect, 3, world, start);
+      expect(result).toEqual([
+        { x: 2, y: 3 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 2, y: 13 },
+      ]);
     });
 
     it("returns the original points when segIdx is out of range", () => {

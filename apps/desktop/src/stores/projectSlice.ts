@@ -19,7 +19,13 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
   project: null,
   projectPath: null,
   setProject: (project) => {
-    set({ project, selectedEntityIds: [], currentMesh: null, editingImageId: null });
+    set({
+      project,
+      selectedEntityIds: [],
+      currentMesh: null,
+      editingImageId: null,
+      entityDragTarget: null,
+    });
   },
 
   selectedEntityIds: [],
@@ -89,11 +95,17 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const editingImageId = get().editingImageId;
     const nextEditingImageId =
       editingImageId && ids.includes(editingImageId) ? null : editingImageId;
+    const entityDragTarget = get().entityDragTarget;
+    const nextEntityDragTarget =
+      entityDragTarget && ids.includes(entityDragTarget.entityId)
+        ? null
+        : entityDragTarget;
     set({
       project: { ...project },
       selectedEntityIds: [],
       currentMesh: null,
       editingImageId: nextEditingImageId,
+      entityDragTarget: nextEntityDragTarget,
     });
   },
 });

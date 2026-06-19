@@ -1,5 +1,6 @@
 import type { MutableRefObject } from "react";
 import type { Point, Project, ToolMode, ViewportState } from "../../types";
+import type { EntityDragTarget } from "../../stores/types";
 import { drawEntities } from "./renderEntities";
 import { drawGrid, drawGridLabel } from "./renderGrid";
 import { drawImages } from "./renderImages";
@@ -19,6 +20,7 @@ export interface RenderSketchArgs {
   viewport: ViewportState;
   selectedEntityIds: string[];
   editingImageId: string | null;
+  entityDragTarget: EntityDragTarget | null;
   toolMode: ToolMode;
   imageCache: MutableRefObject<Map<string, HTMLImageElement>>;
   isImageResizing: MutableRefObject<boolean>;
@@ -46,6 +48,7 @@ export function renderSketch({
   viewport,
   selectedEntityIds,
   editingImageId,
+  entityDragTarget,
   toolMode,
   imageCache,
   isImageResizing,
@@ -75,7 +78,7 @@ export function renderSketch({
   drawImages(ctx, project, viewport, editingImageId, imageCache, isImageResizing, imageResizeId);
   drawReferenceLine(ctx, viewport, imageRefLineStart, imageRefLineEnd);
   drawRefScaleConfirm(ctx, viewport, refScalePopup);
-  drawEntities(ctx, project, viewport, selectedEntityIds);
+  drawEntities(ctx, project, viewport, selectedEntityIds, entityDragTarget);
   drawDrawingPreview(ctx, viewport, toolMode, isDrawing, drawingPoints, closeToStart);
   drawSelectionArea(ctx, viewport, isSelectDragging, selectDragStart, selectDragEnd);
   drawPendingRectangle(ctx, viewport, pendingRectangle);

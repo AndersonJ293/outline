@@ -1,5 +1,6 @@
 import { useEffect, type RefObject, type MutableRefObject } from "react";
 import type { Point, Project, ToolMode, ViewportState } from "../../types";
+import type { EntityDragTarget } from "../../stores/types";
 import { renderSketch } from "./renderSketch";
 
 interface UseSketchRendererArgs {
@@ -9,6 +10,7 @@ interface UseSketchRendererArgs {
   viewport: ViewportState;
   selectedEntityIds: string[];
   editingImageId: string | null;
+  entityDragTarget: EntityDragTarget | null;
   toolMode: ToolMode;
   imageCache: MutableRefObject<Map<string, HTMLImageElement>>;
   isImageResizing: MutableRefObject<boolean>;
@@ -36,6 +38,7 @@ export function useSketchRenderer({
   viewport,
   selectedEntityIds,
   editingImageId,
+  entityDragTarget,
   toolMode,
   imageCache,
   isImageResizing,
@@ -89,6 +92,7 @@ export function useSketchRenderer({
         viewport,
         selectedEntityIds,
         editingImageId,
+        entityDragTarget,
         toolMode,
         imageCache,
         isImageResizing,
@@ -117,5 +121,5 @@ export function useSketchRenderer({
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animId);
     };
-  }, [project, viewport, selectedEntityIds, editingImageId, toolMode, refScalePopup, snapToGridEnabled]);
+  }, [project, viewport, selectedEntityIds, editingImageId, entityDragTarget, toolMode, refScalePopup, snapToGridEnabled]);
 }

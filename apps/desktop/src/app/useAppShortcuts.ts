@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { Project, ToolMode, ViewMode } from "../types";
+import type { EntityDragTarget } from "../stores/types";
 
 interface UseAppShortcutsArgs {
   selectedEntityIds: string[];
@@ -12,6 +13,7 @@ interface UseAppShortcutsArgs {
   handleSave: () => void;
   selectEntity: (id: string | null, shiftKey?: boolean) => void;
   setEditingImageId: (id: string | null) => void;
+  setEntityDragTarget: (target: EntityDragTarget | null) => void;
   setStatus: (text: string) => void;
   setViewMode: (mode: ViewMode) => void;
   setToolMode: (mode: ToolMode) => void;
@@ -35,6 +37,7 @@ export function useAppShortcuts({
   handleSave,
   selectEntity,
   setEditingImageId,
+  setEntityDragTarget,
   setStatus,
   setViewMode,
   setToolMode,
@@ -74,6 +77,7 @@ export function useAppShortcuts({
       if (event.key === "Escape") {
         selectEntity(null);
         setEditingImageId(null);
+        setEntityDragTarget(null);
       }
       if (event.ctrlKey && event.key === "1") {
         event.preventDefault();
@@ -115,6 +119,7 @@ export function useAppShortcuts({
     handleSave,
     selectEntity,
     setEditingImageId,
+    setEntityDragTarget,
     setStatus,
     setViewMode,
     setToolMode,

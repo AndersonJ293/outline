@@ -10,6 +10,7 @@ import { RefScalePopup } from "../features/sketch/RefScalePopup";
 import type { RefScalePopupState } from "../features/sketch/tools/useImageRefScaleTool";
 import { useImageRefScaleTool } from "../features/sketch/tools/useImageRefScaleTool";
 import { useImageTransformTool } from "../features/sketch/tools/useImageTransformTool";
+import { useEntityDragTool } from "../features/sketch/tools/useEntityDragTool";
 import { usePanTool } from "../features/sketch/tools/usePanTool";
 import { usePolylineTool } from "../features/sketch/tools/usePolylineTool";
 import { useRectangleTool } from "../features/sketch/tools/useRectangleTool";
@@ -30,6 +31,15 @@ export default function Canvas2D() {
   const isSelectDragging = useRef(false);
   const selectDragStart = useRef<Point>({ x: 0, y: 0 });
   const selectDragEnd = useRef<Point>({ x: 0, y: 0 });
+  const isEntityDragging = useRef(false);
+  const entityDragMode = useRef<"point" | "segment" | "entity" | null>(null);
+  const entityDragEntityId = useRef<string | null>(null);
+  const entityDragPointIndex = useRef<number | null>(null);
+  const entityDragSegIdx = useRef<number | null>(null);
+  const entityDragStart = useRef<Point>({ x: 0, y: 0 });
+  const entityPushUndoDone = useRef(false);
+  const lastClickTime = useRef(0);
+  const lastClickKey = useRef("");
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const isImageMoving = useRef(false);
   const imageMoveStartId = useRef<string | null>(null);
@@ -66,8 +76,11 @@ export default function Canvas2D() {
   const setImageRefScaleMode = useStore((s) => s.setImageRefScaleMode);
   const editingImageId = useStore((s) => s.editingImageId);
   const setEditingImageId = useStore((s) => s.setEditingImageId);
+  const entityDragTarget = useStore((s) => s.entityDragTarget);
+  const setEntityDragTarget = useStore((s) => s.setEntityDragTarget);
   const pushUndo = useStore((s) => s.pushUndo);
   const snapToGridEnabled = useStore((s) => s.snapToGrid);
+  const updateEntity = useStore((s) => s.updateEntity);
   const setSnapToGrid = useStore((s) => s.setSnapToGrid);
 
   const screenToWorld = useCallback(
@@ -131,6 +144,24 @@ export default function Canvas2D() {
     selectEntity,
     setSelectedEntityIds,
     setStatus,
+  });
+
+  const { tryStartEntityDrag, updateEntityDrag, finishEntityDrag } = useEntityDragTool({
+    project,
+    viewport,
+    selectEntity,
+    updateEntity,
+    pushUndo,
+    setEntityDragTarget,
+    isEntityDragging,
+    dragMode: entityDragMode,
+    dragEntityId: entityDragEntityId,
+    dragPointIndex: entityDragPointIndex,
+    dragSegIdx: entityDragSegIdx,
+    dragStart: entityDragStart,
+    pushUndoDone: entityPushUndoDone,
+    lastClickTime,
+    lastClickKey,
   });
 
   const { handlePolylineMouseDown, cancelPolyline } = usePolylineTool({
@@ -218,6 +249,7 @@ export default function Canvas2D() {
 
       if (toolMode === "select") {
         if (startOrUpdateReferenceLine(world)) return;
+        if (tryStartEntityDrag(world)) return;
         const imageResult = startImageTransform(world, e.shiftKey);
         if (imageResult === "started") return;
         if (imageResult === "locked") return;
@@ -263,6 +295,8 @@ export default function Canvas2D() {
 
       if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
 
+      if (updateEntityDrag(world)) return;
+
       if (updateImageTransform(world)) return;
 
       if (toolMode === "select" && updateSelectionDrag(world)) return;
@@ -284,6 +318,7 @@ export default function Canvas2D() {
       updatePan,
       updateSelectionDrag,
       updateRectanglePreview,
+      updateEntityDrag,
       updateImageTransform,
       updateReferenceLine,
     ],
@@ -294,6 +329,7 @@ export default function Canvas2D() {
       if (stopPan()) return;
 
       if (finishImageTransform()) return;
+      if (finishEntityDrag()) return;
       if (finishReferenceLine()) return;
 
       if (toolMode === "select" && finishSelectionDrag(e)) {
@@ -303,7 +339,16 @@ export default function Canvas2D() {
 
       if (toolMode === "rectangle" && finishRectangle()) return;
     },
-    [toolMode, stopPan, finishImageTransform, finishReferenceLine, finishSelectionDrag, finishRectangle, setEditingImageId],
+    [
+      toolMode,
+      stopPan,
+      finishImageTransform,
+      finishEntityDrag,
+      finishReferenceLine,
+      finishSelectionDrag,
+      finishRectangle,
+      setEditingImageId,
+    ],
   );
 
   useEffect(() => {
@@ -360,7 +405,15 @@ export default function Canvas2D() {
     cancelPendingRectangle();
     cancelReferenceLine();
     setEditingImageId(null);
-  }, [toolMode, cancelPolyline, cancelPendingRectangle, cancelReferenceLine, setEditingImageId]);
+    setEntityDragTarget(null);
+  }, [
+    toolMode,
+    cancelPolyline,
+    cancelPendingRectangle,
+    cancelReferenceLine,
+    setEditingImageId,
+    setEntityDragTarget,
+  ]);
 
   useSketchRenderer({
     canvasRef,
@@ -369,6 +422,7 @@ export default function Canvas2D() {
     viewport,
     selectedEntityIds,
     editingImageId,
+    entityDragTarget,
     toolMode,
     imageCache,
     isImageResizing,

@@ -1,4 +1,4 @@
-import type { AppStore, StoreSlice } from "./types";
+import type { AppStore, EntityDragTarget, StoreSlice } from "./types";
 
 type UiSlice = Pick<
   AppStore,
@@ -22,6 +22,8 @@ type UiSlice = Pick<
   | "setImageRefScaleMode"
   | "editingImageId"
   | "setEditingImageId"
+  | "entityDragTarget"
+  | "setEntityDragTarget"
   | "snapToGrid"
   | "setSnapToGrid"
   | "statusText"
@@ -59,6 +61,9 @@ export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
 
   editingImageId: null,
   setEditingImageId: (id) => set({ editingImageId: id }),
+
+  entityDragTarget: null,
+  setEntityDragTarget: (target: EntityDragTarget | null) => set({ entityDragTarget: target }),
 
   snapToGrid: true,
   setSnapToGrid: (on) => set({ snapToGrid: on }),

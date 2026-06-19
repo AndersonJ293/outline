@@ -1,4 +1,5 @@
 import type { Entity, Mesh, Project, SketchImage } from "../../../types";
+import type { EntityDragTarget } from "../../../stores/types";
 
 export interface InspectorPanelProps {
   project: Project | null;
@@ -17,6 +18,7 @@ export interface InspectorPanelProps {
   onResizeStart: (event: React.MouseEvent) => void;
   onSelectEntity: (id: string, shiftKey?: boolean) => void;
   onSetEditingImageId: (id: string | null) => void;
+  onSetEntityDragTarget: (target: EntityDragTarget | null) => void;
   onRemoveSelected: () => void;
   onUpdateImage: (id: string, updates: Partial<SketchImage>) => void;
   onToggleImageLockAspect: () => void;
