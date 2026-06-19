@@ -25,6 +25,7 @@ export interface AppStore {
   addImage: (image: SketchImage) => void;
   updateEntity: (id: string, updates: Partial<Entity>) => void;
   updateImage: (id: string, updates: Partial<SketchImage>) => void;
+  updateImageCommitted: (id: string, updates: Partial<SketchImage>) => void;
   removeSelectedEntities: () => void;
 
   toolMode: ToolMode;

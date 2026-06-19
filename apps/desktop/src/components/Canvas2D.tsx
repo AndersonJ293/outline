@@ -226,6 +226,7 @@ export default function Canvas2D() {
     refScalePopup,
     setRefScalePopup,
     updateImage,
+    pushUndo,
     setImageRefScaleMode,
     setStatus,
   });

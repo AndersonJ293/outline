@@ -43,6 +43,7 @@ function App() {
     setPreviewWireframe,
     addImage,
     updateImage,
+    updateImageCommitted,
     imageRefScaleMode,
     setImageRefScaleMode,
     editingImageId,
@@ -189,7 +190,7 @@ function App() {
         onSetEditingImageId={setEditingImageId}
         onSetEntityDragTarget={setEntityDragTarget}
         onRemoveSelected={removeSelectedEntities}
-        onUpdateImage={updateImage}
+        onUpdateImage={updateImageCommitted}
         onToggleImageLockAspect={() => setImageLockAspect((locked) => !locked)}
         onSetImageRefScaleMode={setImageRefScaleMode}
         onSetWallHeight={setWallHeight}

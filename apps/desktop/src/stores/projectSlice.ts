@@ -12,6 +12,7 @@ type ProjectSlice = Pick<
   | "addImage"
   | "updateEntity"
   | "updateImage"
+  | "updateImageCommitted"
   | "removeSelectedEntities"
 >;
 
@@ -63,6 +64,13 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       selectedEntityIds: [image.id],
       editingImageId: image.id,
     });
+  },
+
+  updateImageCommitted: (id, updates) => {
+    const project = get().project;
+    if (!project) return;
+    get().pushUndo();
+    get().updateImage(id, updates);
   },
 
   updateEntity: (id, updates) => {

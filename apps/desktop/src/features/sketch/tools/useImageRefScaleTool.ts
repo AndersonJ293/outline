@@ -20,6 +20,7 @@ interface UseImageRefScaleToolArgs {
   refScalePopup: RefScalePopupState | null;
   setRefScalePopup: (popup: RefScalePopupState | null) => void;
   updateImage: (id: string, updates: Partial<SketchImage>) => void;
+  pushUndo: () => void;
   setImageRefScaleMode: (active: boolean) => void;
   setStatus: (text: string) => void;
 }
@@ -35,6 +36,7 @@ export function useImageRefScaleTool({
   refScalePopup,
   setRefScalePopup,
   updateImage,
+  pushUndo,
   setImageRefScaleMode,
   setStatus,
 }: UseImageRefScaleToolArgs) {
@@ -94,6 +96,7 @@ export function useImageRefScaleTool({
     const image = project?.sketch.images?.find((item) => item.id === refScalePopup.imageId);
     if (image) {
       const scale = realLengthMm / refScalePopup.lengthMm;
+      pushUndo();
       updateImage(image.id, {
         widthMm: image.widthMm * scale,
         heightMm: image.heightMm * scale,
@@ -110,6 +113,7 @@ export function useImageRefScaleTool({
     project,
     refScalePopup,
     updateImage,
+    pushUndo,
     setStatus,
     setRefScalePopup,
     imageRefLineStart,
