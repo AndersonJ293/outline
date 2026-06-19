@@ -44,6 +44,38 @@ export function hitTestEntity(
   return null;
 }
 
+export type EntityHit =
+  | { kind: "point"; entityId: string; pointIndex: number }
+  | { kind: "segment"; entityId: string; segIdx: number };
+
+export function hitTestEntityWithPoint(
+  entities: Entity[],
+  world: Point,
+  viewport: ViewportState,
+): EntityHit | null {
+  for (const entity of entities) {
+    for (let i = 0; i < entity.points.length; i++) {
+      const pt = entity.points[i];
+      const dx = (pt.x - world.x) * viewport.zoom;
+      const dy = (pt.y - world.y) * viewport.zoom;
+      if (Math.sqrt(dx * dx + dy * dy) < HANDLE_RADIUS * 3) {
+        return { kind: "point", entityId: entity.id, pointIndex: i };
+      }
+    }
+
+    for (let i = 0; i < entity.points.length; i++) {
+      const a = entity.points[i];
+      const b = entity.points[i + 1] ?? (entity.closed ? entity.points[0] : null);
+      if (!b) continue;
+      if (distanceToSegment(world, a, b) * viewport.zoom < LINE_HIT_RADIUS) {
+        return { kind: "segment", entityId: entity.id, segIdx: i };
+      }
+    }
+  }
+
+  return null;
+}
+
 export function hitTestImage(images: SketchImage[] | undefined, world: Point): string | null {
   if (!images) return null;
 

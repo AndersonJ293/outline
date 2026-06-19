@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Entity, SketchImage, ViewportState } from "../../types";
-import { hitTestEntity, hitTestImage, hitTestImageHandle, selectEntitiesInRect } from "./hitTest";
+import {
+  hitTestEntity,
+  hitTestEntityWithPoint,
+  hitTestImage,
+  hitTestImageHandle,
+  selectEntitiesInRect,
+} from "./hitTest";
 
 const viewport: ViewportState = { offsetX: 0, offsetY: 0, zoom: 1 };
 
@@ -54,5 +60,41 @@ describe("sketch hit testing", () => {
   it("selects entities with points inside a rectangular area", () => {
     expect(selectEntitiesInRect(entities, { x: -5, y: -5 }, { x: 5, y: 5 })).toEqual(["rect"]);
     expect(selectEntitiesInRect(entities, { x: 50, y: 50 }, { x: 60, y: 60 })).toEqual([]);
+  });
+
+  describe("hitTestEntityWithPoint", () => {
+    it("returns a point hit with pointIndex when near a vertex", () => {
+      expect(hitTestEntityWithPoint(entities, { x: 0, y: 0 }, viewport)).toEqual({
+        kind: "point",
+        entityId: "rect",
+        pointIndex: 0,
+      });
+      expect(hitTestEntityWithPoint(entities, { x: 40, y: 40 }, viewport)).toEqual({
+        kind: "point",
+        entityId: "rect",
+        pointIndex: 2,
+      });
+    });
+
+    it("returns a segment hit with segIdx when near an edge", () => {
+      expect(hitTestEntityWithPoint(entities, { x: 20, y: 2 }, viewport)).toEqual({
+        kind: "segment",
+        entityId: "rect",
+        segIdx: 0,
+      });
+    });
+
+    it("prefers a point hit over a segment hit when both are in range", () => {
+      const cornerArea = { x: 1, y: 0 };
+      expect(hitTestEntityWithPoint(entities, cornerArea, viewport)).toEqual({
+        kind: "point",
+        entityId: "rect",
+        pointIndex: 0,
+      });
+    });
+
+    it("returns null when far from any entity", () => {
+      expect(hitTestEntityWithPoint(entities, { x: 80, y: 80 }, viewport)).toBeNull();
+    });
   });
 });
