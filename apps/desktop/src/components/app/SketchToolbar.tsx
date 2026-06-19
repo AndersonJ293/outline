@@ -3,9 +3,11 @@ import type { ToolMode, ViewMode } from "../../types";
 interface SketchToolbarProps {
   viewMode: ViewMode;
   toolMode: ToolMode;
+  snapToGrid: boolean;
   onToolModeChange: (mode: ToolMode) => void;
   onImportImage: () => void;
   onClearSelection: () => void;
+  onToggleSnap: () => void;
   onUndo: () => void;
   onRedo: () => void;
 }
@@ -13,9 +15,11 @@ interface SketchToolbarProps {
 export function SketchToolbar({
   viewMode,
   toolMode,
+  snapToGrid,
   onToolModeChange,
   onImportImage,
   onClearSelection,
+  onToggleSnap,
   onUndo,
   onRedo,
 }: SketchToolbarProps) {
@@ -45,6 +49,38 @@ export function SketchToolbar({
             ▭
           </button>
           <div className="toolbar-divider" />
+          <button
+            className={`toolbar-btn ${snapToGrid ? "active" : ""}`}
+            onClick={onToggleSnap}
+            title={
+              snapToGrid
+                ? "Snap to grid: ON (hold Alt to bypass)"
+                : "Snap to grid: OFF (hold Alt for precision)"
+            }
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {snapToGrid ? (
+                <>
+                  <path d="M2 4h12M2 8h12M2 12h12" />
+                  <path d="M4 2v12M8 2v12M12 2v12" opacity="0.45" />
+                </>
+              ) : (
+                <>
+                  <path d="M2 4h12M2 8h12M2 12h12" opacity="0.35" />
+                  <path d="M3 3l10 10" />
+                </>
+              )}
+            </svg>
+          </button>
           <button className="toolbar-btn" onClick={onImportImage}             title="Import image">
             <svg
               width="16"

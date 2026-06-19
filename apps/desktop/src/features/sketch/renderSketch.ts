@@ -9,6 +9,7 @@ import {
   drawReferenceLine,
   drawRefScaleConfirm,
   drawSelectionArea,
+  drawSnapTarget,
 } from "./renderInteraction";
 
 export interface RenderSketchArgs {
@@ -31,6 +32,10 @@ export interface RenderSketchArgs {
   selectDragStart: MutableRefObject<Point>;
   selectDragEnd: MutableRefObject<Point>;
   pendingRectangle: MutableRefObject<{ points: Point[]; confirmPoint: Point } | null>;
+  cursorWorld: MutableRefObject<Point>;
+  snapTarget: MutableRefObject<Point>;
+  snapActive: MutableRefObject<boolean>;
+  snapToGridEnabled: boolean;
 }
 
 export function renderSketch({
@@ -53,6 +58,10 @@ export function renderSketch({
   selectDragStart,
   selectDragEnd,
   pendingRectangle,
+  cursorWorld,
+  snapTarget,
+  snapActive,
+  snapToGridEnabled,
 }: RenderSketchArgs): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -68,6 +77,14 @@ export function renderSketch({
   drawDrawingPreview(ctx, viewport, toolMode, isDrawing, drawingPoints, closeToStart);
   drawSelectionArea(ctx, viewport, isSelectDragging, selectDragStart, selectDragEnd);
   drawPendingRectangle(ctx, viewport, pendingRectangle);
+  drawSnapTarget(
+    ctx,
+    viewport,
+    cursorWorld.current,
+    snapTarget.current,
+    snapActive.current,
+    snapToGridEnabled,
+  );
   drawGridLabel(ctx, viewport);
 
   ctx.restore();

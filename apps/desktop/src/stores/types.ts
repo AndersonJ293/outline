@@ -51,6 +51,9 @@ export interface AppStore {
   imageRefScaleMode: boolean;
   setImageRefScaleMode: (active: boolean) => void;
 
+  snapToGrid: boolean;
+  setSnapToGrid: (on: boolean) => void;
+
   statusText: string;
   errorText: string | null;
   setStatus: (text: string) => void;

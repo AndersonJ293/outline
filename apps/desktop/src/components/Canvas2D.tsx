@@ -1,7 +1,11 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useStore } from "../stores/useStore";
 import type { Point } from "../types";
-import { screenToWorld as toWorld, snapToGrid } from "../features/sketch/geometry";
+import {
+  screenToWorld as toWorld,
+  snapToGrid,
+  getSnapStep,
+} from "../features/sketch/geometry";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
 import type { RefScalePopupState } from "../features/sketch/tools/useImageRefScaleTool";
 import { useImageRefScaleTool } from "../features/sketch/tools/useImageRefScaleTool";
@@ -39,6 +43,10 @@ export default function Canvas2D() {
   const imageRefScaleImageId = useRef<string | null>(null);
   const [refScalePopup, setRefScalePopup] = useState<RefScalePopupState | null>(null);
   const refScaleInputRef = useRef<HTMLInputElement>(null);
+  const altKeyPressed = useRef(false);
+  const cursorWorld = useRef<Point>({ x: 0, y: 0 });
+  const snapTarget = useRef<Point>({ x: 0, y: 0 });
+  const snapActive = useRef(false);
 
   const project = useStore((s) => s.project);
   const toolMode = useStore((s) => s.toolMode);
@@ -52,6 +60,8 @@ export default function Canvas2D() {
   const setStatus = useStore((s) => s.setStatus);
   const imageRefScaleMode = useStore((s) => s.imageRefScaleMode);
   const setImageRefScaleMode = useStore((s) => s.setImageRefScaleMode);
+  const snapToGridEnabled = useStore((s) => s.snapToGrid);
+  const setSnapToGrid = useStore((s) => s.setSnapToGrid);
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -61,6 +71,40 @@ export default function Canvas2D() {
       return toWorld(sx, sy, rect, viewport);
     },
     [viewport],
+  );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Alt") {
+        altKeyPressed.current = true;
+      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Alt") {
+        altKeyPressed.current = false;
+      }
+    };
+    const onBlur = () => {
+      altKeyPressed.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  const resolveSnap = useCallback(
+    (world: Point, forceOff: boolean): { point: Point; snapped: boolean } => {
+      const bypass = forceOff || altKeyPressed.current || !snapToGridEnabled;
+      if (bypass) return { point: world, snapped: false };
+      const step = getSnapStep(viewport.zoom);
+      return { point: snapToGrid(world, step), snapped: true };
+    },
+    [snapToGridEnabled, viewport.zoom],
   );
 
   const { startPan, updatePan, stopPan, handleWheel } = usePanTool({
@@ -148,7 +192,15 @@ export default function Canvas2D() {
       if (startPan(e)) return;
 
       const world = screenToWorld(e.clientX, e.clientY);
-      const snapped = snapToGrid(world);
+      const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
+      cursorWorld.current = world;
+      snapTarget.current = snapped;
+      snapActive.current = didSnap;
+      if (e.altKey) {
+        setStatus(
+          `Snap off (Alt) at (${world.x.toFixed(1)}, ${world.y.toFixed(1)})`,
+        );
+      }
 
       if (handlePendingRectangleClick(world, viewport.zoom)) return;
 
@@ -171,6 +223,8 @@ export default function Canvas2D() {
     },
     [
       screenToWorld,
+      resolveSnap,
+      setStatus,
       toolMode,
       viewport,
       startPan,
@@ -188,7 +242,10 @@ export default function Canvas2D() {
       if (updatePan(e)) return;
 
       const world = screenToWorld(e.clientX, e.clientY);
-      const snapped = snapToGrid(world);
+      const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
+      cursorWorld.current = world;
+      snapTarget.current = snapped;
+      snapActive.current = didSnap;
 
       if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
 
@@ -208,6 +265,7 @@ export default function Canvas2D() {
     },
     [
       screenToWorld,
+      resolveSnap,
       toolMode,
       updatePan,
       updateSelectionDrag,
@@ -283,6 +341,10 @@ export default function Canvas2D() {
     selectDragStart,
     selectDragEnd,
     pendingRectangle,
+    cursorWorld,
+    snapTarget,
+    snapActive,
+    snapToGridEnabled,
   });
 
   return (

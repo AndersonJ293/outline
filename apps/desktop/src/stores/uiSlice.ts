@@ -20,6 +20,8 @@ type UiSlice = Pick<
   | "setOffsetSide"
   | "imageRefScaleMode"
   | "setImageRefScaleMode"
+  | "snapToGrid"
+  | "setSnapToGrid"
   | "statusText"
   | "errorText"
   | "setStatus"
@@ -52,6 +54,9 @@ export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
 
   imageRefScaleMode: false,
   setImageRefScaleMode: (active) => set({ imageRefScaleMode: active }),
+
+  snapToGrid: true,
+  setSnapToGrid: (on) => set({ snapToGrid: on }),
 
   statusText: "Pronto",
   errorText: null,

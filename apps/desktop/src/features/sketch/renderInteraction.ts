@@ -203,3 +203,45 @@ function drawClosePreview(
   ctx.arc(first.x, first.y, (HANDLE_RADIUS + 4) / viewport.zoom, 0, Math.PI * 2);
   ctx.fill();
 }
+
+export function drawSnapTarget(
+  ctx: CanvasRenderingContext2D,
+  viewport: ViewportState,
+  cursorWorld: Point,
+  snapPoint: Point,
+  active: boolean,
+  snapEnabled: boolean,
+): void {
+  const dx = snapPoint.x - cursorWorld.x;
+  const dy = snapPoint.y - cursorWorld.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const distScreen = dist * viewport.zoom;
+
+  if (snapEnabled) {
+    if (!active) return;
+    if (distScreen < 1) return;
+  }
+
+  const color = snapEnabled ? "#4fc3f7" : "#ff9800";
+
+  if (distScreen >= 1) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1 / viewport.zoom;
+    ctx.setLineDash([4 / viewport.zoom, 3 / viewport.zoom]);
+    ctx.beginPath();
+    ctx.moveTo(cursorWorld.x, cursorWorld.y);
+    ctx.lineTo(snapPoint.x, snapPoint.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const crossSize = 5 / viewport.zoom;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5 / viewport.zoom;
+  ctx.beginPath();
+  ctx.moveTo(snapPoint.x - crossSize, snapPoint.y);
+  ctx.lineTo(snapPoint.x + crossSize, snapPoint.y);
+  ctx.moveTo(snapPoint.x, snapPoint.y - crossSize);
+  ctx.lineTo(snapPoint.x, snapPoint.y + crossSize);
+  ctx.stroke();
+}

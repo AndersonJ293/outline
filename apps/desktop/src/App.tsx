@@ -44,6 +44,8 @@ function App() {
     updateImage,
     imageRefScaleMode,
     setImageRefScaleMode,
+    snapToGrid,
+    setSnapToGrid,
   } = useStore();
 
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
@@ -142,9 +144,11 @@ function App() {
       <SketchToolbar
         viewMode={viewMode}
         toolMode={toolMode}
+        snapToGrid={snapToGrid}
         onToolModeChange={setToolMode}
         onImportImage={handleImportImage}
         onClearSelection={() => selectEntity(null)}
+        onToggleSnap={() => setSnapToGrid(!snapToGrid)}
         onUndo={undo}
         onRedo={redo}
       />

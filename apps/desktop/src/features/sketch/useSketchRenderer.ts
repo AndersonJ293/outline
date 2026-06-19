@@ -22,6 +22,10 @@ interface UseSketchRendererArgs {
   selectDragStart: MutableRefObject<Point>;
   selectDragEnd: MutableRefObject<Point>;
   pendingRectangle: MutableRefObject<{ points: Point[]; confirmPoint: Point } | null>;
+  cursorWorld: MutableRefObject<Point>;
+  snapTarget: MutableRefObject<Point>;
+  snapActive: MutableRefObject<boolean>;
+  snapToGridEnabled: boolean;
 }
 
 export function useSketchRenderer({
@@ -44,6 +48,10 @@ export function useSketchRenderer({
   selectDragStart,
   selectDragEnd,
   pendingRectangle,
+  cursorWorld,
+  snapTarget,
+  snapActive,
+  snapToGridEnabled,
 }: UseSketchRendererArgs): void {
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -92,6 +100,10 @@ export function useSketchRenderer({
         selectDragStart,
         selectDragEnd,
         pendingRectangle,
+        cursorWorld,
+        snapTarget,
+        snapActive,
+        snapToGridEnabled,
       });
       animId = requestAnimationFrame(loop);
     };
@@ -102,5 +114,5 @@ export function useSketchRenderer({
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animId);
     };
-  }, [project, viewport, selectedEntityIds, toolMode, refScalePopup]);
+  }, [project, viewport, selectedEntityIds, toolMode, refScalePopup, snapToGridEnabled]);
 }

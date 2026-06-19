@@ -21,10 +21,23 @@ export function worldToScreen(point: Point, viewport: ViewportState): Point {
   };
 }
 
-export function snapToGrid(point: Point, gridSize = GRID_SIZE): Point {
+export function getSnapStep(zoom: number): number {
+  const stepMm = GRID_SIZE / zoom;
+  if (stepMm <= 0.5) return 0.5;
+  if (stepMm <= 1) return 1;
+  if (stepMm <= 2) return 2;
+  if (stepMm <= 5) return 5;
+  if (stepMm <= 10) return 10;
+  if (stepMm <= 20) return 20;
+  if (stepMm <= 50) return 50;
+  return 100;
+}
+
+export function snapToGrid(point: Point, step = GRID_SIZE): Point {
+  if (step <= 0) return point;
   return {
-    x: Math.round(point.x / gridSize) * gridSize,
-    y: Math.round(point.y / gridSize) * gridSize,
+    x: Math.round(point.x / step) * step,
+    y: Math.round(point.y / step) * step,
   };
 }
 
