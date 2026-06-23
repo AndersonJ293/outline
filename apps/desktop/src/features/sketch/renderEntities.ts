@@ -1,7 +1,55 @@
 import type { EntityDragTarget, Vertex } from "../../stores/types";
-import type { Project, ViewportState } from "../../types";
+import type { Entity, Project, ViewportState } from "../../types";
 import { HANDLE_RADIUS } from "./constants";
 import { chainContour, computeChainsMemo } from "./chains";
+
+const CULL_MARGIN = 50;
+
+function entityBounds(entity: Entity): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  if (entity.points.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of entity.points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  if (entity.controlPoints) {
+    for (const cp of entity.controlPoints) {
+      const hx = cp.point.x + cp.handleOut.dx;
+      const hy = cp.point.y + cp.handleOut.dy;
+      if (cp.point.x < minX) minX = cp.point.x;
+      if (cp.point.y < minY) minY = cp.point.y;
+      if (cp.point.x > maxX) maxX = cp.point.x;
+      if (cp.point.y > maxY) maxY = cp.point.y;
+      if (hx < minX) minX = hx;
+      if (hy < minY) minY = hy;
+      if (hx > maxX) maxX = hx;
+      if (hy > maxY) maxY = hy;
+    }
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+function isVisibleInViewport(
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  canvas: HTMLCanvasElement,
+  viewport: ViewportState,
+): boolean {
+  const worldLeft = (-viewport.offsetX - CULL_MARGIN) / viewport.zoom;
+  const worldTop = (-viewport.offsetY - CULL_MARGIN) / viewport.zoom;
+  const worldRight = (canvas.width - viewport.offsetX + CULL_MARGIN) / viewport.zoom;
+  const worldBottom = (canvas.height - viewport.offsetY + CULL_MARGIN) / viewport.zoom;
+  return !(
+    bounds.maxX < worldLeft ||
+    bounds.minX > worldRight ||
+    bounds.maxY < worldTop ||
+    bounds.minY > worldBottom
+  );
+}
 
 function drawClosedChainFills(
   ctx: CanvasRenderingContext2D,
@@ -43,14 +91,17 @@ export function drawEntities(
     entityDragTarget?.kind === "entity" ? entityDragTarget : null;
 
   for (const entity of project.sketch.entities) {
+    if (entity.points.length === 0) continue;
+
+    const bounds = entityBounds(entity);
+    if (bounds && !isVisibleInViewport(bounds, ctx.canvas, viewport)) continue;
+
     const isSelected = selectedEntityIds.includes(entity.id);
     const isEntityMoveable =
       isSelected || (entityTarget?.entityId === entity.id);
     ctx.strokeStyle = isSelected ? "#4fc3f7" : "#ffffff";
     ctx.lineWidth = isSelected ? 3 / viewport.zoom : 2 / viewport.zoom;
     ctx.fillStyle = "rgba(79, 195, 247, 0.1)";
-
-    if (entity.points.length === 0) continue;
 
     ctx.beginPath();
     ctx.moveTo(entity.points[0].x, entity.points[0].y);

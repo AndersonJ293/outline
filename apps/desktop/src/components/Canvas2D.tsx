@@ -1,11 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useStore } from "../stores/useStore";
 import type { Point } from "../types";
-import {
-  screenToWorld as toWorld,
-  snapToGrid,
-  getSnapStep,
-} from "../features/sketch/geometry";
+import { screenToWorld as toWorld, snapToGrid, getSnapStep } from "../features/sketch/geometry";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
 import type { RefScalePopupState } from "../features/sketch/tools/useImageRefScaleTool";
 import { useImageRefScaleTool } from "../features/sketch/tools/useImageRefScaleTool";
@@ -22,11 +18,14 @@ import { useSelectionTool } from "../features/sketch/tools/useSelectionTool";
 import { useSplineHandleDragTool } from "../features/sketch/tools/useSplineHandleDragTool";
 import { useSplineTool, type SplineDrawingState } from "../features/sketch/tools/useSplineTool";
 import { useCanvasKeyboardShortcuts } from "../features/sketch/useCanvasKeyboardShortcuts";
-import { useSketchRenderer } from "../features/sketch/useSketchRenderer";
+import { useStaticRenderer } from "../features/sketch/useStaticRenderer";
+import { useOverlayRenderer } from "../features/sketch/useOverlayRenderer";
+import { useCanvasResize } from "../features/sketch/useCanvasResize";
 import s from "./Canvas2D.module.css";
 
 export default function Canvas2D() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const staticCanvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const drawingPoints = useRef<Point[]>([]);
@@ -110,7 +109,7 @@ export default function Canvas2D() {
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
-      const canvas = canvasRef.current;
+      const canvas = staticCanvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
       return toWorld(sx, sy, rect, viewport);
@@ -120,18 +119,12 @@ export default function Canvas2D() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Alt") {
-        altKeyPressed.current = true;
-      }
+      if (event.key === "Alt") altKeyPressed.current = true;
     };
     const onKeyUp = (event: KeyboardEvent) => {
-      if (event.key === "Alt") {
-        altKeyPressed.current = false;
-      }
+      if (event.key === "Alt") altKeyPressed.current = false;
     };
-    const onBlur = () => {
-      altKeyPressed.current = false;
-    };
+    const onBlur = () => { altKeyPressed.current = false; };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
@@ -146,12 +139,7 @@ export default function Canvas2D() {
     const isEditable = (target: EventTarget | null): boolean => {
       if (!(target instanceof HTMLElement)) return false;
       const tag = target.tagName;
-      return (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        target.isContentEditable
-      );
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
     };
     const onKey = (event: KeyboardEvent) => {
       if (isEditable(event.target)) return;
@@ -195,22 +183,24 @@ export default function Canvas2D() {
     [snapToGridEnabled, viewport.zoom],
   );
 
-  const { requestRender } = useSketchRenderer({
-    canvasRef,
-    containerRef,
+  useCanvasResize(containerRef, [staticCanvasRef, overlayCanvasRef], () => {});
+  useStaticRenderer({
+    canvasRef: staticCanvasRef,
     project,
     viewport,
     selectedEntityIds,
     selectedVertices,
     editingImageId,
     entityDragTarget,
-    toolMode,
     imageCache,
     isImageResizing,
     imageResizeId,
-    imageRefLineStart,
-    imageRefLineEnd,
-    refScalePopup,
+  });
+
+  const { requestRender } = useOverlayRenderer({
+    canvasRef: overlayCanvasRef,
+    viewport,
+    toolMode,
     isDrawing,
     drawingPoints,
     closeToStart,
@@ -222,11 +212,14 @@ export default function Canvas2D() {
     cursorWorld,
     snapTarget,
     snapActive,
+    imageRefLineStart,
+    imageRefLineEnd,
+    refScalePopup,
     snapToGridEnabled,
   });
 
   const { startPan, updatePan, stopPan, handleWheel } = usePanTool({
-    canvasRef,
+    canvasRef: staticCanvasRef,
     viewport,
     setViewport,
     isPanning,
@@ -234,374 +227,172 @@ export default function Canvas2D() {
   });
 
   const { startSelectionDrag, updateSelectionDrag, finishSelectionDrag } = useSelectionTool({
-    project,
-    viewport,
-    isSelectDragging,
-    selectDragStart,
-    selectDragEnd,
-    selectEntity,
-    setSelectedEntityIds,
-    setStatus,
+    project, viewport, isSelectDragging, selectDragStart, selectDragEnd,
+    selectEntity, setSelectedEntityIds, setStatus,
   });
 
   const { tryStartEntityDrag, updateEntityDrag, finishEntityDrag } = useEntityDragTool({
-    project,
-    viewport,
-    selectEntity,
-    updateEntity,
-    pushUndo,
-    setEntityDragTarget,
-    isEntityDragging,
-    dragMode: entityDragMode,
-    dragEntityId: entityDragEntityId,
-    dragPointIndex: entityDragPointIndex,
-    dragSegIdx: entityDragSegIdx,
-    dragStart: entityDragStart,
-    pushUndoDone: entityPushUndoDone,
-    lastClickTime,
-    lastClickKey,
+    project, viewport, selectEntity, updateEntity, pushUndo, setEntityDragTarget,
+    isEntityDragging, dragMode: entityDragMode, dragEntityId: entityDragEntityId,
+    dragPointIndex: entityDragPointIndex, dragSegIdx: entityDragSegIdx,
+    dragStart: entityDragStart, pushUndoDone: entityPushUndoDone, lastClickTime, lastClickKey,
   });
 
   const { tryStartMove, updateMove, finishMove } = useMoveTool({
-    project,
-    viewport,
-    updateEntity,
-    pushUndo,
-    setSelectedEntityIds,
-    toggleVertex,
-    setStatus,
-    isMoving,
-    movePlan,
-    moveStart,
-    movePushUndoDone,
+    project, viewport, updateEntity, pushUndo, setSelectedEntityIds, toggleVertex, setStatus,
+    isMoving, movePlan, moveStart, movePushUndoDone,
   });
 
-  const { handleMirrorMouseDown } = useMirrorTool({
-    project,
-    viewport,
-    setStatus,
-  });
+  const { handleMirrorMouseDown } = useMirrorTool({ project, viewport, setStatus });
 
   const { handlePolylineMouseDown, finishPolyline, cancelPolyline, popPolylinePoint } =
-    usePolylineTool({
-      viewport,
-      project,
-      drawingPoints,
-      isDrawing,
-      closeToStart,
-      addEntity,
-      setStatus,
-    });
+    usePolylineTool({ viewport, project, drawingPoints, isDrawing, closeToStart, addEntity, setStatus });
 
   const { handleSplineMouseDown, finishSpline, cancelSpline, popSplineAnchor } = useSplineTool({
-    viewport,
-    project,
-    isDrawing,
-    splineState,
-    addEntity,
-    setStatus,
+    viewport, project, isDrawing, splineState, addEntity, setStatus,
   });
 
-  const { tryStartHandleDrag, updateHandleDrag, finishHandleDrag } =
-    useSplineHandleDragTool({
-      project,
-      viewport,
-      updateEntity,
-      pushUndo,
-      setStatus,
-      isHandleDragging,
-      dragEntityId: handleDragEntityId,
-      dragAnchorIndex: handleDragAnchorIndex,
-      dragStart: handleDragStart,
-      pushUndoDone: handlePushUndoDone,
-    });
+  const { tryStartHandleDrag, updateHandleDrag, finishHandleDrag } = useSplineHandleDragTool({
+    project, viewport, updateEntity, pushUndo, setStatus,
+    isHandleDragging, dragEntityId: handleDragEntityId,
+    dragAnchorIndex: handleDragAnchorIndex, dragStart: handleDragStart,
+    pushUndoDone: handlePushUndoDone,
+  });
 
   const {
-    confirmPendingRectangle,
-    handlePendingRectangleClick,
-    startRectangle,
-    updateRectanglePreview,
-    finishRectangle,
-    cancelPendingRectangle,
-  } = useRectangleTool({
-    drawingPoints,
-    isDrawing,
-    pendingRectangle,
-    addEntity,
-    setStatus,
-  });
+    confirmPendingRectangle, handlePendingRectangleClick, startRectangle,
+    updateRectanglePreview, finishRectangle, cancelPendingRectangle,
+  } = useRectangleTool({ drawingPoints, isDrawing, pendingRectangle, addEntity, setStatus });
 
   const { startImageTransform, updateImageTransform, finishImageTransform } =
     useImageTransformTool({
-      project,
-      viewport,
-      editingImageId,
-      isImageMoving,
-      imageMoveStartId,
-      imageMoveStartPos,
-      isImageResizing,
-      imageResizeId,
-      imageResizeStart,
-      imageResizeOrigSize,
-      imageResizeHandleType,
-      imageMovePushUndoDone,
-      imageResizePushUndoDone,
-      selectEntity,
-      updateImage,
-      pushUndo,
+      project, viewport, editingImageId, isImageMoving, imageMoveStartId, imageMoveStartPos,
+      isImageResizing, imageResizeId, imageResizeStart, imageResizeOrigSize,
+      imageResizeHandleType, imageMovePushUndoDone, imageResizePushUndoDone,
+      selectEntity, updateImage, pushUndo,
     });
 
   const {
-    startOrUpdateReferenceLine,
-    updateReferenceLine,
-    finishReferenceLine,
-    confirmRefScale,
-    cancelRefScale,
-    cancelReferenceLine,
+    startOrUpdateReferenceLine, updateReferenceLine, finishReferenceLine,
+    confirmRefScale, cancelRefScale, cancelReferenceLine,
   } = useImageRefScaleTool({
-    containerRef,
-    project,
-    viewport,
-    imageRefScaleMode,
-    imageRefLineStart,
-    imageRefLineEnd,
-    imageRefScaleImageId,
-    refScalePopup,
-    setRefScalePopup,
-    updateImage,
-    pushUndo,
-    setImageRefScaleMode,
-    setStatus,
+    containerRef, project, viewport, imageRefScaleMode, imageRefLineStart, imageRefLineEnd,
+    imageRefScaleImageId, refScalePopup, setRefScalePopup, updateImage, pushUndo,
+    setImageRefScaleMode, setStatus,
   });
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (startPan(e)) return;
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (startPan(e)) return;
+    const world = screenToWorld(e.clientX, e.clientY);
+    const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
+    cursorWorld.current = world;
+    snapTarget.current = snapped;
+    snapActive.current = didSnap;
+    if (e.altKey) setStatus(`Snap off (Alt) at (${world.x.toFixed(1)}, ${world.y.toFixed(1)})`);
 
-      const world = screenToWorld(e.clientX, e.clientY);
-      const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
-      cursorWorld.current = world;
-      snapTarget.current = snapped;
-      snapActive.current = didSnap;
-      if (e.altKey) {
-        setStatus(
-          `Snap off (Alt) at (${world.x.toFixed(1)}, ${world.y.toFixed(1)})`,
-        );
-      }
+    if (isPasteFloating.current) { isPasteFloating.current = false; pasteIds.current = []; setStatus("Pasted"); return; }
+    if (handlePendingRectangleClick(world, viewport.zoom)) return;
 
-      // A click confirms a floating paste.
-      if (isPasteFloating.current) {
-        isPasteFloating.current = false;
-        pasteIds.current = [];
-        setStatus("Pasted");
-        return;
-      }
+    if (toolMode === "move") {
+      if (tryStartMove(world, e.shiftKey)) return;
+      startSelectionDrag(world);
+      return;
+    }
+    if (toolMode === "mirror") { handleMirrorMouseDown(world); return; }
 
-      if (handlePendingRectangleClick(world, viewport.zoom)) return;
-
-      if (toolMode === "move") {
-        if (tryStartMove(world, e.shiftKey)) return;
+    if (toolMode === "select") {
+      if (e.shiftKey) {
+        const hit = hitTestEntityWithPoint(project?.sketch.entities ?? [], world, viewport);
+        if (hit?.kind === "point") { toggleVertex({ entityId: hit.entityId, pointIndex: hit.pointIndex }, true); return; }
+        if (hit) { selectEntity(hit.entityId, true); return; }
         startSelectionDrag(world);
         return;
       }
+      if (startOrUpdateReferenceLine(world)) return;
+      if (tryStartHandleDrag(world)) return;
+      if (tryStartEntityDrag(world)) return;
+      const imageResult = startImageTransform(world, e.shiftKey);
+      if (imageResult === "started") return;
+      if (imageResult === "locked") return;
+      startSelectionDrag(world);
+      return;
+    }
 
-      if (toolMode === "mirror") {
-        handleMirrorMouseDown(world);
-        return;
-      }
+    if (toolMode === "polyline") { handlePolylineMouseDown(snapped); return; }
+    if (toolMode === "spline") { handleSplineMouseDown(snapped); return; }
+    if (toolMode === "rectangle") { startRectangle(snapped); return; }
+    requestRender();
+  }, [
+    screenToWorld, resolveSnap, setStatus, toolMode, viewport,
+    startPan, startSelectionDrag, handlePendingRectangleClick,
+    handlePolylineMouseDown, handleSplineMouseDown, startRectangle,
+    startImageTransform, startOrUpdateReferenceLine, tryStartHandleDrag,
+    tryStartEntityDrag, tryStartMove, handleMirrorMouseDown,
+    project, toggleVertex, selectEntity, requestRender,
+  ]);
 
-      if (toolMode === "select") {
-        // Shift+click accumulates selection (vertex if a point is hit, else entity).
-        if (e.shiftKey) {
-          const hit = hitTestEntityWithPoint(
-            project?.sketch.entities ?? [],
-            world,
-            viewport,
-          );
-          if (hit?.kind === "point") {
-            toggleVertex(
-              { entityId: hit.entityId, pointIndex: hit.pointIndex },
-              true,
-            );
-            return;
-          }
-          if (hit) {
-            selectEntity(hit.entityId, true);
-            return;
-          }
-          startSelectionDrag(world);
-          return;
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (updatePan(e)) return;
+    const world = screenToWorld(e.clientX, e.clientY);
+    const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
+    cursorWorld.current = world;
+    snapTarget.current = snapped;
+    snapActive.current = didSnap;
+    requestRender();
+
+    if (isPasteFloating.current) {
+      const dx = snapped.x - pasteLast.current.x;
+      const dy = snapped.y - pasteLast.current.y;
+      if (dx !== 0 || dy !== 0) {
+        const entities = useStore.getState().project?.sketch.entities ?? [];
+        for (const id of pasteIds.current) {
+          const entity = entities.find((en) => en.id === id);
+          if (!entity) continue;
+          updateEntity(id, translateEntityWhole(entity, dx, dy));
         }
-        if (startOrUpdateReferenceLine(world)) return;
-        if (tryStartHandleDrag(world)) return;
-        if (tryStartEntityDrag(world)) return;
-        const imageResult = startImageTransform(world, e.shiftKey);
-        if (imageResult === "started") return;
-        if (imageResult === "locked") return;
-        startSelectionDrag(world);
-        return;
+        pasteLast.current = snapped;
       }
+      return;
+    }
 
-      if (toolMode === "polyline") {
-        handlePolylineMouseDown(snapped);
-        return;
-      }
+    if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
+    if (toolMode === "move" && updateMove(world)) return;
+    if (updateHandleDrag(world)) return;
+    if (updateEntityDrag(world)) return;
+    if (updateImageTransform(world)) return;
+    if (toolMode === "select" && updateSelectionDrag(world)) return;
+    if (updateReferenceLine(world)) return;
 
-      if (toolMode === "spline") {
-        handleSplineMouseDown(snapped);
-        return;
-      }
+    const canvas = staticCanvasRef.current;
+    if (canvas) canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
+  }, [
+    screenToWorld, resolveSnap, toolMode, updatePan, updateSelectionDrag,
+    updateRectanglePreview, updateHandleDrag, updateEntityDrag,
+    updateImageTransform, updateReferenceLine, updateMove, updateEntity, requestRender,
+  ]);
 
-      if (toolMode === "rectangle") {
-        startRectangle(snapped);
-        return;
-      }
-      requestRender();
-    },
-    [
-      screenToWorld,
-      resolveSnap,
-      setStatus,
-      toolMode,
-      viewport,
-      startPan,
-      startSelectionDrag,
-      handlePendingRectangleClick,
-      handlePolylineMouseDown,
-      handleSplineMouseDown,
-      startRectangle,
-      startImageTransform,
-      startOrUpdateReferenceLine,
-      tryStartHandleDrag,
-      tryStartEntityDrag,
-      tryStartMove,
-      handleMirrorMouseDown,
-      project,
-      toggleVertex,
-      selectEntity,
-      updateEntity,
-      requestRender,
-    ],
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (updatePan(e)) return;
-
-      const world = screenToWorld(e.clientX, e.clientY);
-      const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
-      cursorWorld.current = world;
-      snapTarget.current = snapped;
-      snapActive.current = didSnap;
-
-      requestRender();
-
-      // Floating paste follows the cursor until a click confirms it.
-      if (isPasteFloating.current) {
-        const dx = snapped.x - pasteLast.current.x;
-        const dy = snapped.y - pasteLast.current.y;
-        if (dx !== 0 || dy !== 0) {
-          const entities = useStore.getState().project?.sketch.entities ?? [];
-          for (const id of pasteIds.current) {
-            const entity = entities.find((en) => en.id === id);
-            if (!entity) continue;
-            updateEntity(id, translateEntityWhole(entity, dx, dy));
-          }
-          pasteLast.current = snapped;
-        }
-        return;
-      }
-
-      if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
-
-      if (toolMode === "move" && updateMove(world)) return;
-
-      if (updateHandleDrag(world)) return;
-
-      if (updateEntityDrag(world)) return;
-
-      if (updateImageTransform(world)) return;
-
-      if (toolMode === "select" && updateSelectionDrag(world)) return;
-
-      if (toolMode === "polyline" && isDrawing.current) {
-      }
-
-      if (updateReferenceLine(world)) return;
-
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
-      }
-    },
-    [
-      screenToWorld,
-      resolveSnap,
-      toolMode,
-      updatePan,
-      updateSelectionDrag,
-      updateRectanglePreview,
-      updateHandleDrag,
-      updateEntityDrag,
-      updateImageTransform,
-      updateReferenceLine,
-      updateMove,
-      updateEntity,
-    ],
-  );
-
-  const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      if (stopPan()) return;
-
-      if (finishImageTransform()) return;
-      if (finishMove()) return;
-      if (finishHandleDrag()) return;
-      if (finishEntityDrag()) return;
-      if (finishReferenceLine()) return;
-
-      if (toolMode === "select" && finishSelectionDrag(e)) {
-        setEditingImageId(null);
-        return;
-      }
-
-      if (toolMode === "rectangle" && finishRectangle()) return;
-      requestRender();
-    },
-    [
-      toolMode,
-      stopPan,
-      finishImageTransform,
-      finishHandleDrag,
-      finishEntityDrag,
-      finishReferenceLine,
-      finishSelectionDrag,
-      finishRectangle,
-      finishMove,
-      setEditingImageId,
-      requestRender,
-    ],
-  );
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (stopPan()) return;
+    if (finishImageTransform()) return;
+    if (finishMove()) return;
+    if (finishHandleDrag()) return;
+    if (finishEntityDrag()) return;
+    if (finishReferenceLine()) return;
+    if (toolMode === "select" && finishSelectionDrag(e)) { setEditingImageId(null); return; }
+    if (toolMode === "rectangle" && finishRectangle()) return;
+    requestRender();
+  }, [
+    toolMode, stopPan, finishImageTransform, finishHandleDrag, finishEntityDrag,
+    finishReferenceLine, finishSelectionDrag, finishRectangle, finishMove,
+    setEditingImageId, requestRender,
+  ]);
 
   useCanvasKeyboardShortcuts({
-    pendingRectangle,
-    splineState,
-    drawingPoints,
-    refScalePopup,
-    confirmPendingRectangle,
-    cancelPendingRectangle,
-    cancelRefScale,
-    cancelPolyline,
-    popPolylinePoint,
-    finishPolyline,
-    cancelSpline,
-    popSplineAnchor,
-    finishSpline,
-    cancelReferenceLine,
-    setToolMode,
-    toolMode,
-    setEditingImageId,
-    setEntityDragTarget,
+    pendingRectangle, splineState, drawingPoints, refScalePopup,
+    confirmPendingRectangle, cancelPendingRectangle, cancelRefScale,
+    cancelPolyline, popPolylinePoint, finishPolyline,
+    cancelSpline, popSplineAnchor, finishSpline, cancelReferenceLine,
+    setToolMode, toolMode, setEditingImageId, setEntityDragTarget,
   });
 
   return (
@@ -614,7 +405,12 @@ export default function Canvas2D() {
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <canvas ref={canvasRef} />
+      <canvas ref={staticCanvasRef} className={s.static} />
+      <canvas
+        ref={overlayCanvasRef}
+        className={s.overlay}
+        style={{ pointerEvents: "none" }}
+      />
       {refScalePopup && (
         <RefScalePopup
           popup={refScalePopup}
