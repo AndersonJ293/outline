@@ -9,7 +9,8 @@ export function InspectorPanel({
   selectedEntityIds,
   selectedEntity,
   selectedImage,
-  currentMesh,
+  bodies,
+  bodyErrors,
   panelCollapsed,
   imageLockAspect,
   imageRefScaleMode,
@@ -33,7 +34,8 @@ export function InspectorPanel({
   onSetPreviewWireframe,
   onExportStl,
 }: InspectorPanelProps) {
-  const hasDetails = selectedEntityIds.length > 0 || Boolean(currentMesh);
+  const bodyCount = Object.keys(bodies).length;
+  const hasDetails = selectedEntityIds.length > 0 || bodyCount > 0;
 
   return (
     <div className={s["panel-shell"]}>
@@ -56,7 +58,8 @@ export function InspectorPanel({
             <ProjectTree
               project={project}
               selectedEntityIds={selectedEntityIds}
-              currentMesh={currentMesh}
+              bodies={bodies}
+              bodyErrors={bodyErrors}
               onSelectEntity={onSelectEntity}
               onSetEditingImageId={onSetEditingImageId}
               onSetEntityDragTarget={onSetEntityDragTarget}
@@ -69,7 +72,8 @@ export function InspectorPanel({
           <DetailsPanel
             selectedEntity={selectedEntity}
             selectedImage={selectedImage}
-            currentMesh={currentMesh}
+            bodies={bodies}
+            bodyErrors={bodyErrors}
             imageLockAspect={imageLockAspect}
             imageRefScaleMode={imageRefScaleMode}
             wallHeight={wallHeight}

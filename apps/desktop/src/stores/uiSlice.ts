@@ -8,8 +8,9 @@ type UiSlice = Pick<
   | "setViewMode"
   | "viewport"
   | "setViewport"
-  | "currentMesh"
-  | "setCurrentMesh"
+  | "bodies"
+  | "bodyErrors"
+  | "setBodies"
   | "previewWireframe"
   | "setPreviewWireframe"
   | "wallHeight"
@@ -44,8 +45,9 @@ export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
       viewport: { ...state.viewport, ...vp },
     })),
 
-  currentMesh: null,
-  setCurrentMesh: (mesh) => set({ currentMesh: mesh }),
+  bodies: {},
+  bodyErrors: {},
+  setBodies: (bodies, errors) => set({ bodies, bodyErrors: errors }),
   previewWireframe: true,
   setPreviewWireframe: (on) => set({ previewWireframe: on }),
 

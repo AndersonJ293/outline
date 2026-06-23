@@ -1,6 +1,7 @@
 import type {
   Entity,
   Mesh,
+  Operation,
   Point,
   Project,
   SketchImage,
@@ -40,6 +41,7 @@ export interface AppStore {
   pasteAtPoint: (world: Point) => string[];
 
   addEntity: (entity: Entity) => void;
+  addOperation: (op: Operation) => void;
   addImage: (image: SketchImage) => void;
   updateEntity: (id: string, updates: Partial<Entity>) => void;
   updateImage: (id: string, updates: Partial<SketchImage>) => void;
@@ -55,8 +57,9 @@ export interface AppStore {
   viewport: ViewportState;
   setViewport: (vp: Partial<ViewportState>) => void;
 
-  currentMesh: Mesh | null;
-  setCurrentMesh: (mesh: Mesh | null) => void;
+  bodies: Record<string, Mesh>;
+  bodyErrors: Record<string, string>;
+  setBodies: (bodies: Record<string, Mesh>, errors: Record<string, string>) => void;
   previewWireframe: boolean;
   setPreviewWireframe: (on: boolean) => void;
 

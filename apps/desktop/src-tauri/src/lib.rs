@@ -103,6 +103,79 @@ fn read_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn rebuild_document(input_json: String) -> Result<RebuildOutputDto, String> {
+    let input: RebuildInputDto =
+        serde_json::from_str(&input_json).map_err(|e| format!("Failed to parse input: {}", e))?;
+
+    let entities: Vec<outline_core::project::Entity> = input
+        .sketch
+        .entities
+        .into_iter()
+        .map(|e| outline_core::project::Entity {
+            id: e.id,
+            entity_type: e.entity_type,
+            points: e
+                .points
+                .into_iter()
+                .map(|p| outline_core::project::Point { x: p.x, y: p.y })
+                .collect(),
+            closed: e.closed,
+            control_points: e.control_points.map(|cps| {
+                cps.into_iter()
+                    .map(|cp| outline_core::project::SplineControlPoint {
+                        point: outline_core::project::Point {
+                            x: cp.point.x,
+                            y: cp.point.y,
+                        },
+                        handle_out: outline_core::project::SplineHandle {
+                            dx: cp.handle_out.dx,
+                            dy: cp.handle_out.dy,
+                        },
+                    })
+                    .collect()
+            }),
+            sampling_steps: e.sampling_steps,
+        })
+        .collect();
+
+    let operations: Vec<outline_core::project::Operation> = input
+        .operations
+        .into_iter()
+        .map(|op| outline_core::project::Operation {
+            id: op.id,
+            op_type: op.op_type,
+            source_entity_id: op.source_entity_id,
+            height_mm: op.height_mm,
+            wall_thickness_mm: op.wall_thickness_mm,
+            offset_side: op.offset_side,
+        })
+        .collect();
+
+    let sketch = outline_core::project::Sketch {
+        plane: input.sketch.plane,
+        entities,
+    };
+
+    let output = outline_core::commands::rebuild_document(&sketch, &operations);
+
+    let bodies = output
+        .bodies
+        .into_iter()
+        .map(|b| RebuildBodyDto {
+            operation_id: b.operation_id,
+            mesh: b.mesh.map(|m| MeshDto {
+                id: m.id,
+                vertices: m.vertices,
+                triangles: m.triangles,
+            }),
+            error: b.error,
+        })
+        .collect();
+
+    Ok(RebuildOutputDto { bodies })
+}
+
+#[tauri::command]
 fn read_image_base64(path: String) -> Result<String, String> {
     use base64::Engine;
     let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read image: {}", e))?;
@@ -131,6 +204,7 @@ pub fn run() {
             save_file,
             read_file,
             read_image_base64,
+            rebuild_document,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to start Outline");

@@ -1,4 +1,4 @@
-import type { Entity } from "../types";
+import type { Entity, Operation } from "../types";
 import { generateId } from "../types";
 import { sampleSpline } from "../features/sketch/spline";
 import type { AppStore, StoreSlice } from "./types";
@@ -18,6 +18,7 @@ type ProjectSlice = Pick<
   | "copySelection"
   | "pasteAtPoint"
   | "addEntity"
+  | "addOperation"
   | "addImage"
   | "updateEntity"
   | "updateImage"
@@ -38,7 +39,8 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       project,
       selectedEntityIds: [],
       selectedVertices: [],
-      currentMesh: null,
+      bodies: {},
+      bodyErrors: {},
       editingImageId: null,
       entityDragTarget: null,
     });
@@ -145,6 +147,14 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     set({ project: { ...project }, selectedEntityIds: [entity.id] });
   },
 
+  addOperation: (op) => {
+    const project = get().project;
+    if (!project) return;
+    get().pushUndo();
+    project.operations.push(op);
+    set({ project: { ...project } });
+  },
+
   addImage: (image) => {
     const project = get().project;
     if (!project) return;
@@ -205,7 +215,8 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       selectedVertices: get().selectedVertices.filter(
         (v) => !ids.includes(v.entityId),
       ),
-      currentMesh: null,
+      bodies: {},
+      bodyErrors: {},
       editingImageId: nextEditingImageId,
       entityDragTarget: nextEntityDragTarget,
     });
@@ -256,7 +267,8 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     set({
       project: { ...project },
       selectedVertices: [],
-      currentMesh: null,
+      bodies: {},
+      bodyErrors: {},
     });
   },
 });

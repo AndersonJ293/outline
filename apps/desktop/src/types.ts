@@ -89,6 +89,21 @@ export interface GenerateMeshResult {
   error?: CommandError;
 }
 
+export interface RebuildInput {
+  sketch: Sketch;
+  operations: Operation[];
+}
+
+export interface RebuildBody {
+  operationId: string;
+  mesh?: Mesh;
+  error?: string;
+}
+
+export interface RebuildOutput {
+  bodies: RebuildBody[];
+}
+
 // ── Tool types ──
 
 export type ToolMode =

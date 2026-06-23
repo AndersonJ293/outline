@@ -28,7 +28,8 @@ export const createHistorySlice: StoreSlice<HistorySlice> = (set, get) => ({
       undoStack: undoStack.slice(0, -1),
       redoStack: [...get().redoStack, cloneProject(project)!],
       selectedEntityIds: [],
-      currentMesh: null,
+      bodies: {},
+      bodyErrors: {},
     });
   },
   redo: () => {
@@ -40,7 +41,8 @@ export const createHistorySlice: StoreSlice<HistorySlice> = (set, get) => ({
       redoStack: redoStack.slice(0, -1),
       undoStack: [...get().undoStack, cloneProject(project)!],
       selectedEntityIds: [],
-      currentMesh: null,
+      bodies: {},
+      bodyErrors: {},
     });
   },
 });

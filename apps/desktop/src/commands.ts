@@ -6,6 +6,8 @@ import type {
   Mesh,
   ValidateProfileResult,
   GenerateMeshResult,
+  RebuildInput,
+  RebuildOutput,
 } from "./types";
 
 export async function ping(): Promise<string> {
@@ -50,6 +52,14 @@ export async function saveFile(path: string, data: string): Promise<string> {
 
 export async function readFile(path: string): Promise<string> {
   return invoke<string>("read_file", { path });
+}
+
+export async function rebuildDocument(
+  input: RebuildInput,
+): Promise<RebuildOutput> {
+  return invoke<RebuildOutput>("rebuild_document", {
+    inputJson: JSON.stringify(input),
+  });
 }
 
 export async function readImageBase64(path: string): Promise<string> {

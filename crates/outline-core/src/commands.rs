@@ -85,6 +85,168 @@ pub fn generate_wall_mesh(entity: &Entity, operation: &Operation) -> CommandResu
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RebuildBody {
+    #[serde(rename = "operationId")]
+    pub operation_id: String,
+    pub mesh: Option<Mesh>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RebuildOutput {
+    pub bodies: Vec<RebuildBody>,
+}
+
+fn to_geo_entity(e: &crate::project::Entity) -> geometry::entities::Entity {
+    geometry::entities::Entity {
+        id: e.id.clone(),
+        entity_type: e.entity_type.clone(),
+        points: e
+            .points
+            .iter()
+            .map(|p| geometry::entities::Point { x: p.x, y: p.y })
+            .collect(),
+        closed: e.closed,
+        control_points: e.control_points.as_ref().map(|cps| {
+            cps.iter()
+                .map(|cp| geometry::entities::SplineControlPoint {
+                    point: geometry::entities::Point {
+                        x: cp.point.x,
+                        y: cp.point.y,
+                    },
+                    handle_out: geometry::entities::SplineHandle {
+                        dx: cp.handle_out.dx,
+                        dy: cp.handle_out.dy,
+                    },
+                })
+                .collect()
+        }),
+        sampling_steps: e.sampling_steps,
+    }
+}
+
+fn resolve_profile_points(
+    entity: &crate::project::Entity,
+    geo_entities: &[geometry::entities::Entity],
+    chains: &[geometry::chain::Chain],
+) -> Result<Vec<geometry::entities::Point>, String> {
+    // Directly closed entity
+    if entity.closed && entity.points.len() >= 3 {
+        return Ok(entity
+            .points
+            .iter()
+            .map(|p| geometry::entities::Point { x: p.x, y: p.y })
+            .collect());
+    }
+
+    // Try chain-based profile
+    if let Some(chain) = chains.iter().find(|c| c.segment_ids.contains(&entity.id)) {
+        if let Some(contour) = geometry::chain::chain_contour(chain, geo_entities) {
+            if contour.closed && contour.points.len() >= 3 {
+                return Ok(contour.points);
+            }
+        }
+    }
+
+    // Spline: sample and check closure
+    if entity.entity_type == "spline" {
+        if let Some(ref cps) = entity.control_points {
+            if cps.len() < 2 {
+                return Err("Spline needs at least 2 control points".to_string());
+            }
+            let geo_cps: Vec<geometry::entities::SplineControlPoint> = cps
+                .iter()
+                .map(|cp| geometry::entities::SplineControlPoint {
+                    point: geometry::entities::Point {
+                        x: cp.point.x,
+                        y: cp.point.y,
+                    },
+                    handle_out: geometry::entities::SplineHandle {
+                        dx: cp.handle_out.dx,
+                        dy: cp.handle_out.dy,
+                    },
+                })
+                .collect();
+            let steps = entity.sampling_steps.unwrap_or(64);
+            let sampled = geometry::spline::sample_spline(&geo_cps, steps, entity.closed);
+            if entity.closed && sampled.len() >= 3 {
+                return Ok(sampled);
+            }
+            // Even if open spline, try chain
+            if let Some(chain) = chains.iter().find(|c| c.segment_ids.contains(&entity.id)) {
+                if let Some(contour) = geometry::chain::chain_contour(chain, geo_entities) {
+                    if contour.closed && contour.points.len() >= 3 {
+                        return Ok(contour.points);
+                    }
+                }
+            }
+            return Err("Spline does not form a closed profile".to_string());
+        }
+    }
+
+    Err("Profile is not closed".to_string())
+}
+
+pub fn rebuild_document(
+    sketch: &crate::project::Sketch,
+    operations: &[Operation],
+) -> RebuildOutput {
+    let geo_entities: Vec<geometry::entities::Entity> =
+        sketch.entities.iter().map(to_geo_entity).collect();
+    let chains = geometry::chain::compute_chains(&geo_entities);
+
+    let bodies: Vec<RebuildBody> = operations
+        .iter()
+        .map(|op| {
+            let entity = sketch.entities.iter().find(|e| e.id == op.source_entity_id);
+            match entity {
+                None => RebuildBody {
+                    operation_id: op.id.clone(),
+                    mesh: None,
+                    error: Some("Source entity not found".to_string()),
+                },
+                Some(e) => match resolve_profile_points(e, &geo_entities, &chains) {
+                    Err(msg) => RebuildBody {
+                        operation_id: op.id.clone(),
+                        mesh: None,
+                        error: Some(msg),
+                    },
+                    Ok(points) => {
+                        let result = geometry::mesh::generate_wall_mesh(
+                            &points,
+                            op.height_mm,
+                            op.wall_thickness_mm,
+                            &op.offset_side,
+                        );
+                        match result {
+                            Some(mesh_data) => RebuildBody {
+                                operation_id: op.id.clone(),
+                                mesh: Some(Mesh {
+                                    id: format!("mesh_{}", op.id),
+                                    vertices: mesh_data.vertices,
+                                    triangles: mesh_data.triangles,
+                                }),
+                                error: None,
+                            },
+                            None => RebuildBody {
+                                operation_id: op.id.clone(),
+                                mesh: None,
+                                error: Some(
+                                    "Could not generate mesh. Check profile and parameters."
+                                        .to_string(),
+                                ),
+                            },
+                        }
+                    }
+                },
+            }
+        })
+        .collect();
+
+    RebuildOutput { bodies }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,6 +321,74 @@ mod tests {
         let result = generate_wall_mesh(&entity, &op);
         assert!(!result.ok);
         assert_eq!(result.error.unwrap().code, "PROFILE_NOT_CLOSED");
+    }
+
+    #[test]
+    fn test_rebuild_empty_operations() {
+        let sketch = crate::project::Sketch {
+            plane: "XY".to_string(),
+            entities: vec![],
+        };
+        let ops: Vec<Operation> = vec![];
+        let result = rebuild_document(&sketch, &ops);
+        assert!(result.bodies.is_empty());
+    }
+
+    #[test]
+    fn test_rebuild_single_operation() {
+        let entity_json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":40,"y":0},{"x":40,"y":40},{"x":0,"y":40}],"closed":true}"#;
+        let entity: Entity = serde_json::from_str(entity_json).unwrap();
+        let sketch = crate::project::Sketch {
+            plane: "XY".to_string(),
+            entities: vec![entity],
+        };
+        let op_json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#;
+        let op: Operation = serde_json::from_str(op_json).unwrap();
+        let result = rebuild_document(&sketch, &[op]);
+        assert_eq!(result.bodies.len(), 1);
+        assert!(result.bodies[0].mesh.is_some());
+        assert!(result.bodies[0].error.is_none());
+        assert_eq!(result.bodies[0].operation_id, "op1");
+    }
+
+    #[test]
+    fn test_rebuild_operation_with_missing_entity() {
+        let sketch = crate::project::Sketch {
+            plane: "XY".to_string(),
+            entities: vec![],
+        };
+        let op_json = r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#;
+        let op: Operation = serde_json::from_str(op_json).unwrap();
+        let result = rebuild_document(&sketch, &[op]);
+        assert_eq!(result.bodies.len(), 1);
+        assert!(result.bodies[0].mesh.is_none());
+        assert_eq!(
+            result.bodies[0].error,
+            Some("Source entity not found".to_string())
+        );
+    }
+
+    #[test]
+    fn test_rebuild_mixed_results() {
+        let entity_json = r#"{"id":"e1","type":"polyline","points":[{"x":0,"y":0},{"x":40,"y":0},{"x":40,"y":40},{"x":0,"y":40}],"closed":true}"#;
+        let entity: Entity = serde_json::from_str(entity_json).unwrap();
+        let sketch = crate::project::Sketch {
+            plane: "XY".to_string(),
+            entities: vec![entity],
+        };
+        let op1: Operation = serde_json::from_str(
+            r#"{"id":"op1","type":"cookie_cutter_wall","source_entity_id":"e1","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#,
+        ).unwrap();
+        let op2: Operation = serde_json::from_str(
+            r#"{"id":"op2","type":"cookie_cutter_wall","source_entity_id":"missing","height_mm":15.0,"wall_thickness_mm":1.2,"offset_side":"center"}"#,
+        ).unwrap();
+        let result = rebuild_document(&sketch, &[op1, op2]);
+        assert_eq!(result.bodies.len(), 2);
+        assert!(result.bodies[0].mesh.is_some());
+        assert!(result.bodies[0].error.is_none());
+        assert!(result.bodies[1].mesh.is_none());
+        assert!(result.bodies[1].error.is_some());
+        assert_eq!(result.bodies[1].operation_id, "op2");
     }
 
     #[test]

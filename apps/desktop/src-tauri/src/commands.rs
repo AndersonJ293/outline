@@ -94,6 +94,25 @@ pub struct GenerateMeshResult {
     pub error: Option<CommandErrorDto>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RebuildInputDto {
+    pub sketch: SketchDto,
+    pub operations: Vec<OperationDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RebuildBodyDto {
+    #[serde(rename = "operationId")]
+    pub operation_id: String,
+    pub mesh: Option<MeshDto>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RebuildOutputDto {
+    pub bodies: Vec<RebuildBodyDto>,
+}
+
 // ── Conversions ──
 
 impl From<&outline_core::project::Project> for ProjectDto {

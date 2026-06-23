@@ -6,7 +6,8 @@ export interface InspectorPanelProps {
   selectedEntityIds: string[];
   selectedEntity: Entity | null;
   selectedImage: SketchImage | null;
-  currentMesh: Mesh | null;
+  bodies: Record<string, Mesh>;
+  bodyErrors: Record<string, string>;
   panelCollapsed: boolean;
   imageLockAspect: boolean;
   imageRefScaleMode: boolean;

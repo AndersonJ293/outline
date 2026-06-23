@@ -4,6 +4,7 @@ import { useAppWindow } from "./app/useAppWindow";
 import { useBackendStatus } from "./app/useBackendStatus";
 import { useCutterActions } from "./app/useCutterActions";
 import { useProjectActions } from "./app/useProjectActions";
+import { useRebuildEffect } from "./app/useRebuildEffect";
 import Canvas2D from "./components/Canvas2D";
 import { InspectorPanel } from "./components/app/InspectorPanel";
 import { ModeTabs } from "./components/app/ModeTabs";
@@ -27,8 +28,10 @@ function App() {
     selectEntity,
     removeSelectedEntities,
     removeSelectedVertices,
-    currentMesh,
-    setCurrentMesh,
+    bodies,
+    bodyErrors,
+    setBodies,
+    addOperation,
     wallHeight,
     setWallHeight,
     wallThickness,
@@ -74,15 +77,17 @@ function App() {
   const { handleGenerateCutter, handleExportStl } = useCutterActions({
     project,
     selectedEntityIds,
-    currentMesh,
+    bodies,
     wallHeight,
     wallThickness,
     offsetSide,
-    setCurrentMesh,
+    addOperation,
     setViewMode,
     setStatus,
     setError,
   });
+
+  useRebuildEffect(project, setBodies);
 
   useEffect(() => {
     if (!project) {
@@ -180,7 +185,8 @@ function App() {
         selectedEntityIds={selectedEntityIds}
         selectedEntity={selectedEntity}
         selectedImage={selectedImage}
-        currentMesh={currentMesh}
+        bodies={bodies}
+        bodyErrors={bodyErrors}
         panelCollapsed={panelCollapsed}
         imageLockAspect={imageLockAspect}
         imageRefScaleMode={imageRefScaleMode}

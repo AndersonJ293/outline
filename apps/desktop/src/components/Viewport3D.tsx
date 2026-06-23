@@ -5,14 +5,16 @@ import { useStore } from "../stores/useStore";
 
 export default function Viewport3D() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const currentMesh = useStore((s) => s.currentMesh);
+  const bodies = useStore((s) => s.bodies);
   const previewWireframe = useStore((s) => s.previewWireframe);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const meshRef = useRef<THREE.Mesh | null>(null);
-  const wireframeRef = useRef<THREE.LineSegments | null>(null);
+  const meshesRef = useRef<THREE.Mesh[]>([]);
+  const wireframesRef = useRef<THREE.LineSegments[]>([]);
+  const bodiesRef = useRef(bodies);
+  bodiesRef.current = bodies;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -90,73 +92,86 @@ export default function Viewport3D() {
     const scene = sceneRef.current;
     if (!scene) return;
 
-    if (meshRef.current) {
-      scene.remove(meshRef.current);
-      meshRef.current.geometry.dispose();
-      if (Array.isArray(meshRef.current.material)) {
-        meshRef.current.material.forEach((m) => m.dispose());
+    for (const m of meshesRef.current) {
+      scene.remove(m);
+      m.geometry.dispose();
+      if (Array.isArray(m.material)) {
+        m.material.forEach((mat) => mat.dispose());
       } else {
-        (meshRef.current.material as THREE.Material).dispose();
+        (m.material as THREE.Material).dispose();
       }
-      meshRef.current = null;
     }
+    meshesRef.current = [];
 
-    if (wireframeRef.current) {
-      scene.remove(wireframeRef.current);
-      wireframeRef.current.geometry.dispose();
-      (wireframeRef.current.material as THREE.Material).dispose();
-      wireframeRef.current = null;
+    for (const w of wireframesRef.current) {
+      scene.remove(w);
+      w.geometry.dispose();
+      (w.material as THREE.Material).dispose();
     }
+    wireframesRef.current = [];
 
-    if (!currentMesh) return;
+    const bodyEntries = Object.values(bodies);
+    if (bodyEntries.length === 0) return;
 
-    const vertices = new Float32Array(currentMesh.vertices.flat());
-    const indices = new Uint32Array(currentMesh.triangles.flat());
+    const meshes: THREE.Mesh[] = [];
+    const wireframes: THREE.LineSegments[] = [];
+    let firstBox: THREE.Box3 | null = null;
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-    geometry.computeVertexNormals();
-    geometry.computeBoundingBox();
+    for (const body of bodyEntries) {
+      const vertices = new Float32Array(body.vertices.flat());
+      const indices = new Uint32Array(body.triangles.flat());
 
-    const initialBox = geometry.boundingBox;
-    const center = new THREE.Vector3();
-    if (initialBox) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+      geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+      geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+
+      const initialBox = geometry.boundingBox!;
+      const center = new THREE.Vector3();
       initialBox.getCenter(center);
       geometry.translate(-center.x, -center.y, -center.z);
       geometry.computeBoundingBox();
       geometry.computeVertexNormals();
+
+      const material = new THREE.MeshPhysicalMaterial({
+        color: 0x4fc3f7,
+        metalness: 0.1,
+        roughness: 0.6,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+      meshes.push(mesh);
+
+      const wireframeGeo = new THREE.WireframeGeometry(geometry);
+      const wireframeMat = new THREE.LineBasicMaterial({
+        color: 0x88ddff,
+        transparent: true,
+        opacity: 0.3,
+      });
+      const wireframe = new THREE.LineSegments(wireframeGeo, wireframeMat);
+      scene.add(wireframe);
+      wireframes.push(wireframe);
+
+      if (!firstBox) {
+        firstBox = geometry.boundingBox!;
+      } else {
+        firstBox = firstBox.union(geometry.boundingBox!);
+      }
     }
 
-    const material = new THREE.MeshPhysicalMaterial({
-      color: 0x4fc3f7,
-      metalness: 0.1,
-      roughness: 0.6,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.85,
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-    meshRef.current = mesh;
-
-    const wireframeGeo = new THREE.WireframeGeometry(geometry);
-    const wireframeMat = new THREE.LineBasicMaterial({
-      color: 0x88ddff,
-      transparent: true,
-      opacity: 0.3,
-    });
-    const wireframe = new THREE.LineSegments(wireframeGeo, wireframeMat);
-    scene.add(wireframe);
-    wireframeRef.current = wireframe;
+    meshesRef.current = meshes;
+    wireframesRef.current = wireframes;
 
     const camera = cameraRef.current;
     const controls = controlsRef.current;
-    if (camera && controls) {
-      const box = new THREE.Box3().setFromObject(mesh);
-      const framedCenter = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
+    if (camera && controls && firstBox) {
+      const framedCenter = firstBox.getCenter(new THREE.Vector3());
+      const size = firstBox.getSize(new THREE.Vector3());
       const maxSize = Math.max(size.x, size.y, size.z, 1);
       const distance = maxSize * 2.2;
 
@@ -171,11 +186,11 @@ export default function Viewport3D() {
       camera.updateProjectionMatrix();
       controls.update();
     }
-  }, [currentMesh]);
+  }, [bodies]);
 
   useEffect(() => {
-    if (wireframeRef.current) {
-      wireframeRef.current.visible = previewWireframe;
+    for (const w of wireframesRef.current) {
+      w.visible = previewWireframe;
     }
   }, [previewWireframe]);
 

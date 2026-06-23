@@ -9,7 +9,8 @@ type DetailsPanelProps = Pick<
   InspectorPanelProps,
   | "selectedEntity"
   | "selectedImage"
-  | "currentMesh"
+  | "bodies"
+  | "bodyErrors"
   | "imageLockAspect"
   | "imageRefScaleMode"
   | "wallHeight"
@@ -32,7 +33,8 @@ export function DetailsPanel(props: DetailsPanelProps) {
   const {
     selectedEntity,
     selectedImage,
-    currentMesh,
+    bodies,
+    bodyErrors,
     imageLockAspect,
     imageRefScaleMode,
     wallHeight,
@@ -51,11 +53,12 @@ export function DetailsPanel(props: DetailsPanelProps) {
     onExportStl,
   } = props;
 
+  const bodyCount = Object.keys(bodies).length;
   const headerLabel = selectedEntity
     ? "Entity"
     : selectedImage
       ? "Image"
-      : currentMesh
+      : bodyCount > 0
         ? "Mesh"
         : null;
 
@@ -94,9 +97,10 @@ export function DetailsPanel(props: DetailsPanelProps) {
         />
       )}
 
-      {currentMesh && (
+      {bodyCount > 0 && (
         <MeshSection
-          currentMesh={currentMesh}
+          bodies={bodies}
+          bodyErrors={bodyErrors}
           previewWireframe={previewWireframe}
           onSetPreviewWireframe={onSetPreviewWireframe}
           onExportStl={onExportStl}

@@ -7,7 +7,8 @@ type ProjectTreeProps = Pick<
   InspectorPanelProps,
   | "project"
   | "selectedEntityIds"
-  | "currentMesh"
+  | "bodies"
+  | "bodyErrors"
   | "onSelectEntity"
   | "onSetEditingImageId"
   | "onSetEntityDragTarget"
@@ -39,7 +40,8 @@ const COLLAPSED_DEFAULT: Record<CategoryId, boolean> = {
 export function ProjectTree({
   project,
   selectedEntityIds,
-  currentMesh,
+  bodies,
+  bodyErrors,
   onSelectEntity,
   onSetEditingImageId,
   onSetEntityDragTarget,
@@ -128,10 +130,16 @@ export function ProjectTree({
       <Category
         id="mesh"
         collapsed={collapsed.mesh}
-        count={currentMesh ? 1 : 0}
+        count={Object.keys(bodies).length}
         onToggle={() => toggle("mesh")}
       >
-        {currentMesh ? <MeshRow mesh={currentMesh} /> : <EmptyRow text="No mesh generated" />}
+        {Object.keys(bodies).length === 0 ? (
+          <EmptyRow text="No mesh generated" />
+        ) : (
+          Object.entries(bodies).map(([opId, mesh]) => (
+            <MeshRow key={opId} mesh={mesh} />
+          ))
+        )}
       </Category>
     </div>
   );
