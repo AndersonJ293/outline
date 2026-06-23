@@ -6,6 +6,10 @@
 > **Veredito geral:** o stack está correto. **Não migrar** de framework. O trabalho
 > é (1) corrigir a *estratégia* de render 2D e (2) mover a fronteira de geometria
 > para o Rust, tornando o 3D reativo ao 2D (paradigma paramétrico estilo Fusion).
+>
+> **Status 2026-06-23:** Fases 0, 1 e 1b implementadas (branch `feat/parametric-rebuild`).
+> Render sob demanda + memoização de chains, rebuild paramétrico no Rust, chains e
+> spline portados para `crates/geometry`. Fase 2 e 3 pendentes.
 
 ---
 
@@ -244,6 +248,79 @@ Somente após o DAG funcionando:
 **Por que por último:** são extensões sobre a base já reativa e limpa; antecipar é
 otimização prematura.
 
+**Esforço:** médio · **Risco:** baixo.
+
+### Fase 3 — Viewport unificado 2D+3D *(paradigma Fusion)*
+
+**Objetivo:** eliminar a alternância sketch/solid. O 2D e o 3D coexistem na mesma
+viewport o tempo todo, como no Fusion 360 — a sketch é uma overlay sobre o plano de
+trabalho dentro da cena 3D.
+
+**Pré-requisito:** Fase 2 (canvas em camadas) concluída, porque a camada overlay do
+sketch é a base técnica para sobrepor o 2D ao Three.js.
+
+#### Fase 3a — Viewport unificado (infraestrutura)
+
+> Arquivo-alvo: novo `components/UnifiedViewport.tsx` (~300 linhas). Remove
+> `Canvas2D.tsx` e `Viewport3D.tsx`.
+
+- Container único com `<canvas>` 2D transparente sobre `<canvas>` WebGL (Three.js).
+- Ambos ocupam o mesmo `div`, mesma dimensão, empilhados via CSS (`position: absolute`).
+- O canvas 2D (overlay) é transparente; o WebGL renderiza grid 3D, eixos, sólidos, e
+  eventualmente wireframes do sketch em 3D.
+- **Câmera sincronizada:** pan e zoom do 2D são derivados da câmera Three.js
+  (projeção ortográfica do plano XY). `OrbitControls` comanda a câmera; o overlay
+  2D recalcula `viewport` (offset + zoom) a cada frame a partir da matriz de projeção.
+- Fim do `viewMode` sketch/solid. O estado `toolMode` + existência de sketch ativa
+  determinam se o overlay 2D mostra ferramentas de desenho.
+- `App.tsx` renderiza `UnifiedViewport` no lugar da troca condicional
+  `{viewMode === "sketch" ? <Canvas2D /> : <Viewport3D />}`.
+
+#### Fase 3b — Sketch como entidade 3D
+
+> Arquivos: `useSketchRenderer.ts`, `renderEntities.ts`, novo hook `useSketchPlane.ts`.
+
+- O sketch passa a ter um **plano de trabalho** (`workingPlane`: origem 3D + normal).
+  Inicialmente sempre XY (`origin: [0,0,0], normal: [0,0,1]`).
+- Entidades do sketch são renderizadas como **linhas 3D** na cena Three.js (visíveis
+  mesmo quando a câmera está em órbita livre).
+- O overlay 2D mostra ferramentas interativas (cursor, snap, preview de desenho,
+  seleção, handles, grid de sketch) apenas quando a câmera está aproximadamente
+  alinhada com o plano de trabalho.
+- Quando o usuário clica fora do plano ou orbita muito longe, o overlay 2D esmaece
+  e as entidades continuam visíveis como wireframes 3D.
+
+#### Fase 3c — Planos de sketch arbitrários
+
+> Arquivos: novo `WorkingPlane` no store, UI de seleção de plano.
+
+- O usuário pode criar sketch em:
+  - Plano XY / XZ / YZ (defaults)
+  - Face de um sólido (seleciona triângulo → calcula plano)
+  - Plano deslocado (offset a partir de face ou plano base)
+- O `Project.sketch` ganha campo `workingPlane: { origin, normal }`.
+- A câmera faz "look-at" automático ao entrar no sketch (alinha com a normal do
+  plano, enquadra a bounding box das entidades).
+
+#### Fase 3d — Edição paramétrica visual
+
+> Expansão futura se necessário.
+
+- Arrastar entidade no sketch → o 3D atualiza em tempo real (já funciona via Fase 1).
+- Arrastar face de sólido → o sketch de origem atualiza (bidirecional, complexo).
+- Dimensionamento paramétrico (cotas visíveis, constraints).
+
+**Por que depois da Fase 2:** a Fase 2 separa o canvas em camadas (estática +
+overlay), que é exatamente a estrutura necessária pra sobrepor o 2D ao Three.js sem
+refatorar tudo de novo.
+
+**Esforço:** alto (Fase 3a-b) a muito alto (Fase 3c-d) · **Risco:** médio-alto
+(mexe na estrutura de viewport e nos conceitos de sketch/plano).
+
+**Critério de pronto Fase 3a:** sketch e sólido visíveis simultaneamente; pan/zoom
+do mouse funciona em ambos; ferramentas de desenho 2D operam sobre o plano XY
+corretamente; não existe mais botão sketch/solid.
+
 ---
 
 ## 4. O que NÃO fazer
@@ -253,14 +330,18 @@ otimização prematura.
 - **Não** adicionar tipos de operação antes do engine de rebuild existir (Fase 1).
 - **Não** mexer no modelo de dados (`currentMesh` → `bodies`, comando `rebuild`) sem o
   contrato aprovado pelo dono do projeto.
+- **Não** implementar Fase 3 antes da Fase 2 — o canvas em camadas é pré-requisito
+  de infraestrutura para o viewport unificado.
 
 ---
 
 ## 5. Ordem recomendada de partida
 
-1. **Fase 0** — ganho imediato, isolado, não compromete decisões futuras.
-2. Em paralelo, **desenhar o contrato da Fase 1** (`rebuild_document`, formato do
-   documento, shape de `bodies`) e submeter para aprovação **antes** de tocar no Rust/store.
+1. **Fase 0** ✅ — ganho imediato, isolado, não compromete decisões futuras.
+2. **Fase 1 + 1b** ✅ — rebuild paramétrico + geometria no Rust.
+3. **Fase 2** — culling + canvas em camadas + extrair Canvas2D (pré-requisito pra Fase 3).
+4. **Fase 3a** — viewport unificado (2D+3D mesma tela).
+5. **Fase 3b+** — sketch 3D, planos arbitrários (opcional, evoluir com o uso).
 
 > Observação para o agente executor: validar cada referência `arquivo:linha` deste
 > documento antes de editar — o código pode ter mudado desde 2026-06-23.
