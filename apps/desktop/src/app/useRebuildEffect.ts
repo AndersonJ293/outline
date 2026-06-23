@@ -31,7 +31,9 @@ export function useRebuildEffect(
         }
         setBodies(bodies, errors);
       } catch (err) {
-        console.error("rebuild_document failed:", err);
+        const msg = `rebuild_document failed: ${err}`;
+        console.error(msg);
+        commands.logToTerminal(msg);
       }
     }, 300);
 

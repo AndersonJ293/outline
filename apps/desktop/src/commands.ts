@@ -62,6 +62,10 @@ export async function rebuildDocument(
   });
 }
 
+export async function logToTerminal(message: string): Promise<void> {
+  await invoke("log_to_terminal", { message });
+}
+
 export async function readImageBase64(path: string): Promise<string> {
   return invoke<string>("read_image_base64", { path });
 }

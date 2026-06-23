@@ -9,6 +9,11 @@ pub struct AppState {
 }
 
 #[tauri::command]
+fn log_to_terminal(message: String) {
+    eprintln!("[app] {}", message);
+}
+
+#[tauri::command]
 fn ping() -> String {
     "pong".to_string()
 }
@@ -196,6 +201,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
+            log_to_terminal,
             ping,
             new_project,
             validate_closed_profile,
