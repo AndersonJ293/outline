@@ -27,6 +27,8 @@ export function useThreeScene({
   const wireframeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const gridHelperRef = useRef<THREE.GridHelper | null>(null);
+  const axesHelperRef = useRef<THREE.AxesHelper | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -80,8 +82,10 @@ export function useThreeScene({
 
     const gridHelper = new THREE.GridHelper(1000, 10, 0x4fc3f7, 0x333355);
     scene.add(gridHelper);
+    gridHelperRef.current = gridHelper;
     const axesHelper = new THREE.AxesHelper(30);
     scene.add(axesHelper);
+    axesHelperRef.current = axesHelper;
 
     const meshGroup = new THREE.Group();
     scene.add(meshGroup);
@@ -155,6 +159,17 @@ export function useThreeScene({
       controls.update();
     }
   }, [isSketching, workingPlane]);
+
+  useEffect(() => {
+    const grid = gridHelperRef.current;
+    const axes = axesHelperRef.current;
+    const meshGroup = meshGroupRef.current;
+    const wireframeGroup = wireframeGroupRef.current;
+    if (grid) grid.visible = !isSketching;
+    if (axes) axes.visible = !isSketching;
+    if (meshGroup) meshGroup.visible = !isSketching;
+    if (wireframeGroup) wireframeGroup.visible = !isSketching;
+  }, [isSketching]);
 
   useEffect(() => {
     const camera = cameraRef.current;
