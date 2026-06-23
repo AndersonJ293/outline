@@ -462,12 +462,12 @@ export default function UnifiedViewport() {
       <canvas
         ref={staticCanvasRef}
         className={s.static}
-        style={{ pointerEvents: "none" }}
+        style={{ pointerEvents: "none", display: isSketching ? "block" : "none" }}
       />
       <canvas
         ref={overlayCanvasRef}
         className={s.overlay}
-        style={{ pointerEvents: isSketching ? "auto" : "none" }}
+        style={{ pointerEvents: isSketching ? "auto" : "none", display: isSketching ? "block" : "none" }}
       />
       {refScalePopup && (
         <RefScalePopup

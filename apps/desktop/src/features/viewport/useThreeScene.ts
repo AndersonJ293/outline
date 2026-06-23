@@ -35,10 +35,12 @@ export function useThreeScene({
     const w = container.clientWidth || 1;
     const h = container.clientHeight || 1;
 
+    const aspect = w / h;
+    const viewSize = 60;
     const camera = new THREE.OrthographicCamera(
-      -w / 2, w / 2, h / 2, -h / 2, -1000, 1000,
+      -viewSize * aspect, viewSize * aspect, viewSize, -viewSize, -1000, 1000,
     );
-    camera.position.set(0, 0, 100);
+    camera.position.set(50, 30, 100);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
@@ -64,6 +66,7 @@ export function useThreeScene({
       MIDDLE: THREE.MOUSE.PAN,
       RIGHT: THREE.MOUSE.PAN,
     };
+    controls.update();
     controlsRef.current = controls;
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
@@ -103,11 +106,12 @@ export function useThreeScene({
     const resizeObserver = new ResizeObserver(() => {
       const cw = container.clientWidth || 1;
       const ch = container.clientHeight || 1;
+      const newAspect = cw / ch;
       renderer.setSize(cw, ch);
-      camera.left = -cw / 2;
-      camera.right = cw / 2;
-      camera.top = ch / 2;
-      camera.bottom = -ch / 2;
+      camera.left = -viewSize * newAspect;
+      camera.right = viewSize * newAspect;
+      camera.top = viewSize;
+      camera.bottom = -viewSize;
       camera.updateProjectionMatrix();
     });
     resizeObserver.observe(container);
