@@ -22,23 +22,12 @@
   animation: slideIn 0.2s ease;
 }
 
-.sketch-toolbar-row {
+.tab-strip {
   grid-row: 2;
-  grid-column: 2;
+  grid-column: 2 / 4;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
-}
-
-.plane-picker-row {
-  grid-row: 2;
-  grid-column: 2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   padding: 4px 8px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);

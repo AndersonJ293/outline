@@ -187,29 +187,15 @@ function App() {
       />
 
       {isSketching ? (
-        <div className={s["sketch-toolbar-row"]}>
+        <div className={s["tab-strip"]}>
           <div className={s["sketch-actions"]}>
             <button className={s["sketch-btn"]} onClick={handleFinishSketch}>Finish Sketch</button>
             <button className={s["sketch-btn"]} onClick={handleCancelSketch}>Cancel</button>
           </div>
-          <SketchToolbar
-            toolMode={toolMode}
-            snapToGrid={snapToGrid}
-            onToolModeChange={setToolMode}
-            onImportImage={handleImportImage}
-            onClearSelection={() => {
-              selectEntity(null);
-              setEditingImageId(null);
-              setEntityDragTarget(null);
-            }}
-            onToggleSnap={() => setSnapToGrid(!snapToGrid)}
-            onUndo={undo}
-            onRedo={redo}
-          />
         </div>
       ) : planePickerActive || faceSelectionActive ? (
-        <div className={s["plane-picker-row"]}>
-          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+        <div className={s["tab-strip"]}>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)", marginRight: 8 }}>
             {planePickerActive ? "Click a plane to sketch" : "Click a solid face"}
           </span>
           {planePickerActive && (
@@ -218,13 +204,28 @@ function App() {
           <button className={s["plane-btn-cancel"]} onClick={handleCancelPicker}>Cancel</button>
         </div>
       ) : (
-        <div className={s["sketch-toolbar-row"]}>
+        <div className={s["tab-strip"]}>
           <button className={s["sketch-btn"]} onClick={handleCreateSketch}>Create Sketch</button>
           <div style={{ flex: 1 }} />
           <button className={s["toolbar-btn-sm"]} onClick={undo} title="Undo">↩</button>
           <button className={s["toolbar-btn-sm"]} onClick={redo} title="Redo">↪</button>
         </div>
       )}
+
+      <SketchToolbar
+        toolMode={toolMode}
+        snapToGrid={snapToGrid}
+        onToolModeChange={setToolMode}
+        onImportImage={handleImportImage}
+        onClearSelection={() => {
+          selectEntity(null);
+          setEditingImageId(null);
+          setEntityDragTarget(null);
+        }}
+        onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+        onUndo={undo}
+        onRedo={redo}
+      />
 
       <div style={{ gridRow: 3, gridColumn: 2, position: "relative", overflow: "hidden" }}>
         <UnifiedViewport />

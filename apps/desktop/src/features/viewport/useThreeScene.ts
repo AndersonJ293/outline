@@ -36,7 +36,7 @@ export function useThreeScene({
     const h = container.clientHeight || 1;
 
     const aspect = w / h;
-    const viewSize = 60;
+    const viewSize = 90;
     const camera = new THREE.OrthographicCamera(
       -viewSize * aspect, viewSize * aspect, viewSize, -viewSize, -1000, 1000,
     );
