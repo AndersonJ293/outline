@@ -183,8 +183,7 @@ export default function Canvas2D() {
     [snapToGridEnabled, viewport.zoom],
   );
 
-  useCanvasResize(containerRef, [staticCanvasRef, overlayCanvasRef], () => {});
-  useStaticRenderer({
+  const { requestRender: requestStaticRender } = useStaticRenderer({
     canvasRef: staticCanvasRef,
     project,
     viewport,
@@ -196,6 +195,8 @@ export default function Canvas2D() {
     isImageResizing,
     imageResizeId,
   });
+
+  useCanvasResize(containerRef, [staticCanvasRef, overlayCanvasRef], requestStaticRender);
 
   const { requestRender } = useOverlayRenderer({
     canvasRef: overlayCanvasRef,
