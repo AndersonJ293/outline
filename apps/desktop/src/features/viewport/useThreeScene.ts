@@ -1,12 +1,15 @@
 import { useRef, useEffect, type RefObject } from "react";
 import * as THREE from "three";
-import type { ViewportState, Mesh } from "../../types";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import type { ViewportState, Mesh, WorkingPlane } from "../../types";
 
 interface UseThreeSceneArgs {
   containerRef: RefObject<HTMLDivElement>;
   viewport: ViewportState;
   bodies: Record<string, Mesh>;
   previewWireframe: boolean;
+  isSketching: boolean;
+  workingPlane: WorkingPlane;
 }
 
 export function useThreeScene({
@@ -14,6 +17,8 @@ export function useThreeScene({
   viewport,
   bodies,
   previewWireframe,
+  isSketching,
+  workingPlane,
 }: UseThreeSceneArgs) {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -21,6 +26,7 @@ export function useThreeScene({
   const meshGroupRef = useRef<THREE.Group | null>(null);
   const wireframeGroupRef = useRef<THREE.Group | null>(null);
   const sketchGroupRef = useRef<THREE.Group | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -49,6 +55,17 @@ export function useThreeScene({
     renderer.domElement.style.pointerEvents = "none";
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
+    controls.target.set(0, 0, 0);
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.PAN,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+    controlsRef.current = controls;
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
@@ -79,6 +96,7 @@ export function useThreeScene({
     let animId = 0;
     const animate = () => {
       animId = requestAnimationFrame(animate);
+      controls.update();
       renderer.render(scene, camera);
     };
     animate();
@@ -98,6 +116,7 @@ export function useThreeScene({
     return () => {
       cancelAnimationFrame(animId);
       resizeObserver.disconnect();
+      controls.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -107,9 +126,32 @@ export function useThreeScene({
   }, []);
 
   useEffect(() => {
+    const controls = controlsRef.current;
+    if (controls) {
+      controls.enabled = !isSketching;
+    }
+
+    if (isSketching) {
+      const camera = cameraRef.current;
+      const controls = controlsRef.current;
+      if (!camera || !controls) return;
+      const [nx, ny, nz] = workingPlane.normal;
+      const [ox, oy, oz] = workingPlane.origin;
+      const dist = 100;
+      camera.position.set(
+        ox + nx * dist,
+        oy + ny * dist,
+        oz + nz * dist,
+      );
+      controls.target.set(ox, oy, oz);
+      controls.update();
+    }
+  }, [isSketching, workingPlane]);
+
+  useEffect(() => {
     const camera = cameraRef.current;
     const container = containerRef.current;
-    if (!camera || !container) return;
+    if (!camera || !container || !isSketching) return;
     const w = container.clientWidth || 1;
     const h = container.clientHeight || 1;
 
@@ -120,7 +162,7 @@ export function useThreeScene({
     camera.position.set(0, 0, 100);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
-  }, [viewport, containerRef]);
+  }, [viewport, containerRef, isSketching]);
 
   useEffect(() => {
     const meshGroup = meshGroupRef.current;

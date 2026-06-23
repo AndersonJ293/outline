@@ -8,6 +8,7 @@ import type {
   ToolMode,
   ViewMode,
   ViewportState,
+  WorkingPlane,
 } from "../types";
 
 export type EntityDragTarget =
@@ -92,6 +93,11 @@ export interface AppStore {
   errorText: string | null;
   setStatus: (text: string) => void;
   setError: (text: string | null) => void;
+
+  isSketching: boolean;
+  setIsSketching: (on: boolean) => void;
+  workingPlane: WorkingPlane;
+  setWorkingPlane: (plane: WorkingPlane) => void;
 }
 
 export type StoreSlice<T> = (

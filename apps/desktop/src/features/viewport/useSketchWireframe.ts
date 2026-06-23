@@ -1,9 +1,21 @@
 import { useEffect, useRef, type RefObject } from "react";
 import * as THREE from "three";
-import type { Entity } from "../../types";
+import type { Entity, WorkingPlane } from "../../types";
 import { sampleSpline } from "../sketch/spline";
 
-function buildEntityGeometry(entity: Entity): THREE.BufferGeometry | null {
+function planePointToWorld(plane: WorkingPlane, x: number, y: number): THREE.Vector3 {
+  const [ox, oy, oz] = plane.origin;
+  const [nx, ny, nz] = plane.normal;
+  if (Math.abs(nz) > 0.9 || (nx === 0 && ny === 0 && nz === 0)) {
+    return new THREE.Vector3(ox + x, oy + y, oz);
+  }
+  if (Math.abs(ny) > 0.9) {
+    return new THREE.Vector3(ox + x, oy, oz + y);
+  }
+  return new THREE.Vector3(ox, oy + x, oz + y);
+}
+
+function buildEntityGeometry(entity: Entity, plane: WorkingPlane): THREE.BufferGeometry | null {
   if (entity.points.length < 2) return null;
 
   let pts: { x: number; y: number }[];
@@ -21,9 +33,10 @@ function buildEntityGeometry(entity: Entity): THREE.BufferGeometry | null {
 
   const positions = new Float32Array(pts.length * 3);
   for (let i = 0; i < pts.length; i++) {
-    positions[i * 3] = pts[i].x;
-    positions[i * 3 + 1] = pts[i].y;
-    positions[i * 3 + 2] = 0;
+    const v = planePointToWorld(plane, pts[i].x, pts[i].y);
+    positions[i * 3] = v.x;
+    positions[i * 3 + 1] = v.y;
+    positions[i * 3 + 2] = v.z;
   }
 
   const geo = new THREE.BufferGeometry();
@@ -34,9 +47,10 @@ function buildEntityGeometry(entity: Entity): THREE.BufferGeometry | null {
 interface UseSketchWireframeArgs {
   entities: Entity[];
   sketchGroupRef: RefObject<THREE.Group | null>;
+  workingPlane: WorkingPlane;
 }
 
-export function useSketchWireframe({ entities, sketchGroupRef }: UseSketchWireframeArgs) {
+export function useSketchWireframe({ entities, sketchGroupRef, workingPlane }: UseSketchWireframeArgs) {
   const linesRef = useRef<THREE.Line[]>([]);
 
   useEffect(() => {
@@ -51,7 +65,7 @@ export function useSketchWireframe({ entities, sketchGroupRef }: UseSketchWirefr
     linesRef.current = [];
 
     for (const entity of entities) {
-      const geometry = buildEntityGeometry(entity);
+      const geometry = buildEntityGeometry(entity, workingPlane);
       if (!geometry) continue;
 
       const material = new THREE.LineBasicMaterial({
@@ -77,5 +91,5 @@ export function useSketchWireframe({ entities, sketchGroupRef }: UseSketchWirefr
       }
       linesRef.current = [];
     };
-  }, [entities, sketchGroupRef]);
+  }, [entities, sketchGroupRef, workingPlane]);
 }

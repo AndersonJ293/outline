@@ -21,3 +21,76 @@
   z-index: 1000;
   animation: slideIn 0.2s ease;
 }
+
+.sketch-toolbar-row {
+  grid-row: 2;
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.plane-picker-row {
+  grid-row: 2;
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.sketch-btn,
+.plane-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sketch-btn:hover,
+.plane-btn:hover {
+  background: var(--primary-hover, #0056b3);
+}
+
+.plane-btn-cancel {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.plane-btn-cancel:hover {
+  background: var(--bg-hover);
+}
+
+.sketch-actions {
+  display: flex;
+  gap: 6px;
+  margin-right: 12px;
+}
+
+.toolbar-btn-sm {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.toolbar-btn-sm:hover {
+  background: var(--bg-hover);
+}

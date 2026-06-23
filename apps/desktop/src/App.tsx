@@ -5,10 +5,9 @@ import { useBackendStatus } from "./app/useBackendStatus";
 import { useCutterActions } from "./app/useCutterActions";
 import { useProjectActions } from "./app/useProjectActions";
 import { useRebuildEffect } from "./app/useRebuildEffect";
-import Canvas2D from "./components/UnifiedViewport";
+import type { WorkingPlane } from "./types";
 import UnifiedViewport from "./components/UnifiedViewport";
 import { InspectorPanel } from "./components/app/InspectorPanel";
-import { ModeTabs } from "./components/app/ModeTabs";
 import { SketchToolbar } from "./components/app/SketchToolbar";
 import { StatusBar } from "./components/app/StatusBar";
 import { TopBar } from "./components/app/TopBar";
@@ -55,10 +54,15 @@ function App() {
     setEntityDragTarget,
     snapToGrid,
     setSnapToGrid,
+    isSketching,
+    setIsSketching,
+    workingPlane,
+    setWorkingPlane,
   } = useStore();
 
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [imageLockAspect, setImageLockAspect] = useState(true);
+  const [showPlanePicker, setShowPlanePicker] = useState(false);
   const backendConnected = useBackendStatus();
   const {
     panelWidth,
@@ -111,6 +115,31 @@ function App() {
     setToolMode,
   });
 
+  const handleStartSketch = () => {
+    if (!showPlanePicker) {
+      setShowPlanePicker(true);
+      return;
+    }
+    setShowPlanePicker(false);
+  };
+
+  const handleSelectPlane = (plane: WorkingPlane) => {
+    setWorkingPlane(plane);
+    setIsSketching(true);
+    setShowPlanePicker(false);
+    setStatus("Sketching on selected plane");
+  };
+
+  const handleFinishSketch = () => {
+    setIsSketching(false);
+    setStatus("Sketch finished");
+  };
+
+  const handleCancelSketch = () => {
+    setIsSketching(false);
+    setStatus("Sketch cancelled");
+  };
+
   const selectedEntity =
     selectedEntityIds.length === 1
       ? project?.sketch.entities.find((entity) => entity.id === selectedEntityIds[0]) ?? null
@@ -153,20 +182,42 @@ function App() {
         onCloseWindow={handleCloseWindow}
       />
 
-       <SketchToolbar
-        toolMode={toolMode}
-        snapToGrid={snapToGrid}
-        onToolModeChange={setToolMode}
-        onImportImage={handleImportImage}
-        onClearSelection={() => {
-          selectEntity(null);
-          setEditingImageId(null);
-          setEntityDragTarget(null);
-        }}
-        onToggleSnap={() => setSnapToGrid(!snapToGrid)}
-        onUndo={undo}
-        onRedo={redo}
-      />
+      {isSketching ? (
+        <div className={s["sketch-toolbar-row"]}>
+          <div className={s["sketch-actions"]}>
+            <button className={s["sketch-btn"]} onClick={handleFinishSketch}>Finish Sketch</button>
+            <button className={s["sketch-btn"]} onClick={handleCancelSketch}>Cancel</button>
+          </div>
+          <SketchToolbar
+            toolMode={toolMode}
+            snapToGrid={snapToGrid}
+            onToolModeChange={setToolMode}
+            onImportImage={handleImportImage}
+            onClearSelection={() => {
+              selectEntity(null);
+              setEditingImageId(null);
+              setEntityDragTarget(null);
+            }}
+            onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+            onUndo={undo}
+            onRedo={redo}
+          />
+        </div>
+      ) : showPlanePicker ? (
+        <div className={s["plane-picker-row"]}>
+          <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [0, 0, 1] })}>XY Plane</button>
+          <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [0, 1, 0] })}>XZ Plane</button>
+          <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [1, 0, 0] })}>YZ Plane</button>
+          <button className={s["plane-btn-cancel"]} onClick={() => setShowPlanePicker(false)}>Cancel</button>
+        </div>
+      ) : (
+        <div className={s["sketch-toolbar-row"]}>
+          <button className={s["sketch-btn"]} onClick={handleStartSketch}>Create Sketch</button>
+          <div style={{ flex: 1 }} />
+          <button className={s["toolbar-btn-sm"]} onClick={undo} title="Undo">↩</button>
+          <button className={s["toolbar-btn-sm"]} onClick={redo} title="Redo">↪</button>
+        </div>
+      )}
 
       <div style={{ gridRow: 3, gridColumn: 2, position: "relative", overflow: "hidden" }}>
         <UnifiedViewport />

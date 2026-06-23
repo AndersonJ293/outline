@@ -31,6 +31,10 @@ type UiSlice = Pick<
   | "errorText"
   | "setStatus"
   | "setError"
+  | "isSketching"
+  | "setIsSketching"
+  | "workingPlane"
+  | "setWorkingPlane"
 >;
 
 export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
@@ -74,4 +78,9 @@ export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
   errorText: null,
   setStatus: (text) => set({ statusText: text }),
   setError: (text) => set({ errorText: text }),
+
+  isSketching: false,
+  setIsSketching: (on) => set({ isSketching: on }),
+  workingPlane: { origin: [0, 0, 0], normal: [0, 0, 1] },
+  setWorkingPlane: (plane) => set({ workingPlane: plane }),
 });

@@ -122,6 +122,11 @@ export interface ViewportState {
   zoom: number;
 }
 
+export interface WorkingPlane {
+  origin: [number, number, number];
+  normal: [number, number, number];
+}
+
 export function generateId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }

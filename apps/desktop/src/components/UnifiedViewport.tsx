@@ -111,6 +111,8 @@ export default function UnifiedViewport() {
   const setSnapToGrid = useStore((s) => s.setSnapToGrid);
   const bodies = useStore((s) => s.bodies);
   const previewWireframe = useStore((s) => s.previewWireframe);
+  const isSketching = useStore((s) => s.isSketching);
+  const workingPlane = useStore((s) => s.workingPlane);
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -188,11 +190,12 @@ export default function UnifiedViewport() {
     [snapToGridEnabled, viewport.zoom],
   );
 
-  const { sketchGroupRef } = useThreeScene({ containerRef: threeContainerRef, viewport, bodies, previewWireframe });
+  const { sketchGroupRef } = useThreeScene({ containerRef: threeContainerRef, viewport, bodies, previewWireframe, isSketching, workingPlane });
 
   useSketchWireframe({
     entities: project?.sketch.entities ?? [],
     sketchGroupRef,
+    workingPlane,
   });
 
   const { requestRender: requestStaticRender } = useStaticRenderer({
@@ -412,15 +415,19 @@ export default function UnifiedViewport() {
     <div
       ref={containerRef}
       className={s.viewport}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onWheel={handleWheel}
+      onMouseDown={isSketching ? handleMouseDown : undefined}
+      onMouseMove={isSketching ? handleMouseMove : undefined}
+      onMouseUp={isSketching ? handleMouseUp : undefined}
+      onWheel={isSketching ? handleWheel : undefined}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div ref={threeContainerRef} style={{ position: "absolute", inset: 0 }} />
-      <canvas ref={staticCanvasRef} className={s.static} />
-      <canvas ref={overlayCanvasRef} className={s.overlay} style={{ pointerEvents: "none" }} />
+      {isSketching && (
+        <>
+          <canvas ref={staticCanvasRef} className={s.static} />
+          <canvas ref={overlayCanvasRef} className={s.overlay} style={{ pointerEvents: "none" }} />
+        </>
+      )}
       {refScalePopup && (
         <RefScalePopup
           popup={refScalePopup}
