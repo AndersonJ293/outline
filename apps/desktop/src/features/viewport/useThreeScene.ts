@@ -20,6 +20,7 @@ export function useThreeScene({
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
   const meshGroupRef = useRef<THREE.Group | null>(null);
   const wireframeGroupRef = useRef<THREE.Group | null>(null);
+  const sketchGroupRef = useRef<THREE.Group | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -70,6 +71,10 @@ export function useThreeScene({
     const wireframeGroup = new THREE.Group();
     scene.add(wireframeGroup);
     wireframeGroupRef.current = wireframeGroup;
+
+    const sketchGroup = new THREE.Group();
+    scene.add(sketchGroup);
+    sketchGroupRef.current = sketchGroup;
 
     let animId = 0;
     const animate = () => {
@@ -177,4 +182,6 @@ export function useThreeScene({
       wireframeGroup.add(wireframeLine);
     }
   }, [bodies, previewWireframe]);
+
+  return { sketchGroupRef };
 }

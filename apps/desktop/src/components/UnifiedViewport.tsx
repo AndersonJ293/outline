@@ -22,6 +22,7 @@ import { useStaticRenderer } from "../features/sketch/useStaticRenderer";
 import { useOverlayRenderer } from "../features/sketch/useOverlayRenderer";
 import { useCanvasResize } from "../features/sketch/useCanvasResize";
 import { useThreeScene } from "../features/viewport/useThreeScene";
+import { useSketchWireframe } from "../features/viewport/useSketchWireframe";
 import s from "./Canvas2D.module.css";
 
 export default function UnifiedViewport() {
@@ -187,7 +188,12 @@ export default function UnifiedViewport() {
     [snapToGridEnabled, viewport.zoom],
   );
 
-  useThreeScene({ containerRef: threeContainerRef, viewport, bodies, previewWireframe });
+  const { sketchGroupRef } = useThreeScene({ containerRef: threeContainerRef, viewport, bodies, previewWireframe });
+
+  useSketchWireframe({
+    entities: project?.sketch.entities ?? [],
+    sketchGroupRef,
+  });
 
   const { requestRender: requestStaticRender } = useStaticRenderer({
     canvasRef: staticCanvasRef,
