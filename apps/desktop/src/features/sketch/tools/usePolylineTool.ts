@@ -50,7 +50,7 @@ export function usePolylineTool({
           addEntity({
             id: generateId(),
             type: "polyline",
-            points: [...drawingPoints.current, first],
+            points: drawingPoints.current,
             closed: true,
           });
           isDrawing.current = false;

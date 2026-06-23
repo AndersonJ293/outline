@@ -494,6 +494,8 @@ export default function Canvas2D() {
       snapTarget.current = snapped;
       snapActive.current = didSnap;
 
+      requestRender();
+
       // Floating paste follows the cursor until a click confirms it.
       if (isPasteFloating.current) {
         const dx = snapped.x - pasteLast.current.x;
@@ -531,7 +533,6 @@ export default function Canvas2D() {
       if (canvas) {
         canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
       }
-      requestRender();
     },
     [
       screenToWorld,
@@ -546,7 +547,6 @@ export default function Canvas2D() {
       updateReferenceLine,
       updateMove,
       updateEntity,
-      requestRender,
     ],
   );
 

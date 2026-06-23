@@ -30,8 +30,8 @@ export function useRebuildEffect(
           }
         }
         setBodies(bodies, errors);
-      } catch {
-        // rebuild failed silently; bodyErrors will be empty
+      } catch (err) {
+        console.error("rebuild_document failed:", err);
       }
     }, 300);
 
