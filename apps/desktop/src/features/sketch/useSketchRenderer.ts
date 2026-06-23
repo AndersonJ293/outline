@@ -1,4 +1,4 @@
-import { useEffect, type RefObject, type MutableRefObject } from "react";
+import { useEffect, useRef, useCallback, type RefObject, type MutableRefObject } from "react";
 import type { Point, Project, ToolMode, ViewportState } from "../../types";
 import type { EntityDragTarget, Vertex } from "../../stores/types";
 import { renderSketch } from "./renderSketch";
@@ -34,62 +34,51 @@ interface UseSketchRendererArgs {
   snapToGridEnabled: boolean;
 }
 
-export function useSketchRenderer({
-  canvasRef,
-  containerRef,
-  project,
-  viewport,
-  selectedEntityIds,
-  selectedVertices,
-  editingImageId,
-  entityDragTarget,
-  toolMode,
-  imageCache,
-  isImageResizing,
-  imageResizeId,
-  imageRefLineStart,
-  imageRefLineEnd,
-  refScalePopup,
-  isDrawing,
-  drawingPoints,
-  closeToStart,
-  isSelectDragging,
-  selectDragStart,
-  selectDragEnd,
-  pendingRectangle,
-  splineState,
-  cursorWorld,
-  snapTarget,
-  snapActive,
-  snapToGridEnabled,
-}: UseSketchRendererArgs): void {
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+export function useSketchRenderer(args: UseSketchRendererArgs): { requestRender: () => void } {
+  const {
+    canvasRef,
+    containerRef,
+    project,
+    viewport,
+    selectedEntityIds,
+    selectedVertices,
+    editingImageId,
+    entityDragTarget,
+    toolMode,
+    imageCache,
+    isImageResizing,
+    imageResizeId,
+    imageRefLineStart,
+    imageRefLineEnd,
+    refScalePopup,
+    isDrawing,
+    drawingPoints,
+    closeToStart,
+    isSelectDragging,
+    selectDragStart,
+    selectDragEnd,
+    pendingRectangle,
+    splineState,
+    cursorWorld,
+    snapTarget,
+    snapActive,
+    snapToGridEnabled,
+  } = args;
 
-    const resize = () => {
-      const width = Math.max(1, Math.floor(container.clientWidth));
-      const height = Math.max(1, Math.floor(container.clientHeight));
+  const dirtyRef = useRef(true);
+  const scheduledRef = useRef(false);
 
-      if (canvas.width !== width) {
-        canvas.width = width;
-      }
-      if (canvas.height !== height) {
-        canvas.height = height;
-      }
-    };
-    resize();
-
-    const resizeObserver = new ResizeObserver(resize);
-    resizeObserver.observe(container);
-    window.addEventListener("resize", resize);
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    const loop = () => {
+  const requestRender = useCallback(() => {
+    if (scheduledRef.current) return;
+    scheduledRef.current = true;
+    dirtyRef.current = true;
+    requestAnimationFrame(() => {
+      scheduledRef.current = false;
+      if (!dirtyRef.current) return;
+      dirtyRef.current = false;
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
       renderSketch({
         ctx,
         canvas,
@@ -119,14 +108,68 @@ export function useSketchRenderer({
         snapActive,
         snapToGridEnabled,
       });
-      animId = requestAnimationFrame(loop);
+    });
+  }, [
+    canvasRef,
+    project,
+    viewport,
+    selectedEntityIds,
+    selectedVertices,
+    editingImageId,
+    entityDragTarget,
+    toolMode,
+    imageCache,
+    isImageResizing,
+    imageResizeId,
+    imageRefLineStart,
+    imageRefLineEnd,
+    refScalePopup,
+    isDrawing,
+    drawingPoints,
+    closeToStart,
+    isSelectDragging,
+    selectDragStart,
+    selectDragEnd,
+    pendingRectangle,
+    splineState,
+    cursorWorld,
+    snapTarget,
+    snapActive,
+    snapToGridEnabled,
+  ]);
+
+  useEffect(() => {
+    requestRender();
+  }, [requestRender]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const resize = () => {
+      const width = Math.max(1, Math.floor(container.clientWidth));
+      const height = Math.max(1, Math.floor(container.clientHeight));
+
+      if (canvas.width !== width) {
+        canvas.width = width;
+      }
+      if (canvas.height !== height) {
+        canvas.height = height;
+      }
+      requestRender();
     };
-    loop();
+    resize();
+
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(container);
+    window.addEventListener("resize", resize);
 
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener("resize", resize);
-      cancelAnimationFrame(animId);
     };
-  }, [project, viewport, selectedEntityIds, selectedVertices, editingImageId, entityDragTarget, toolMode, refScalePopup, snapToGridEnabled]);
+  }, [canvasRef, containerRef, requestRender]);
+
+  return { requestRender };
 }

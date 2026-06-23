@@ -15,6 +15,21 @@ export interface ChainContour {
   closed: boolean;
 }
 
+let chainsCacheProject: Project | undefined;
+let chainsCacheResult: Chain[] | undefined;
+
+export function computeChainsMemo(project: Project | null): Chain[] {
+  if (!project) {
+    chainsCacheProject = undefined;
+    chainsCacheResult = undefined;
+    return [];
+  }
+  if (project === chainsCacheProject && chainsCacheResult) return chainsCacheResult;
+  chainsCacheProject = project;
+  chainsCacheResult = computeChains(project);
+  return chainsCacheResult;
+}
+
 function isOpenPath(entity: Entity): boolean {
   if (entity.closed) return false;
   return entity.type === "polyline" || entity.type === "spline";

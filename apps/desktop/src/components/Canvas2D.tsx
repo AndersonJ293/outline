@@ -195,6 +195,36 @@ export default function Canvas2D() {
     [snapToGridEnabled, viewport.zoom],
   );
 
+  const { requestRender } = useSketchRenderer({
+    canvasRef,
+    containerRef,
+    project,
+    viewport,
+    selectedEntityIds,
+    selectedVertices,
+    editingImageId,
+    entityDragTarget,
+    toolMode,
+    imageCache,
+    isImageResizing,
+    imageResizeId,
+    imageRefLineStart,
+    imageRefLineEnd,
+    refScalePopup,
+    isDrawing,
+    drawingPoints,
+    closeToStart,
+    isSelectDragging,
+    selectDragStart,
+    selectDragEnd,
+    pendingRectangle,
+    splineState,
+    cursorWorld,
+    snapTarget,
+    snapActive,
+    snapToGridEnabled,
+  });
+
   const { startPan, updatePan, stopPan, handleWheel } = usePanTool({
     canvasRef,
     viewport,
@@ -426,6 +456,7 @@ export default function Canvas2D() {
         startRectangle(snapped);
         return;
       }
+      requestRender();
     },
     [
       screenToWorld,
@@ -449,6 +480,7 @@ export default function Canvas2D() {
       toggleVertex,
       selectEntity,
       updateEntity,
+      requestRender,
     ],
   );
 
@@ -499,6 +531,7 @@ export default function Canvas2D() {
       if (canvas) {
         canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
       }
+      requestRender();
     },
     [
       screenToWorld,
@@ -513,6 +546,7 @@ export default function Canvas2D() {
       updateReferenceLine,
       updateMove,
       updateEntity,
+      requestRender,
     ],
   );
 
@@ -532,6 +566,7 @@ export default function Canvas2D() {
       }
 
       if (toolMode === "rectangle" && finishRectangle()) return;
+      requestRender();
     },
     [
       toolMode,
@@ -544,6 +579,7 @@ export default function Canvas2D() {
       finishRectangle,
       finishMove,
       setEditingImageId,
+      requestRender,
     ],
   );
 
@@ -566,36 +602,6 @@ export default function Canvas2D() {
     toolMode,
     setEditingImageId,
     setEntityDragTarget,
-  });
-
-  useSketchRenderer({
-    canvasRef,
-    containerRef,
-    project,
-    viewport,
-    selectedEntityIds,
-    selectedVertices,
-    editingImageId,
-    entityDragTarget,
-    toolMode,
-    imageCache,
-    isImageResizing,
-    imageResizeId,
-    imageRefLineStart,
-    imageRefLineEnd,
-    refScalePopup,
-    isDrawing,
-    drawingPoints,
-    closeToStart,
-    isSelectDragging,
-    selectDragStart,
-    selectDragEnd,
-    pendingRectangle,
-    splineState,
-    cursorWorld,
-    snapTarget,
-    snapActive,
-    snapToGridEnabled,
   });
 
   return (

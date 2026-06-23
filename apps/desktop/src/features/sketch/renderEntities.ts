@@ -1,7 +1,7 @@
 import type { EntityDragTarget, Vertex } from "../../stores/types";
 import type { Project, ViewportState } from "../../types";
 import { HANDLE_RADIUS } from "./constants";
-import { chainContour, computeChains } from "./chains";
+import { chainContour, computeChainsMemo } from "./chains";
 
 function drawClosedChainFills(
   ctx: CanvasRenderingContext2D,
@@ -9,7 +9,7 @@ function drawClosedChainFills(
 ): void {
   ctx.save();
   ctx.fillStyle = "rgba(79, 195, 247, 0.08)";
-  for (const chain of computeChains(project)) {
+  for (const chain of computeChainsMemo(project)) {
     const contour = chainContour(chain, project);
     if (!contour || !contour.closed || contour.points.length < 3) continue;
     ctx.beginPath();
