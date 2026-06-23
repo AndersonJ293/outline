@@ -1,13 +1,15 @@
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { useStore } from "../stores/useStore";
 import type { Point } from "../types";
 import { screenToWorld as toWorld, snapToGrid, getSnapStep } from "../features/sketch/geometry";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
-import type { RefScalePopupState } from "../features/sketch/tools/useImageRefScaleTool";
+import { useImageState } from "../features/sketch/useImageState";
+import { useSketchRefs } from "../features/sketch/useSketchRefs";
+import { useViewportStore } from "../features/sketch/useViewportStore";
 import { useImageRefScaleTool } from "../features/sketch/tools/useImageRefScaleTool";
 import { useImageTransformTool } from "../features/sketch/tools/useImageTransformTool";
 import { useEntityDragTool } from "../features/sketch/tools/useEntityDragTool";
-import { useMoveTool, type MovePlan } from "../features/sketch/tools/useMoveTool";
+import { useMoveTool } from "../features/sketch/tools/useMoveTool";
 import { useMirrorTool } from "../features/sketch/tools/useMirrorTool";
 import { translateEntityWhole } from "../features/sketch/entityDrag";
 import { hitTestEntityWithPoint } from "../features/sketch/hitTest";
@@ -16,7 +18,7 @@ import { usePolylineTool } from "../features/sketch/tools/usePolylineTool";
 import { useRectangleTool } from "../features/sketch/tools/useRectangleTool";
 import { useSelectionTool } from "../features/sketch/tools/useSelectionTool";
 import { useSplineHandleDragTool } from "../features/sketch/tools/useSplineHandleDragTool";
-import { useSplineTool, type SplineDrawingState } from "../features/sketch/tools/useSplineTool";
+import { useSplineTool } from "../features/sketch/tools/useSplineTool";
 import { useCanvasKeyboardShortcuts } from "../features/sketch/useCanvasKeyboardShortcuts";
 import { useStaticRenderer } from "../features/sketch/useStaticRenderer";
 import { useOverlayRenderer } from "../features/sketch/useOverlayRenderer";
@@ -28,6 +30,7 @@ import { useSketchWireframe } from "../features/viewport/useSketchWireframe";
 import { useFaceSelection } from "../features/viewport/useFaceSelection";
 import { usePlanePicker3D } from "../features/viewport/usePlanePicker3D";
 import { useEntity3DSelect } from "../features/viewport/useEntity3DSelect";
+import { useExtrudeTool } from "../features/viewport/useExtrudeTool";
 import s from "./Canvas2D.module.css";
 
 export default function UnifiedViewport() {
@@ -36,96 +39,36 @@ export default function UnifiedViewport() {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const drawingPoints = useRef<Point[]>([]);
-  const isDrawing = useRef(false);
-  const isPanning = useRef(false);
-  const panStart = useRef({ x: 0, y: 0 });
-  const closeToStart = useRef(false);
-  const pendingRectangle = useRef<{ points: Point[]; confirmPoint: Point } | null>(null);
-  const isSelectDragging = useRef(false);
-  const selectDragStart = useRef<Point>({ x: 0, y: 0 });
-  const selectDragEnd = useRef<Point>({ x: 0, y: 0 });
-  const isEntityDragging = useRef(false);
-  const entityDragMode = useRef<"point" | "segment" | "entity" | null>(null);
-  const entityDragEntityId = useRef<string | null>(null);
-  const entityDragPointIndex = useRef<number | null>(null);
-  const entityDragSegIdx = useRef<number | null>(null);
-  const entityDragStart = useRef<Point>({ x: 0, y: 0 });
-  const entityPushUndoDone = useRef(false);
-  const lastClickTime = useRef(0);
-  const lastClickKey = useRef("");
-  const splineState = useRef<SplineDrawingState | null>(null);
-  const isHandleDragging = useRef(false);
-  const handleDragEntityId = useRef<string | null>(null);
-  const handleDragAnchorIndex = useRef<number | null>(null);
-  const handleDragStart = useRef<Point>({ x: 0, y: 0 });
-  const handlePushUndoDone = useRef(false);
-  const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
-  const isImageMoving = useRef(false);
-  const imageMoveStartId = useRef<string | null>(null);
-  const imageMoveStartPos = useRef<Point>({ x: 0, y: 0 });
-  const isImageResizing = useRef(false);
-  const imageResizeId = useRef<string | null>(null);
-  const imageResizeStart = useRef<Point>({ x: 0, y: 0 });
-  const imageResizeOrigSize = useRef({ w: 0, h: 0 });
-  const imageResizeHandleType = useRef<string>("corner-br");
-  const imageMovePushUndoDone = useRef(false);
-  const imageResizePushUndoDone = useRef(false);
-  const imageRefLineStart = useRef<Point | null>(null);
-  const imageRefLineEnd = useRef<Point | null>(null);
-  const imageRefScaleImageId = useRef<string | null>(null);
-  const [refScalePopup, setRefScalePopup] = useState<RefScalePopupState | null>(null);
-  const refScaleInputRef = useRef<HTMLInputElement>(null);
-  const altKeyPressed = useRef(false);
-  const cursorWorld = useRef<Point>({ x: 0, y: 0 });
-  const snapTarget = useRef<Point>({ x: 0, y: 0 });
-  const snapActive = useRef(false);
-  const isMoving = useRef(false);
-  const movePlan = useRef<MovePlan | null>(null);
-  const moveStart = useRef<Point>({ x: 0, y: 0 });
-  const movePushUndoDone = useRef(false);
-  const isPasteFloating = useRef(false);
-  const pasteIds = useRef<string[]>([]);
-  const pasteLast = useRef<Point>({ x: 0, y: 0 });
+  const {
+    drawingPoints, isDrawing, isPanning, panStart, closeToStart, pendingRectangle,
+    isSelectDragging, selectDragStart, selectDragEnd,
+    isEntityDragging, entityDragMode, entityDragEntityId, entityDragPointIndex,
+    entityDragSegIdx, entityDragStart, entityPushUndoDone, lastClickTime, lastClickKey,
+    splineState, isHandleDragging, handleDragEntityId, handleDragAnchorIndex,
+    handleDragStart, handlePushUndoDone, altKeyPressed, cursorWorld, snapTarget,
+    snapActive, isMoving, movePlan, moveStart, movePushUndoDone,
+    isPasteFloating, pasteIds, pasteLast,
+  } = useSketchRefs();
+  const {
+    imageCache, isImageMoving, imageMoveStartId, imageMoveStartPos,
+    isImageResizing, imageResizeId, imageResizeStart, imageResizeOrigSize,
+    imageResizeHandleType, imageMovePushUndoDone, imageResizePushUndoDone,
+    imageRefLineStart, imageRefLineEnd, imageRefScaleImageId,
+    refScalePopup, setRefScalePopup, refScaleInputRef,
+  } = useImageState();
 
-  const project = useStore((s) => s.project);
-  const toolMode = useStore((s) => s.toolMode);
-  const setToolMode = useStore((s) => s.setToolMode);
-  const viewport = useStore((s) => s.viewport);
-  const setViewport = useStore((s) => s.setViewport);
-  const selectedEntityIds = useStore((s) => s.selectedEntityIds);
-  const selectedVertices = useStore((s) => s.selectedVertices);
-  const selectEntity = useStore((s) => s.selectEntity);
-  const setSelectedEntityIds = useStore((s) => s.setSelectedEntityIds);
-  const toggleVertex = useStore((s) => s.toggleVertex);
-  const copySelection = useStore((s) => s.copySelection);
-  const pasteAtPoint = useStore((s) => s.pasteAtPoint);
-  const undo = useStore((s) => s.undo);
-  const addEntity = useStore((s) => s.addEntity);
-  const updateImage = useStore((s) => s.updateImage);
-  const setStatus = useStore((s) => s.setStatus);
-  const imageRefScaleMode = useStore((s) => s.imageRefScaleMode);
-  const setImageRefScaleMode = useStore((s) => s.setImageRefScaleMode);
-  const editingImageId = useStore((s) => s.editingImageId);
-  const setEditingImageId = useStore((s) => s.setEditingImageId);
-  const entityDragTarget = useStore((s) => s.entityDragTarget);
-  const setEntityDragTarget = useStore((s) => s.setEntityDragTarget);
-  const pushUndo = useStore((s) => s.pushUndo);
-  const snapToGridEnabled = useStore((s) => s.snapToGrid);
-  const updateEntity = useStore((s) => s.updateEntity);
-  const setSnapToGrid = useStore((s) => s.setSnapToGrid);
-  const bodies = useStore((s) => s.bodies);
-  const previewWireframe = useStore((s) => s.previewWireframe);
-  const isSketching = useStore((s) => s.isSketching);
-  const workingPlane = useStore((s) => s.workingPlane);
-  const faceSelectionActive = useStore((s) => s.faceSelectionActive);
-  const setFaceSelectionActive = useStore((s) => s.setFaceSelectionActive);
-  const planePickerActive = useStore((s) => s.planePickerActive);
-  const setPlanePickerActive = useStore((s) => s.setPlanePickerActive);
-  const setIsSketching = useStore((s) => s.setIsSketching);
-  const setWorkingPlane = useStore((s) => s.setWorkingPlane);
-  const tool3DMode = useStore((s) => s.tool3DMode);
-  const translateEntity = useStore((s) => s.translateEntity);
+  const {
+    project, toolMode, setToolMode, viewport, setViewport,
+    selectedEntityIds, selectedVertices, selectEntity, setSelectedEntityIds,
+    toggleVertex, copySelection, pasteAtPoint, undo, addEntity, updateImage,
+    setStatus, setError, imageRefScaleMode, setImageRefScaleMode,
+    editingImageId, setEditingImageId, entityDragTarget, setEntityDragTarget,
+    pushUndo, snapToGrid: snapToGridEnabled, updateEntity, bodies, previewWireframe,
+    isSketching, workingPlane, faceSelectionActive, setFaceSelectionActive,
+    planePickerActive, setPlanePickerActive, setIsSketching, setWorkingPlane,
+    tool3DMode, setTool3DMode, extrudeMode, wallHeight, wallThickness, offsetSide,
+    addOperation, translateEntity,
+  } = useViewportStore();
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -213,6 +156,21 @@ export default function UnifiedViewport() {
     selectEntity,
     translateEntity,
     setStatus,
+  });
+
+  useExtrudeTool({
+    active: !isSketching && tool3DMode === "extrude",
+    containerRef,
+    cameraRef,
+    sketchGroupRef,
+    project,
+    extrudeMode,
+    wallHeight,
+    wallThickness,
+    offsetSide,
+    addOperation,
+    setStatus,
+    setError,
   });
 
   const { requestRender: requestStaticRender } = useStaticRenderer({
