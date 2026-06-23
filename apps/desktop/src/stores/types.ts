@@ -100,6 +100,8 @@ export interface AppStore {
   setWorkingPlane: (plane: WorkingPlane) => void;
   faceSelectionActive: boolean;
   setFaceSelectionActive: (on: boolean) => void;
+  planePickerActive: boolean;
+  setPlanePickerActive: (on: boolean) => void;
 }
 
 export type StoreSlice<T> = (

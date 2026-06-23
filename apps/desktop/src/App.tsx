@@ -5,7 +5,6 @@ import { useBackendStatus } from "./app/useBackendStatus";
 import { useCutterActions } from "./app/useCutterActions";
 import { useProjectActions } from "./app/useProjectActions";
 import { useRebuildEffect } from "./app/useRebuildEffect";
-import type { WorkingPlane } from "./types";
 import UnifiedViewport from "./components/UnifiedViewport";
 import { InspectorPanel } from "./components/app/InspectorPanel";
 import { SketchToolbar } from "./components/app/SketchToolbar";
@@ -58,12 +57,14 @@ function App() {
     setIsSketching,
     workingPlane,
     setWorkingPlane,
+    faceSelectionActive,
     setFaceSelectionActive,
+    planePickerActive,
+    setPlanePickerActive,
   } = useStore();
 
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [imageLockAspect, setImageLockAspect] = useState(true);
-  const [showPlanePicker, setShowPlanePicker] = useState(false);
   const backendConnected = useBackendStatus();
   const {
     panelWidth,
@@ -116,19 +117,21 @@ function App() {
     setToolMode,
   });
 
-  const handleStartSketch = () => {
-    if (!showPlanePicker) {
-      setShowPlanePicker(true);
-      return;
-    }
-    setShowPlanePicker(false);
+  const handleCreateSketch = () => {
+    setPlanePickerActive(true);
+    setStatus("Click a plane to sketch, or 'Select Face' for a solid face");
   };
 
-  const handleSelectPlane = (plane: WorkingPlane) => {
-    setWorkingPlane(plane);
-    setIsSketching(true);
-    setShowPlanePicker(false);
-    setStatus("Sketching on selected plane");
+  const handleSelectFace = () => {
+    setPlanePickerActive(false);
+    setFaceSelectionActive(true);
+    setStatus("Click on a solid face to use as sketch plane");
+  };
+
+  const handleCancelPicker = () => {
+    setPlanePickerActive(false);
+    setFaceSelectionActive(false);
+    setStatus("Ready");
   };
 
   const handleFinishSketch = () => {
@@ -204,17 +207,19 @@ function App() {
             onRedo={redo}
           />
         </div>
-      ) : showPlanePicker ? (
+      ) : planePickerActive || faceSelectionActive ? (
         <div className={s["plane-picker-row"]}>
-          <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [0, 0, 1] })}>XY Plane</button>
-          <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [0, 1, 0] })}>XZ Plane</button>
-          <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [1, 0, 0] })}>YZ Plane</button>
-          <button className={s["plane-btn"]} onClick={() => { setFaceSelectionActive(true); setShowPlanePicker(false); }}>Select Face</button>
-          <button className={s["plane-btn-cancel"]} onClick={() => setShowPlanePicker(false)}>Cancel</button>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+            {planePickerActive ? "Click a plane to sketch" : "Click a solid face"}
+          </span>
+          {planePickerActive && (
+            <button className={s["plane-btn"]} onClick={handleSelectFace}>Select Face</button>
+          )}
+          <button className={s["plane-btn-cancel"]} onClick={handleCancelPicker}>Cancel</button>
         </div>
       ) : (
         <div className={s["sketch-toolbar-row"]}>
-          <button className={s["sketch-btn"]} onClick={handleStartSketch}>Create Sketch</button>
+          <button className={s["sketch-btn"]} onClick={handleCreateSketch}>Create Sketch</button>
           <div style={{ flex: 1 }} />
           <button className={s["toolbar-btn-sm"]} onClick={undo} title="Undo">↩</button>
           <button className={s["toolbar-btn-sm"]} onClick={redo} title="Redo">↪</button>

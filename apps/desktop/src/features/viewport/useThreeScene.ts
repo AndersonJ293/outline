@@ -229,5 +229,5 @@ export function useThreeScene({
     }
   }, [bodies, previewWireframe]);
 
-  return { sketchGroupRef, meshGroupRef, cameraRef };
+  return { sketchGroupRef, meshGroupRef, cameraRef, sceneRef };
 }

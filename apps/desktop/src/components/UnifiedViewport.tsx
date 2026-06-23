@@ -24,6 +24,7 @@ import { useCanvasResize } from "../features/sketch/useCanvasResize";
 import { useThreeScene } from "../features/viewport/useThreeScene";
 import { useSketchWireframe } from "../features/viewport/useSketchWireframe";
 import { useFaceSelection } from "../features/viewport/useFaceSelection";
+import { usePlanePicker3D } from "../features/viewport/usePlanePicker3D";
 import s from "./Canvas2D.module.css";
 
 export default function UnifiedViewport() {
@@ -116,6 +117,8 @@ export default function UnifiedViewport() {
   const workingPlane = useStore((s) => s.workingPlane);
   const faceSelectionActive = useStore((s) => s.faceSelectionActive);
   const setFaceSelectionActive = useStore((s) => s.setFaceSelectionActive);
+  const planePickerActive = useStore((s) => s.planePickerActive);
+  const setPlanePickerActive = useStore((s) => s.setPlanePickerActive);
   const setIsSketching = useStore((s) => s.setIsSketching);
   const setWorkingPlane = useStore((s) => s.setWorkingPlane);
 
@@ -195,7 +198,7 @@ export default function UnifiedViewport() {
     [snapToGridEnabled, viewport.zoom],
   );
 
-  const { sketchGroupRef, meshGroupRef, cameraRef } = useThreeScene({
+  const { sketchGroupRef, meshGroupRef, cameraRef, sceneRef } = useThreeScene({
     containerRef: threeContainerRef,
     viewport,
     bodies,
@@ -212,6 +215,17 @@ export default function UnifiedViewport() {
     setWorkingPlane,
     setIsSketching,
     setFaceSelectionActive,
+    setStatus,
+  });
+
+  usePlanePicker3D({
+    active: planePickerActive,
+    containerRef,
+    cameraRef,
+    sceneRef,
+    setWorkingPlane,
+    setIsSketching,
+    setShowPlanePicker: setPlanePickerActive,
     setStatus,
   });
 

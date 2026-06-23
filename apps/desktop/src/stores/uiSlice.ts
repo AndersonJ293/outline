@@ -37,6 +37,8 @@ type UiSlice = Pick<
   | "setWorkingPlane"
   | "faceSelectionActive"
   | "setFaceSelectionActive"
+  | "planePickerActive"
+  | "setPlanePickerActive"
 >;
 
 export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
@@ -87,4 +89,6 @@ export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
   setWorkingPlane: (plane) => set({ workingPlane: plane }),
   faceSelectionActive: false,
   setFaceSelectionActive: (on) => set({ faceSelectionActive: on }),
+  planePickerActive: false,
+  setPlanePickerActive: (on) => set({ planePickerActive: on }),
 });
