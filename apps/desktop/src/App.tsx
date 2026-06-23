@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useAppShortcuts } from "./app/useAppShortcuts";
 import { useAppWindow } from "./app/useAppWindow";
 import { useBackendStatus } from "./app/useBackendStatus";
-import { useCutterActions } from "./app/useCutterActions";
+import { useExportActions } from "./app/useExportActions";
 import { useProjectActions } from "./app/useProjectActions";
 import { useRebuildEffect } from "./app/useRebuildEffect";
 import UnifiedViewport from "./components/UnifiedViewport";
 import { InspectorPanel } from "./components/app/InspectorPanel";
+import { ModelToolbar } from "./components/app/ModelToolbar";
 import { SketchToolbar } from "./components/app/SketchToolbar";
 import { StatusBar } from "./components/app/StatusBar";
 import { TopBar } from "./components/app/TopBar";
@@ -19,6 +20,10 @@ function App() {
     setProject,
     toolMode,
     setToolMode,
+    tool3DMode,
+    setTool3DMode,
+    extrudeMode,
+    setExtrudeMode,
     selectedEntityIds,
     selectedVertices,
     selectEntity,
@@ -27,7 +32,6 @@ function App() {
     bodies,
     bodyErrors,
     setBodies,
-    addOperation,
     wallHeight,
     setWallHeight,
     wallThickness,
@@ -43,7 +47,6 @@ function App() {
     previewWireframe,
     setPreviewWireframe,
     addImage,
-    updateImage,
     updateImageCommitted,
     imageRefScaleMode,
     setImageRefScaleMode,
@@ -78,14 +81,9 @@ function App() {
   } = useAppWindow();
   const { saving, handleNewProject, handleSave, handleOpen, handleImportImage } =
     useProjectActions({ project, setProject, addImage, setStatus, setError });
-  const { handleGenerateCutter, handleExportStl } = useCutterActions({
+  const { handleExportStl } = useExportActions({
     project,
-    selectedEntityIds,
     bodies,
-    wallHeight,
-    wallThickness,
-    offsetSide,
-    addOperation,
     setStatus,
     setError,
   });
@@ -103,6 +101,7 @@ function App() {
     selectedEntityIds,
     selectedVertices,
     project,
+    isSketching,
     removeSelectedEntities,
     removeSelectedVertices,
     undo,
@@ -115,6 +114,7 @@ function App() {
     setEntityDragTarget,
     setStatus,
     setToolMode,
+    setTool3DMode,
   });
 
   const handleCreateSketch = () => {
@@ -212,20 +212,34 @@ function App() {
         </div>
       )}
 
-      <SketchToolbar
-        toolMode={toolMode}
-        snapToGrid={snapToGrid}
-        onToolModeChange={setToolMode}
-        onImportImage={handleImportImage}
-        onClearSelection={() => {
-          selectEntity(null);
-          setEditingImageId(null);
-          setEntityDragTarget(null);
-        }}
-        onToggleSnap={() => setSnapToGrid(!snapToGrid)}
-        onUndo={undo}
-        onRedo={redo}
-      />
+      {isSketching ? (
+        <SketchToolbar
+          toolMode={toolMode}
+          snapToGrid={snapToGrid}
+          onToolModeChange={setToolMode}
+          onImportImage={handleImportImage}
+          onClearSelection={() => {
+            selectEntity(null);
+            setEditingImageId(null);
+            setEntityDragTarget(null);
+          }}
+          onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+          onUndo={undo}
+          onRedo={redo}
+        />
+      ) : (
+        <ModelToolbar
+          tool3DMode={tool3DMode}
+          extrudeMode={extrudeMode}
+          onTool3DModeChange={setTool3DMode}
+          onExtrudeModeChange={setExtrudeMode}
+          onClearSelection={() => {
+            selectEntity(null);
+          }}
+          onUndo={undo}
+          onRedo={redo}
+        />
+      )}
 
       <div style={{ gridRow: 3, gridColumn: 2, position: "relative", overflow: "hidden" }}>
         <UnifiedViewport />
@@ -258,9 +272,10 @@ function App() {
         onSetWallHeight={setWallHeight}
         onSetWallThickness={setWallThickness}
         onSetOffsetSide={setOffsetSide}
-        onGenerateCutter={handleGenerateCutter}
         onSetPreviewWireframe={setPreviewWireframe}
         onExportStl={handleExportStl}
+        tool3DMode={tool3DMode}
+        extrudeMode={extrudeMode}
       />
 
       {errorText && (

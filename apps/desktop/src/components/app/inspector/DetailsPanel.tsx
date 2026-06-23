@@ -1,7 +1,8 @@
-import { CutterSection } from "./CutterSection";
 import { EntityPropertiesSection } from "./EntityPropertiesSection";
+import { ExtrudeToolSection } from "./ExtrudeToolSection";
 import { ImagePropertiesSection } from "./ImagePropertiesSection";
 import { MeshSection } from "./MeshSection";
+import type { ExtrudeMode, Tool3DMode } from "../../../types";
 import type { InspectorPanelProps } from "./types";
 import s from "./panel-shared.module.css";
 
@@ -24,10 +25,12 @@ type DetailsPanelProps = Pick<
   | "onSetWallHeight"
   | "onSetWallThickness"
   | "onSetOffsetSide"
-  | "onGenerateCutter"
   | "onSetPreviewWireframe"
   | "onExportStl"
->;
+> & {
+  tool3DMode: Tool3DMode;
+  extrudeMode: ExtrudeMode;
+};
 
 export function DetailsPanel(props: DetailsPanelProps) {
   const {
@@ -48,9 +51,10 @@ export function DetailsPanel(props: DetailsPanelProps) {
     onSetWallHeight,
     onSetWallThickness,
     onSetOffsetSide,
-    onGenerateCutter,
     onSetPreviewWireframe,
     onExportStl,
+    tool3DMode,
+    extrudeMode,
   } = props;
 
   const bodyCount = Object.keys(bodies).length;
@@ -84,16 +88,15 @@ export function DetailsPanel(props: DetailsPanelProps) {
         />
       )}
 
-      {selectedEntity && (
-        <CutterSection
-          selectedEntity={selectedEntity}
+      {tool3DMode === "extrude" && (
+        <ExtrudeToolSection
+          extrudeMode={extrudeMode}
           wallHeight={wallHeight}
           wallThickness={wallThickness}
           offsetSide={offsetSide}
           onSetWallHeight={onSetWallHeight}
           onSetWallThickness={onSetWallThickness}
           onSetOffsetSide={onSetOffsetSide}
-          onGenerateCutter={onGenerateCutter}
         />
       )}
 

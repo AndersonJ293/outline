@@ -1,10 +1,12 @@
 import type {
   Entity,
+  ExtrudeMode,
   Mesh,
   Operation,
   Point,
   Project,
   SketchImage,
+  Tool3DMode,
   ToolMode,
   ViewMode,
   ViewportState,
@@ -52,6 +54,11 @@ export interface AppStore {
 
   toolMode: ToolMode;
   setToolMode: (mode: ToolMode) => void;
+
+  tool3DMode: Tool3DMode;
+  setTool3DMode: (mode: Tool3DMode) => void;
+  extrudeMode: ExtrudeMode;
+  setExtrudeMode: (mode: ExtrudeMode) => void;
 
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;

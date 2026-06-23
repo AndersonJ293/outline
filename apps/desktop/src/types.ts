@@ -114,6 +114,10 @@ export type ToolMode =
   | "move"
   | "mirror";
 
+export type Tool3DMode = "select3d" | "extrude";
+
+export type ExtrudeMode = "normal" | "thin";
+
 export type ViewMode = "sketch" | "solid" | "export";
 
 export interface ViewportState {

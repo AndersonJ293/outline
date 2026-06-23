@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import type { Project, ToolMode } from "../types";
+import type { Project, Tool3DMode, ToolMode } from "../types";
 import type { EntityDragTarget, Vertex } from "../stores/types";
 
 interface UseAppShortcutsArgs {
   selectedEntityIds: string[];
   selectedVertices: Vertex[];
   project: Project | null;
+  isSketching: boolean;
   removeSelectedEntities: () => void;
   removeSelectedVertices: () => void;
   undo: () => void;
@@ -18,6 +19,7 @@ interface UseAppShortcutsArgs {
   setEntityDragTarget: (target: EntityDragTarget | null) => void;
   setStatus: (text: string) => void;
   setToolMode: (mode: ToolMode) => void;
+  setTool3DMode: (mode: Tool3DMode) => void;
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -31,6 +33,7 @@ export function useAppShortcuts({
   selectedEntityIds,
   selectedVertices,
   project,
+  isSketching,
   removeSelectedEntities,
   removeSelectedVertices,
   undo,
@@ -43,6 +46,7 @@ export function useAppShortcuts({
   setEntityDragTarget,
   setStatus,
   setToolMode,
+  setTool3DMode,
 }: UseAppShortcutsArgs): void {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -92,24 +96,34 @@ export function useAppShortcuts({
       }
       if (!event.ctrlKey && !event.altKey && !event.metaKey) {
         const key = event.key.toLowerCase();
-        if (key === "v") {
-          event.preventDefault();
-          setToolMode("select");
-        } else if (key === "p") {
-          event.preventDefault();
-          setToolMode("polyline");
-        } else if (key === "r") {
-          event.preventDefault();
-          setToolMode("rectangle");
-        } else if (key === "b") {
-          event.preventDefault();
-          setToolMode("spline");
-        } else if (key === "m") {
-          event.preventDefault();
-          setToolMode("move");
-        } else if (key === "x") {
-          event.preventDefault();
-          setToolMode("mirror");
+        if (isSketching) {
+          if (key === "v") {
+            event.preventDefault();
+            setToolMode("select");
+          } else if (key === "p") {
+            event.preventDefault();
+            setToolMode("polyline");
+          } else if (key === "r") {
+            event.preventDefault();
+            setToolMode("rectangle");
+          } else if (key === "b") {
+            event.preventDefault();
+            setToolMode("spline");
+          } else if (key === "m") {
+            event.preventDefault();
+            setToolMode("move");
+          } else if (key === "x") {
+            event.preventDefault();
+            setToolMode("mirror");
+          }
+        } else {
+          if (key === "v") {
+            event.preventDefault();
+            setTool3DMode("select3d");
+          } else if (key === "e") {
+            event.preventDefault();
+            setTool3DMode("extrude");
+          }
         }
       }
     };
@@ -120,6 +134,7 @@ export function useAppShortcuts({
     selectedEntityIds,
     selectedVertices,
     project,
+    isSketching,
     removeSelectedEntities,
     removeSelectedVertices,
     undo,
@@ -132,5 +147,6 @@ export function useAppShortcuts({
     setEntityDragTarget,
     setStatus,
     setToolMode,
+    setTool3DMode,
   ]);
 }

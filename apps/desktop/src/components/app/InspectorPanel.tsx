@@ -1,8 +1,14 @@
 import { DetailsPanel } from "./inspector/DetailsPanel";
 import { ProjectTree } from "./inspector/ProjectTree";
+import type { ExtrudeMode, Tool3DMode } from "../../types";
 import type { InspectorPanelProps } from "./inspector/types";
 import s from "./InspectorPanel.module.css";
 import shared from "./inspector/panel-shared.module.css";
+
+type InspectorPanelExtras = {
+  tool3DMode: Tool3DMode;
+  extrudeMode: ExtrudeMode;
+};
 
 export function InspectorPanel({
   project,
@@ -30,12 +36,14 @@ export function InspectorPanel({
   onSetWallHeight,
   onSetWallThickness,
   onSetOffsetSide,
-  onGenerateCutter,
   onSetPreviewWireframe,
   onExportStl,
-}: InspectorPanelProps) {
+  tool3DMode,
+  extrudeMode,
+}: InspectorPanelProps & InspectorPanelExtras) {
   const bodyCount = Object.keys(bodies).length;
-  const hasDetails = selectedEntityIds.length > 0 || bodyCount > 0;
+  const hasDetails =
+    selectedEntityIds.length > 0 || bodyCount > 0 || tool3DMode === "extrude";
 
   return (
     <div className={s["panel-shell"]}>
@@ -87,9 +95,10 @@ export function InspectorPanel({
             onSetWallHeight={onSetWallHeight}
             onSetWallThickness={onSetWallThickness}
             onSetOffsetSide={onSetOffsetSide}
-            onGenerateCutter={onGenerateCutter}
             onSetPreviewWireframe={onSetPreviewWireframe}
             onExportStl={onExportStl}
+            tool3DMode={tool3DMode}
+            extrudeMode={extrudeMode}
           />
         )}
       </div>

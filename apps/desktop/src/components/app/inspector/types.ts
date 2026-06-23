@@ -27,7 +27,6 @@ export interface InspectorPanelProps {
   onSetWallHeight: (value: number) => void;
   onSetWallThickness: (value: number) => void;
   onSetOffsetSide: (value: "center" | "inside" | "outside") => void;
-  onGenerateCutter: () => void;
   onSetPreviewWireframe: (active: boolean) => void;
   onExportStl: () => void;
 }

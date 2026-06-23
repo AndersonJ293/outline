@@ -4,6 +4,10 @@ type UiSlice = Pick<
   AppStore,
   | "toolMode"
   | "setToolMode"
+  | "tool3DMode"
+  | "setTool3DMode"
+  | "extrudeMode"
+  | "setExtrudeMode"
   | "viewMode"
   | "setViewMode"
   | "viewport"
@@ -44,6 +48,11 @@ type UiSlice = Pick<
 export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
   toolMode: "polyline",
   setToolMode: (mode) => set({ toolMode: mode }),
+
+  tool3DMode: "select3d",
+  setTool3DMode: (mode) => set({ tool3DMode: mode }),
+  extrudeMode: "normal",
+  setExtrudeMode: (mode) => set({ extrudeMode: mode }),
 
   viewMode: "sketch",
   setViewMode: (mode) => set({ viewMode: mode }),
