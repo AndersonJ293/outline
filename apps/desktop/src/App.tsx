@@ -58,6 +58,7 @@ function App() {
     setIsSketching,
     workingPlane,
     setWorkingPlane,
+    setFaceSelectionActive,
   } = useStore();
 
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
@@ -208,6 +209,7 @@ function App() {
           <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [0, 0, 1] })}>XY Plane</button>
           <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [0, 1, 0] })}>XZ Plane</button>
           <button className={s["plane-btn"]} onClick={() => handleSelectPlane({ origin: [0, 0, 0], normal: [1, 0, 0] })}>YZ Plane</button>
+          <button className={s["plane-btn"]} onClick={() => { setFaceSelectionActive(true); setShowPlanePicker(false); }}>Select Face</button>
           <button className={s["plane-btn-cancel"]} onClick={() => setShowPlanePicker(false)}>Cancel</button>
         </div>
       ) : (

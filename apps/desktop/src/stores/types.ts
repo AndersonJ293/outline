@@ -98,6 +98,8 @@ export interface AppStore {
   setIsSketching: (on: boolean) => void;
   workingPlane: WorkingPlane;
   setWorkingPlane: (plane: WorkingPlane) => void;
+  faceSelectionActive: boolean;
+  setFaceSelectionActive: (on: boolean) => void;
 }
 
 export type StoreSlice<T> = (

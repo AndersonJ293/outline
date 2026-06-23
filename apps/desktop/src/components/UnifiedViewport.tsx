@@ -23,6 +23,7 @@ import { useOverlayRenderer } from "../features/sketch/useOverlayRenderer";
 import { useCanvasResize } from "../features/sketch/useCanvasResize";
 import { useThreeScene } from "../features/viewport/useThreeScene";
 import { useSketchWireframe } from "../features/viewport/useSketchWireframe";
+import { useFaceSelection } from "../features/viewport/useFaceSelection";
 import s from "./Canvas2D.module.css";
 
 export default function UnifiedViewport() {
@@ -113,6 +114,10 @@ export default function UnifiedViewport() {
   const previewWireframe = useStore((s) => s.previewWireframe);
   const isSketching = useStore((s) => s.isSketching);
   const workingPlane = useStore((s) => s.workingPlane);
+  const faceSelectionActive = useStore((s) => s.faceSelectionActive);
+  const setFaceSelectionActive = useStore((s) => s.setFaceSelectionActive);
+  const setIsSketching = useStore((s) => s.setIsSketching);
+  const setWorkingPlane = useStore((s) => s.setWorkingPlane);
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -190,7 +195,25 @@ export default function UnifiedViewport() {
     [snapToGridEnabled, viewport.zoom],
   );
 
-  const { sketchGroupRef } = useThreeScene({ containerRef: threeContainerRef, viewport, bodies, previewWireframe, isSketching, workingPlane });
+  const { sketchGroupRef, meshGroupRef, cameraRef } = useThreeScene({
+    containerRef: threeContainerRef,
+    viewport,
+    bodies,
+    previewWireframe,
+    isSketching,
+    workingPlane,
+  });
+
+  useFaceSelection({
+    active: faceSelectionActive,
+    containerRef,
+    cameraRef,
+    meshGroupRef,
+    setWorkingPlane,
+    setIsSketching,
+    setFaceSelectionActive,
+    setStatus,
+  });
 
   useSketchWireframe({
     entities: project?.sketch.entities ?? [],
@@ -422,12 +445,16 @@ export default function UnifiedViewport() {
       onContextMenu={(e) => e.preventDefault()}
     >
       <div ref={threeContainerRef} style={{ position: "absolute", inset: 0 }} />
-      {isSketching && (
-        <>
-          <canvas ref={staticCanvasRef} className={s.static} />
-          <canvas ref={overlayCanvasRef} className={s.overlay} style={{ pointerEvents: "none" }} />
-        </>
-      )}
+      <canvas
+        ref={staticCanvasRef}
+        className={s.static}
+        style={{ pointerEvents: "none" }}
+      />
+      <canvas
+        ref={overlayCanvasRef}
+        className={s.overlay}
+        style={{ pointerEvents: isSketching ? "auto" : "none" }}
+      />
       {refScalePopup && (
         <RefScalePopup
           popup={refScalePopup}
@@ -435,6 +462,23 @@ export default function UnifiedViewport() {
           onConfirm={confirmRefScale}
           onPointerDown={(event) => event.stopPropagation()}
         />
+      )}
+      {faceSelectionActive && (
+        <div style={{
+          position: "absolute",
+          bottom: 40,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "rgba(0,0,0,0.85)",
+          color: "#fff",
+          padding: "8px 16px",
+          borderRadius: 6,
+          fontSize: 13,
+          pointerEvents: "none",
+          zIndex: 10,
+        }}>
+          Click on a solid face to use as sketch plane
+        </div>
       )}
     </div>
   );

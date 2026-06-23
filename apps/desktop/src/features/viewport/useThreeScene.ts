@@ -52,7 +52,6 @@ export function useThreeScene({
     renderer.domElement.style.position = "absolute";
     renderer.domElement.style.top = "0";
     renderer.domElement.style.left = "0";
-    renderer.domElement.style.pointerEvents = "none";
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -129,6 +128,11 @@ export function useThreeScene({
     const controls = controlsRef.current;
     if (controls) {
       controls.enabled = !isSketching;
+    }
+
+    const renderer = rendererRef.current;
+    if (renderer) {
+      renderer.domElement.style.pointerEvents = isSketching ? "none" : "auto";
     }
 
     if (isSketching) {
@@ -225,5 +229,5 @@ export function useThreeScene({
     }
   }, [bodies, previewWireframe]);
 
-  return { sketchGroupRef };
+  return { sketchGroupRef, meshGroupRef, cameraRef };
 }
