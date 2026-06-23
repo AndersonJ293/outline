@@ -1,8 +1,7 @@
-import type { ToolMode, ViewMode } from "../../types";
+import type { ToolMode } from "../../types";
 import s from "./SketchToolbar.module.css";
 
 interface SketchToolbarProps {
-  viewMode: ViewMode;
   toolMode: ToolMode;
   snapToGrid: boolean;
   onToolModeChange: (mode: ToolMode) => void;
@@ -14,7 +13,6 @@ interface SketchToolbarProps {
 }
 
 export function SketchToolbar({
-  viewMode,
   toolMode,
   snapToGrid,
   onToolModeChange,
@@ -26,9 +24,7 @@ export function SketchToolbar({
 }: SketchToolbarProps) {
   return (
     <div className={s.toolbar}>
-      {viewMode === "sketch" && (
-        <>
-          <button
+      <button
             className={`${s["toolbar-btn"]} ${toolMode === "select" ? s.active : ""}`}
             onClick={() => onToolModeChange("select")}
             title="Select (V)"
@@ -123,8 +119,6 @@ export function SketchToolbar({
           <button className={s["toolbar-btn"]} onClick={onClearSelection}             title="Clear selection">
             ✕
           </button>
-        </>
-      )}
       <div className={s["toolbar-spacer"]} />
       <button className={s["toolbar-btn"]} onClick={onUndo} title="Undo (Ctrl+Z)">
         ↩

@@ -5,13 +5,13 @@ import { useBackendStatus } from "./app/useBackendStatus";
 import { useCutterActions } from "./app/useCutterActions";
 import { useProjectActions } from "./app/useProjectActions";
 import { useRebuildEffect } from "./app/useRebuildEffect";
-import Canvas2D from "./components/Canvas2D";
+import Canvas2D from "./components/UnifiedViewport";
+import UnifiedViewport from "./components/UnifiedViewport";
 import { InspectorPanel } from "./components/app/InspectorPanel";
 import { ModeTabs } from "./components/app/ModeTabs";
 import { SketchToolbar } from "./components/app/SketchToolbar";
 import { StatusBar } from "./components/app/StatusBar";
 import { TopBar } from "./components/app/TopBar";
-import Viewport3D from "./components/Viewport3D";
 import { useStore } from "./stores/useStore";
 import s from "./App.module.css";
 
@@ -21,8 +21,6 @@ function App() {
     setProject,
     toolMode,
     setToolMode,
-    viewMode,
-    setViewMode,
     selectedEntityIds,
     selectedVertices,
     selectEntity,
@@ -82,7 +80,6 @@ function App() {
     wallThickness,
     offsetSide,
     addOperation,
-    setViewMode,
     setStatus,
     setError,
   });
@@ -111,7 +108,6 @@ function App() {
     setEditingImageId,
     setEntityDragTarget,
     setStatus,
-    setViewMode,
     setToolMode,
   });
 
@@ -157,10 +153,7 @@ function App() {
         onCloseWindow={handleCloseWindow}
       />
 
-      <ModeTabs viewMode={viewMode} onChange={setViewMode} />
-
-      <SketchToolbar
-        viewMode={viewMode}
+       <SketchToolbar
         toolMode={toolMode}
         snapToGrid={snapToGrid}
         onToolModeChange={setToolMode}
@@ -176,7 +169,7 @@ function App() {
       />
 
       <div style={{ gridRow: 3, gridColumn: 2, position: "relative", overflow: "hidden" }}>
-        {viewMode === "sketch" ? <Canvas2D /> : <Viewport3D />}
+        <UnifiedViewport />
         <StatusBar project={project} statusText={statusText} errorText={errorText} />
       </div>
 

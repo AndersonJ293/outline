@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { Project, ToolMode, ViewMode } from "../types";
+import type { Project, ToolMode } from "../types";
 import type { EntityDragTarget, Vertex } from "../stores/types";
 
 interface UseAppShortcutsArgs {
@@ -17,7 +17,6 @@ interface UseAppShortcutsArgs {
   setEditingImageId: (id: string | null) => void;
   setEntityDragTarget: (target: EntityDragTarget | null) => void;
   setStatus: (text: string) => void;
-  setViewMode: (mode: ViewMode) => void;
   setToolMode: (mode: ToolMode) => void;
 }
 
@@ -43,7 +42,6 @@ export function useAppShortcuts({
   setEditingImageId,
   setEntityDragTarget,
   setStatus,
-  setViewMode,
   setToolMode,
 }: UseAppShortcutsArgs): void {
   useEffect(() => {
@@ -92,18 +90,6 @@ export function useAppShortcuts({
         setEditingImageId(null);
         setEntityDragTarget(null);
       }
-      if (event.ctrlKey && event.key === "1") {
-        event.preventDefault();
-        setViewMode("sketch");
-      }
-      if (event.ctrlKey && event.key === "2") {
-        event.preventDefault();
-        setViewMode("solid");
-      }
-      if (event.ctrlKey && event.key === "3") {
-        event.preventDefault();
-        setViewMode("export");
-      }
       if (!event.ctrlKey && !event.altKey && !event.metaKey) {
         const key = event.key.toLowerCase();
         if (key === "v") {
@@ -145,7 +131,6 @@ export function useAppShortcuts({
     setEditingImageId,
     setEntityDragTarget,
     setStatus,
-    setViewMode,
     setToolMode,
   ]);
 }

@@ -12,7 +12,6 @@ interface UseCutterActionsArgs {
   wallThickness: number;
   offsetSide: "center" | "inside" | "outside";
   addOperation: (op: Operation) => void;
-  setViewMode: (mode: "sketch" | "solid" | "export") => void;
   setStatus: (text: string) => void;
   setError: (text: string | null) => void;
 }
@@ -25,7 +24,6 @@ export function useCutterActions({
   wallThickness,
   offsetSide,
   addOperation,
-  setViewMode,
   setStatus,
   setError,
 }: UseCutterActionsArgs) {
@@ -51,7 +49,6 @@ export function useCutterActions({
     };
 
     addOperation(operation);
-    setViewMode("solid");
     setStatus("Operation added. Rebuilding...");
     setError(null);
   }, [
@@ -61,7 +58,6 @@ export function useCutterActions({
     wallThickness,
     offsetSide,
     addOperation,
-    setViewMode,
     setStatus,
     setError,
   ]);

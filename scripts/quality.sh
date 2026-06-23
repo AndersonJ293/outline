@@ -51,7 +51,7 @@ check_file_lines() {
 }
 
 check_file_lines "apps/desktop/src/App.tsx" 300 500 "Do not add new feature code here; extract shell/components first."
-check_file_lines "apps/desktop/src/components/Canvas2D.tsx" 350 500 "Do not add new tool/editor behavior here; extract sketch modules first."
+check_file_lines "apps/desktop/src/components/UnifiedViewport.tsx" 300 500 "Do not add new tool/editor behavior here; extract sketch modules first."
 check_file_lines "apps/desktop/src/stores/useStore.ts" 220 300 "Split store concerns before adding more state."
 
 exit "$status"

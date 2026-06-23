@@ -21,9 +21,11 @@ import { useCanvasKeyboardShortcuts } from "../features/sketch/useCanvasKeyboard
 import { useStaticRenderer } from "../features/sketch/useStaticRenderer";
 import { useOverlayRenderer } from "../features/sketch/useOverlayRenderer";
 import { useCanvasResize } from "../features/sketch/useCanvasResize";
+import { useThreeScene } from "../features/viewport/useThreeScene";
 import s from "./Canvas2D.module.css";
 
-export default function Canvas2D() {
+export default function UnifiedViewport() {
+  const threeContainerRef = useRef<HTMLDivElement>(null);
   const staticCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,6 +108,8 @@ export default function Canvas2D() {
   const snapToGridEnabled = useStore((s) => s.snapToGrid);
   const updateEntity = useStore((s) => s.updateEntity);
   const setSnapToGrid = useStore((s) => s.setSnapToGrid);
+  const bodies = useStore((s) => s.bodies);
+  const previewWireframe = useStore((s) => s.previewWireframe);
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -182,6 +186,8 @@ export default function Canvas2D() {
     },
     [snapToGridEnabled, viewport.zoom],
   );
+
+  useThreeScene({ containerRef: threeContainerRef, viewport, bodies, previewWireframe });
 
   const { requestRender: requestStaticRender } = useStaticRenderer({
     canvasRef: staticCanvasRef,
@@ -406,12 +412,9 @@ export default function Canvas2D() {
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
     >
+      <div ref={threeContainerRef} style={{ position: "absolute", inset: 0 }} />
       <canvas ref={staticCanvasRef} className={s.static} />
-      <canvas
-        ref={overlayCanvasRef}
-        className={s.overlay}
-        style={{ pointerEvents: "none" }}
-      />
+      <canvas ref={overlayCanvasRef} className={s.overlay} style={{ pointerEvents: "none" }} />
       {refScalePopup && (
         <RefScalePopup
           popup={refScalePopup}
