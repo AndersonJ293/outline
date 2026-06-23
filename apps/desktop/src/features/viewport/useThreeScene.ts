@@ -1,7 +1,7 @@
 import { useRef, useEffect, type RefObject } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { ViewportState, Mesh, WorkingPlane } from "../../types";
+import type { Tool3DMode, ViewportState, Mesh, WorkingPlane } from "../../types";
 
 interface UseThreeSceneArgs {
   containerRef: RefObject<HTMLDivElement>;
@@ -10,6 +10,7 @@ interface UseThreeSceneArgs {
   previewWireframe: boolean;
   isSketching: boolean;
   workingPlane: WorkingPlane;
+  tool3DMode: Tool3DMode;
 }
 
 export function useThreeScene({
@@ -19,6 +20,7 @@ export function useThreeScene({
   previewWireframe,
   isSketching,
   workingPlane,
+  tool3DMode,
 }: UseThreeSceneArgs) {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -159,6 +161,25 @@ export function useThreeScene({
       controls.update();
     }
   }, [isSketching, workingPlane]);
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    if (isSketching) return;
+    if (tool3DMode === "select3d" || tool3DMode === "extrude") {
+      controls.mouseButtons = {
+        LEFT: -1 as unknown as THREE.MOUSE,
+        MIDDLE: THREE.MOUSE.PAN,
+        RIGHT: THREE.MOUSE.ROTATE,
+      };
+    } else {
+      controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.PAN,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+    }
+  }, [isSketching, tool3DMode]);
 
   useEffect(() => {
     const grid = gridHelperRef.current;

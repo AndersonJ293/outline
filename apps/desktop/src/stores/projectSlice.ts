@@ -21,6 +21,7 @@ type ProjectSlice = Pick<
   | "addOperation"
   | "addImage"
   | "updateEntity"
+  | "translateEntity"
   | "updateImage"
   | "updateImageCommitted"
   | "removeSelectedEntities"
@@ -180,6 +181,28 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const idx = project.sketch.entities.findIndex((e) => e.id === id);
     if (idx === -1) return;
     project.sketch.entities[idx] = { ...project.sketch.entities[idx], ...updates };
+    set({ project: { ...project } });
+  },
+
+  translateEntity: (id, dx, dy, options) => {
+    const project = get().project;
+    if (!project) return;
+    const idx = project.sketch.entities.findIndex((e) => e.id === id);
+    if (idx === -1) return;
+    const entity = project.sketch.entities[idx];
+    if (options?.pushUndo && !options.alreadyPushed) {
+      get().pushUndo();
+    }
+    const nextPoints = entity.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+    const nextControlPoints = entity.controlPoints?.map((cp) => ({
+      point: { x: cp.point.x + dx, y: cp.point.y + dy },
+      handleOut: cp.handleOut,
+    }));
+    project.sketch.entities[idx] = {
+      ...entity,
+      points: nextPoints,
+      controlPoints: nextControlPoints,
+    };
     set({ project: { ...project } });
   },
 

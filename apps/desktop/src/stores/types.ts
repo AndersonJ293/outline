@@ -47,6 +47,12 @@ export interface AppStore {
   addOperation: (op: Operation) => void;
   addImage: (image: SketchImage) => void;
   updateEntity: (id: string, updates: Partial<Entity>) => void;
+  translateEntity: (
+    id: string,
+    dx: number,
+    dy: number,
+    options?: { pushUndo?: boolean; alreadyPushed?: boolean },
+  ) => void;
   updateImage: (id: string, updates: Partial<SketchImage>) => void;
   updateImageCommitted: (id: string, updates: Partial<SketchImage>) => void;
   removeSelectedEntities: () => void;

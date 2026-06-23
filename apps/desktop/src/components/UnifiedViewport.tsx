@@ -27,6 +27,7 @@ import { useThreeScene } from "../features/viewport/useThreeScene";
 import { useSketchWireframe } from "../features/viewport/useSketchWireframe";
 import { useFaceSelection } from "../features/viewport/useFaceSelection";
 import { usePlanePicker3D } from "../features/viewport/usePlanePicker3D";
+import { useEntity3DSelect } from "../features/viewport/useEntity3DSelect";
 import s from "./Canvas2D.module.css";
 
 export default function UnifiedViewport() {
@@ -123,6 +124,8 @@ export default function UnifiedViewport() {
   const setPlanePickerActive = useStore((s) => s.setPlanePickerActive);
   const setIsSketching = useStore((s) => s.setIsSketching);
   const setWorkingPlane = useStore((s) => s.setWorkingPlane);
+  const tool3DMode = useStore((s) => s.tool3DMode);
+  const translateEntity = useStore((s) => s.translateEntity);
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -164,6 +167,7 @@ export default function UnifiedViewport() {
     previewWireframe,
     isSketching,
     workingPlane,
+    tool3DMode,
   });
 
   useSketchViewportReset({
@@ -198,6 +202,17 @@ export default function UnifiedViewport() {
     entities: project?.sketch.entities ?? [],
     sketchGroupRef,
     workingPlane,
+  });
+
+  useEntity3DSelect({
+    active: !isSketching && tool3DMode === "select3d",
+    containerRef,
+    cameraRef,
+    sketchGroupRef,
+    workingPlane,
+    selectEntity,
+    translateEntity,
+    setStatus,
   });
 
   const { requestRender: requestStaticRender } = useStaticRenderer({
