@@ -8,8 +8,6 @@ type UiSlice = Pick<
   | "setTool3DMode"
   | "extrudeMode"
   | "setExtrudeMode"
-  | "viewMode"
-  | "setViewMode"
   | "viewport"
   | "setViewport"
   | "bodies"
@@ -54,8 +52,6 @@ export const createUiSlice: StoreSlice<UiSlice> = (set) => ({
   extrudeMode: "normal",
   setExtrudeMode: (mode) => set({ extrudeMode: mode }),
 
-  viewMode: "sketch",
-  setViewMode: (mode) => set({ viewMode: mode }),
   viewport: { offsetX: 0, offsetY: 0, zoom: 1 },
   setViewport: (vp) =>
     set((state) => ({

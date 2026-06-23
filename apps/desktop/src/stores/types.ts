@@ -8,7 +8,6 @@ import type {
   SketchImage,
   Tool3DMode,
   ToolMode,
-  ViewMode,
   ViewportState,
   WorkingPlane,
 } from "../types";
@@ -66,8 +65,6 @@ export interface AppStore {
   extrudeMode: ExtrudeMode;
   setExtrudeMode: (mode: ExtrudeMode) => void;
 
-  viewMode: ViewMode;
-  setViewMode: (mode: ViewMode) => void;
   viewport: ViewportState;
   setViewport: (vp: Partial<ViewportState>) => void;
 
