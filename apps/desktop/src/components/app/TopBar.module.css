@@ -14,11 +14,17 @@
   -webkit-app-region: no-drag;
 }
 
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-right: 10px;
+}
+
 .topbar-title {
   font-weight: 600;
   font-size: 13px;
   color: var(--text-primary);
-  margin-right: 10px;
 }
 
 .topbar-btn {

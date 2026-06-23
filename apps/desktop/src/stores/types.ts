@@ -1,6 +1,7 @@
 import type {
   Entity,
   Mesh,
+  Point,
   Project,
   SketchImage,
   ToolMode,
@@ -14,6 +15,13 @@ export type EntityDragTarget =
   | { kind: "entity"; entityId: string }
   | { kind: "spline-handle"; entityId: string; anchorIndex: number };
 
+/// A single vertex selection: `pointIndex` indexes `entity.points` for
+/// polyline/rectangle and `entity.controlPoints` for splines.
+export interface Vertex {
+  entityId: string;
+  pointIndex: number;
+}
+
 export interface AppStore {
   project: Project | null;
   projectPath: string | null;
@@ -22,12 +30,22 @@ export interface AppStore {
   selectedEntityIds: string[];
   selectEntity: (id: string | null, shiftKey?: boolean) => void;
   setSelectedEntityIds: (ids: string[]) => void;
+
+  selectedVertices: Vertex[];
+  setSelectedVertices: (vertices: Vertex[]) => void;
+  toggleVertex: (vertex: Vertex, shiftKey?: boolean) => void;
+
+  clipboard: Entity[];
+  copySelection: () => void;
+  pasteAtPoint: (world: Point) => string[];
+
   addEntity: (entity: Entity) => void;
   addImage: (image: SketchImage) => void;
   updateEntity: (id: string, updates: Partial<Entity>) => void;
   updateImage: (id: string, updates: Partial<SketchImage>) => void;
   updateImageCommitted: (id: string, updates: Partial<SketchImage>) => void;
   removeSelectedEntities: () => void;
+  removeSelectedVertices: () => void;
 
   toolMode: ToolMode;
   setToolMode: (mode: ToolMode) => void;

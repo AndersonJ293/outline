@@ -50,10 +50,16 @@ function buildSplineEntity(
 function rebuildHandles(
   anchors: Point[],
   handleOuts: { dx: number; dy: number }[],
+  closed = false,
 ): { dx: number; dy: number }[] {
-  return anchors.map((anchor, i) =>
-    autoHandleFor(anchors[i - 1] ?? null, anchor, anchors[i + 1] ?? null),
-  );
+  const n = anchors.length;
+  return anchors.map((anchor, i) => {
+    const prev =
+      anchors[i - 1] ?? (closed && n > 1 ? anchors[n - 1] : null);
+    const next =
+      anchors[i + 1] ?? (closed && n > 1 ? anchors[0] : null);
+    return autoHandleFor(prev, anchor, next);
+  });
 }
 
 export function useSplineTool({
@@ -95,8 +101,7 @@ export function useSplineTool({
         const threshold = CLOSE_THRESHOLD / viewport.zoom;
         if (pointDistance(snapped, first) < threshold) {
           state.closed = true;
-          state.anchors = [...state.anchors, first];
-          state.handleOuts = rebuildHandles(state.anchors, state.handleOuts);
+          state.handleOuts = rebuildHandles(state.anchors, state.handleOuts, true);
           addEntity(buildSplineEntity(state, DEFAULT_STEPS));
           isDrawing.current = false;
           splineState.current = null;
@@ -141,7 +146,7 @@ export function useSplineTool({
         return false;
       }
       state.closed = close;
-      state.handleOuts = rebuildHandles(state.anchors, state.handleOuts);
+      state.handleOuts = rebuildHandles(state.anchors, state.handleOuts, close);
       addEntity(buildSplineEntity(state, DEFAULT_STEPS));
       isDrawing.current = false;
       splineState.current = null;

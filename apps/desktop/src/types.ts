@@ -91,7 +91,13 @@ export interface GenerateMeshResult {
 
 // ── Tool types ──
 
-export type ToolMode = "select" | "polyline" | "rectangle" | "spline";
+export type ToolMode =
+  | "select"
+  | "polyline"
+  | "rectangle"
+  | "spline"
+  | "move"
+  | "mirror";
 
 export type ViewMode = "sketch" | "solid" | "export";
 

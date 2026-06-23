@@ -58,6 +58,21 @@ export function SketchToolbar({
           </button>
           <div className={s["toolbar-divider"]} />
           <button
+            className={`${s["toolbar-btn"]} ${toolMode === "move" ? s.active : ""}`}
+            onClick={() => onToolModeChange("move")}
+            title="Move (M)"
+          >
+            ✥
+          </button>
+          <button
+            className={`${s["toolbar-btn"]} ${toolMode === "mirror" ? s.active : ""}`}
+            onClick={() => onToolModeChange("mirror")}
+            title="Mirror (X) — select contours, then click a line as axis"
+          >
+            ⇋
+          </button>
+          <div className={s["toolbar-divider"]} />
+          <button
             className={`${s["toolbar-btn"]} ${snapToGrid ? s.active : ""}`}
             onClick={onToggleSnap}
             title={

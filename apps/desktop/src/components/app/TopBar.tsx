@@ -1,4 +1,5 @@
 import s from "./TopBar.module.css";
+import { Logo } from "./Logo";
 
 interface TopBarProps {
   backendConnected: boolean;
@@ -31,7 +32,10 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <div className={s.topbar} onMouseDown={onStartWindowDrag}>
-      <span className={s["topbar-title"]}>Outline</span>
+      <span className={s["topbar-brand"]}>
+        <Logo size={18} />
+        <span className={s["topbar-title"]}>Outline</span>
+      </span>
       <div className={s["file-menu"]} data-no-drag>
         <button className={`${s["topbar-btn"]} ${fileMenuOpen ? s.active : ""}`} onClick={onToggleFileMenu}>
           File

@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import type { Project, ToolMode, ViewMode } from "../types";
-import type { EntityDragTarget } from "../stores/types";
+import type { EntityDragTarget, Vertex } from "../stores/types";
 
 interface UseAppShortcutsArgs {
   selectedEntityIds: string[];
+  selectedVertices: Vertex[];
   project: Project | null;
   removeSelectedEntities: () => void;
+  removeSelectedVertices: () => void;
   undo: () => void;
   redo: () => void;
   handleNewProject: () => void;
@@ -28,8 +30,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function useAppShortcuts({
   selectedEntityIds,
+  selectedVertices,
   project,
   removeSelectedEntities,
+  removeSelectedVertices,
   undo,
   redo,
   handleNewProject,
@@ -48,7 +52,13 @@ export function useAppShortcuts({
 
       if (event.key === "Delete" || event.key === "Backspace") {
         if (event.defaultPrevented) return;
-        if (selectedEntityIds.length > 0 && project) {
+        // Loose vertices take priority: delete points, not the whole contour.
+        if (selectedVertices.length > 0 && project) {
+          removeSelectedVertices();
+          setStatus(
+            `${selectedVertices.length} point${selectedVertices.length === 1 ? "" : "s"} removed`,
+          );
+        } else if (selectedEntityIds.length > 0 && project) {
           removeSelectedEntities();
           setStatus(`${selectedEntityIds.length} entit${selectedEntityIds.length === 1 ? "y" : "ies"} removed`);
         }
@@ -108,6 +118,12 @@ export function useAppShortcuts({
         } else if (key === "b") {
           event.preventDefault();
           setToolMode("spline");
+        } else if (key === "m") {
+          event.preventDefault();
+          setToolMode("move");
+        } else if (key === "x") {
+          event.preventDefault();
+          setToolMode("mirror");
         }
       }
     };
@@ -116,8 +132,10 @@ export function useAppShortcuts({
     return () => window.removeEventListener("keydown", handler);
   }, [
     selectedEntityIds,
+    selectedVertices,
     project,
     removeSelectedEntities,
+    removeSelectedVertices,
     undo,
     redo,
     handleNewProject,

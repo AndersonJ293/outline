@@ -1,6 +1,6 @@
 import type { MutableRefObject } from "react";
 import type { Point, Project, ToolMode, ViewportState } from "../../types";
-import type { EntityDragTarget } from "../../stores/types";
+import type { EntityDragTarget, Vertex } from "../../stores/types";
 import { drawEntities } from "./renderEntities";
 import { drawGrid, drawGridLabel } from "./renderGrid";
 import { drawImages } from "./renderImages";
@@ -20,6 +20,7 @@ export interface RenderSketchArgs {
   project: Project | null;
   viewport: ViewportState;
   selectedEntityIds: string[];
+  selectedVertices: Vertex[];
   editingImageId: string | null;
   entityDragTarget: EntityDragTarget | null;
   toolMode: ToolMode;
@@ -49,6 +50,7 @@ export function renderSketch({
   project,
   viewport,
   selectedEntityIds,
+  selectedVertices,
   editingImageId,
   entityDragTarget,
   toolMode,
@@ -81,7 +83,7 @@ export function renderSketch({
   drawImages(ctx, project, viewport, editingImageId, imageCache, isImageResizing, imageResizeId);
   drawReferenceLine(ctx, viewport, imageRefLineStart, imageRefLineEnd);
   drawRefScaleConfirm(ctx, viewport, refScalePopup);
-  drawEntities(ctx, project, viewport, selectedEntityIds, entityDragTarget);
+  drawEntities(ctx, project, viewport, selectedEntityIds, entityDragTarget, selectedVertices);
   drawDrawingPreview(
     ctx,
     viewport,

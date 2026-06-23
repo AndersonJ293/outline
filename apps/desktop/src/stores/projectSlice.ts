@@ -1,3 +1,6 @@
+import type { Entity } from "../types";
+import { generateId } from "../types";
+import { sampleSpline } from "../features/sketch/spline";
 import type { AppStore, StoreSlice } from "./types";
 
 type ProjectSlice = Pick<
@@ -8,13 +11,24 @@ type ProjectSlice = Pick<
   | "selectedEntityIds"
   | "selectEntity"
   | "setSelectedEntityIds"
+  | "selectedVertices"
+  | "setSelectedVertices"
+  | "toggleVertex"
+  | "clipboard"
+  | "copySelection"
+  | "pasteAtPoint"
   | "addEntity"
   | "addImage"
   | "updateEntity"
   | "updateImage"
   | "updateImageCommitted"
   | "removeSelectedEntities"
+  | "removeSelectedVertices"
 >;
+
+function cloneEntity(entity: Entity): Entity {
+  return JSON.parse(JSON.stringify(entity)) as Entity;
+}
 
 export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
   project: null,
@@ -23,6 +37,7 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     set({
       project,
       selectedEntityIds: [],
+      selectedVertices: [],
       currentMesh: null,
       editingImageId: null,
       entityDragTarget: null,
@@ -45,6 +60,82 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     }
   },
   setSelectedEntityIds: (ids) => set({ selectedEntityIds: ids }),
+
+  selectedVertices: [],
+  setSelectedVertices: (vertices) => set({ selectedVertices: vertices }),
+  toggleVertex: (vertex, shiftKey) => {
+    const sameVertex = (a: { entityId: string; pointIndex: number }) =>
+      a.entityId === vertex.entityId && a.pointIndex === vertex.pointIndex;
+    if (shiftKey) {
+      const current = get().selectedVertices;
+      const exists = current.some(sameVertex);
+      set({
+        selectedVertices: exists
+          ? current.filter((v) => !sameVertex(v))
+          : [...current, vertex],
+      });
+    } else {
+      set({ selectedVertices: [vertex] });
+    }
+  },
+
+  clipboard: [],
+  copySelection: () => {
+    const project = get().project;
+    const ids = get().selectedEntityIds;
+    if (!project || ids.length === 0) return;
+    const clipboard = project.sketch.entities
+      .filter((e) => ids.includes(e.id))
+      .map(cloneEntity);
+    set({ clipboard });
+  },
+  pasteAtPoint: (world) => {
+    const project = get().project;
+    const clipboard = get().clipboard;
+    if (!project || clipboard.length === 0) return [];
+
+    // Centroid of the clipboard bounding box, so the paste lands at the cursor.
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const entity of clipboard) {
+      for (const p of entity.points) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+    }
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const dx = world.x - cx;
+    const dy = world.y - cy;
+
+    const newIds: string[] = [];
+    const pasted = clipboard.map((entity) => {
+      const clone = cloneEntity(entity);
+      clone.id = generateId();
+      clone.points = clone.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+      if (clone.controlPoints) {
+        clone.controlPoints = clone.controlPoints.map((cp) => ({
+          point: { x: cp.point.x + dx, y: cp.point.y + dy },
+          handleOut: { ...cp.handleOut },
+        }));
+      }
+      newIds.push(clone.id);
+      return clone;
+    });
+
+    get().pushUndo();
+    project.sketch.entities.push(...pasted);
+    set({
+      project: { ...project },
+      selectedEntityIds: newIds,
+      selectedVertices: [],
+    });
+    return newIds;
+  },
 
   addEntity: (entity) => {
     const project = get().project;
@@ -111,9 +202,61 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     set({
       project: { ...project },
       selectedEntityIds: [],
+      selectedVertices: get().selectedVertices.filter(
+        (v) => !ids.includes(v.entityId),
+      ),
       currentMesh: null,
       editingImageId: nextEditingImageId,
       entityDragTarget: nextEntityDragTarget,
+    });
+  },
+
+  removeSelectedVertices: () => {
+    const project = get().project;
+    const verts = get().selectedVertices;
+    if (!project || verts.length === 0) return;
+    get().pushUndo();
+
+    const byEntity = new Map<string, Set<number>>();
+    for (const v of verts) {
+      const set = byEntity.get(v.entityId) ?? new Set<number>();
+      set.add(v.pointIndex);
+      byEntity.set(v.entityId, set);
+    }
+
+    const remaining: Entity[] = [];
+    for (const entity of project.sketch.entities) {
+      const idxs = byEntity.get(entity.id);
+      if (!idxs) {
+        remaining.push(entity);
+        continue;
+      }
+      if (entity.type === "spline" && entity.controlPoints) {
+        const controlPoints = entity.controlPoints.filter((_, i) => !idxs.has(i));
+        // A spline needs at least two anchors to remain a curve.
+        if (controlPoints.length < 2) continue;
+        remaining.push({
+          ...entity,
+          controlPoints,
+          points: sampleSpline(controlPoints, entity.samplingSteps ?? 64, entity.closed),
+        });
+      } else {
+        const points = entity.points.filter((_, i) => !idxs.has(i));
+        if (points.length < 2) continue;
+        remaining.push({
+          ...entity,
+          // A rectangle that lost a corner is no longer a rectangle.
+          type: entity.type === "rectangle" ? "polyline" : entity.type,
+          points,
+        });
+      }
+    }
+
+    project.sketch.entities = remaining;
+    set({
+      project: { ...project },
+      selectedVertices: [],
+      currentMesh: null,
     });
   },
 });

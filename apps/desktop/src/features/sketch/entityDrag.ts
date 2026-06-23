@@ -120,3 +120,89 @@ export function applySplineEntityMove(
   }));
   return { points: resampleSpline(entity, controlPoints), controlPoints };
 }
+
+export interface EntityGeometry {
+  points: Point[];
+  controlPoints?: SplineControlPoint[];
+}
+
+/// Translates every point of an entity by (dx, dy).
+export function translateEntityWhole(
+  entity: Entity,
+  dx: number,
+  dy: number,
+): EntityGeometry {
+  if (entity.type === "spline" && entity.controlPoints) {
+    const controlPoints = entity.controlPoints.map((cp) => ({
+      point: { x: cp.point.x + dx, y: cp.point.y + dy },
+      handleOut: { ...cp.handleOut },
+    }));
+    return { points: resampleSpline(entity, controlPoints), controlPoints };
+  }
+  return { points: entity.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) };
+}
+
+/// Translates only the given vertex indices by (dx, dy). For splines the
+/// indices address `controlPoints`; for everything else, `points`.
+export function translateEntityVertices(
+  entity: Entity,
+  indices: Set<number>,
+  dx: number,
+  dy: number,
+): EntityGeometry {
+  if (entity.type === "spline" && entity.controlPoints) {
+    const controlPoints = entity.controlPoints.map((cp, i) =>
+      indices.has(i)
+        ? { point: { x: cp.point.x + dx, y: cp.point.y + dy }, handleOut: { ...cp.handleOut } }
+        : { point: { ...cp.point }, handleOut: { ...cp.handleOut } },
+    );
+    return { points: resampleSpline(entity, controlPoints), controlPoints };
+  }
+  return {
+    points: entity.points.map((p, i) =>
+      indices.has(i) ? { x: p.x + dx, y: p.y + dy } : p,
+    ),
+  };
+}
+
+/// Reflects a point across the infinite line through `a` and `b`.
+export function reflectPointAcrossLine(p: Point, a: Point, b: Point): Point {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const lenSq = abx * abx + aby * aby;
+  if (lenSq === 0) return { x: p.x, y: p.y };
+  // Projection factor of (p - a) onto the line direction.
+  const t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq;
+  const projX = a.x + t * abx;
+  const projY = a.y + t * aby;
+  return { x: 2 * projX - p.x, y: 2 * projY - p.y };
+}
+
+/// Returns a mirrored copy of `entity` across the line through `a` and `b`,
+/// with a fresh id. Spline handles are reflected as direction vectors.
+export function reflectEntity(
+  entity: Entity,
+  a: Point,
+  b: Point,
+  newId: string,
+): Entity {
+  const points = entity.points.map((p) => reflectPointAcrossLine(p, a, b));
+  if (entity.type === "spline" && entity.controlPoints) {
+    const controlPoints = entity.controlPoints.map((cp) => {
+      const point = reflectPointAcrossLine(cp.point, a, b);
+      const tip = reflectPointAcrossLine(
+        { x: cp.point.x + cp.handleOut.dx, y: cp.point.y + cp.handleOut.dy },
+        a,
+        b,
+      );
+      return { point, handleOut: { dx: tip.x - point.x, dy: tip.y - point.y } };
+    });
+    return {
+      ...entity,
+      id: newId,
+      controlPoints,
+      points: sampleSpline(controlPoints, entity.samplingSteps ?? 64, entity.closed),
+    };
+  }
+  return { ...entity, id: newId, points };
+}

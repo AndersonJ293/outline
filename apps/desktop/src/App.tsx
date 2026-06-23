@@ -23,8 +23,10 @@ function App() {
     viewMode,
     setViewMode,
     selectedEntityIds,
+    selectedVertices,
     selectEntity,
     removeSelectedEntities,
+    removeSelectedVertices,
     currentMesh,
     setCurrentMesh,
     wallHeight,
@@ -91,8 +93,10 @@ function App() {
 
   useAppShortcuts({
     selectedEntityIds,
+    selectedVertices,
     project,
     removeSelectedEntities,
+    removeSelectedVertices,
     undo,
     redo,
     handleNewProject,

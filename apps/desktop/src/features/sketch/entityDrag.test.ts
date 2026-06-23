@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Entity, Point } from "../../types";
-import { applyEntityMove, applyPointMove, applySegmentMove } from "./entityDrag";
+import {
+  applyEntityMove,
+  applyPointMove,
+  applySegmentMove,
+  reflectEntity,
+  reflectPointAcrossLine,
+  translateEntityVertices,
+  translateEntityWhole,
+} from "./entityDrag";
 
 const rect: Entity = {
   id: "rect",
@@ -124,6 +132,73 @@ describe("entityDrag", () => {
       expect(d0).toBeCloseTo(distance(line.points[0], line.points[1]));
       expect(d1).toBeCloseTo(distance(line.points[1], line.points[2]));
       expect(d2).toBeCloseTo(distance(line.points[2], line.points[3]));
+    });
+  });
+
+  describe("translateEntityWhole", () => {
+    it("shifts every point by the delta", () => {
+      const result = translateEntityWhole(line, 3, -4);
+      expect(result.points).toEqual([
+        { x: -2, y: -9 },
+        { x: 3, y: -4 },
+        { x: 8, y: 1 },
+        { x: 13, y: 6 },
+      ]);
+    });
+  });
+
+  describe("translateEntityVertices", () => {
+    it("moves only the listed indices", () => {
+      const result = translateEntityVertices(rect, new Set([1, 2]), 5, 0);
+      expect(result.points).toEqual([
+        { x: 0, y: 0 },
+        { x: 15, y: 0 },
+        { x: 15, y: 10 },
+        { x: 0, y: 10 },
+      ]);
+    });
+  });
+
+  describe("reflectPointAcrossLine", () => {
+    it("reflects across a vertical line x=0", () => {
+      const r = reflectPointAcrossLine({ x: 3, y: 5 }, { x: 0, y: 0 }, { x: 0, y: 1 });
+      expect(r.x).toBeCloseTo(-3);
+      expect(r.y).toBeCloseTo(5);
+    });
+    it("keeps points on the axis fixed", () => {
+      const r = reflectPointAcrossLine({ x: 0, y: 7 }, { x: 0, y: 0 }, { x: 0, y: 1 });
+      expect(r.x).toBeCloseTo(0);
+      expect(r.y).toBeCloseTo(7);
+    });
+  });
+
+  describe("reflectEntity", () => {
+    it("mirrors points and assigns the new id", () => {
+      const r = reflectEntity(line, { x: 0, y: 0 }, { x: 0, y: 1 }, "new");
+      expect(r.id).toBe("new");
+      expect(r.points.map((p) => p.x)).toEqual([5, 0, -5, -10]);
+      expect(r.points.map((p) => p.y)).toEqual([-5, 0, 5, 10]);
+    });
+
+    it("reflects spline anchors and handle vectors", () => {
+      const spline: Entity = {
+        id: "s",
+        type: "spline",
+        closed: false,
+        samplingSteps: 8,
+        points: [],
+        controlPoints: [
+          { point: { x: 2, y: 0 }, handleOut: { dx: 1, dy: 2 } },
+          { point: { x: 6, y: 0 }, handleOut: { dx: -1, dy: 1 } },
+        ],
+      };
+      const r = reflectEntity(spline, { x: 0, y: 0 }, { x: 0, y: 1 }, "sm");
+      const cps = r.controlPoints!;
+      expect(cps[0].point.x).toBeCloseTo(-2);
+      // handleOut dx flips sign across the vertical axis, dy is preserved.
+      expect(cps[0].handleOut.dx).toBeCloseTo(-1);
+      expect(cps[0].handleOut.dy).toBeCloseTo(2);
+      expect(r.points.length).toBeGreaterThan(0);
     });
   });
 });

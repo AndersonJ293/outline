@@ -1,8 +1,7 @@
 import { useEffect, type MutableRefObject } from "react";
+import type { ToolMode } from "../../types";
 import type { RefScalePopupState } from "./tools/useImageRefScaleTool";
 import type { SplineDrawingState } from "./tools/useSplineTool";
-
-type ToolMode = "select" | "polyline" | "rectangle" | "spline";
 
 interface UseCanvasKeyboardShortcutsArgs {
   pendingRectangle: MutableRefObject<{ points: unknown[]; confirmPoint: unknown } | null>;

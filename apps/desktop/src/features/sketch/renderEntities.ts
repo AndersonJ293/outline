@@ -1,4 +1,4 @@
-import type { EntityDragTarget } from "../../stores/types";
+import type { EntityDragTarget, Vertex } from "../../stores/types";
 import type { Project, ViewportState } from "../../types";
 import { HANDLE_RADIUS } from "./constants";
 import { chainContour, computeChains } from "./chains";
@@ -29,6 +29,7 @@ export function drawEntities(
   viewport: ViewportState,
   selectedEntityIds: string[],
   entityDragTarget: EntityDragTarget | null,
+  selectedVertices: Vertex[] = [],
 ): void {
   if (!project) return;
 
@@ -127,17 +128,32 @@ export function drawEntities(
         highlightedPoint &&
         highlightedPoint.entityId === entity.id &&
         highlightedPoint.pointIndex === i;
-      const radius = isActivePoint
-        ? (HANDLE_RADIUS + 2) / viewport.zoom
-        : HANDLE_RADIUS / viewport.zoom;
+      const isSelectedVertex = selectedVertices.some(
+        (v) => v.entityId === entity.id && v.pointIndex === i,
+      );
+      const radius =
+        isActivePoint || isSelectedVertex
+          ? (HANDLE_RADIUS + 2) / viewport.zoom
+          : HANDLE_RADIUS / viewport.zoom;
       ctx.fillStyle = isActivePoint
         ? "#ff9800"
-        : isEntityMoveable
-          ? "#4fc3f7"
-          : "rgba(255,255,255,0.8)";
+        : isSelectedVertex
+          ? "#8bc34a"
+          : isEntityMoveable
+            ? "#4fc3f7"
+            : "rgba(255,255,255,0.8)";
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
       ctx.fill();
+      if (isSelectedVertex) {
+        ctx.save();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5 / viewport.zoom;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius + 1.5 / viewport.zoom, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }
 }

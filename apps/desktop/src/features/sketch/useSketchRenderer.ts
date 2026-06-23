@@ -1,6 +1,6 @@
 import { useEffect, type RefObject, type MutableRefObject } from "react";
 import type { Point, Project, ToolMode, ViewportState } from "../../types";
-import type { EntityDragTarget } from "../../stores/types";
+import type { EntityDragTarget, Vertex } from "../../stores/types";
 import { renderSketch } from "./renderSketch";
 import type { SplineDrawingState } from "./tools/useSplineTool";
 
@@ -10,6 +10,7 @@ interface UseSketchRendererArgs {
   project: Project | null;
   viewport: ViewportState;
   selectedEntityIds: string[];
+  selectedVertices: Vertex[];
   editingImageId: string | null;
   entityDragTarget: EntityDragTarget | null;
   toolMode: ToolMode;
@@ -39,6 +40,7 @@ export function useSketchRenderer({
   project,
   viewport,
   selectedEntityIds,
+  selectedVertices,
   editingImageId,
   entityDragTarget,
   toolMode,
@@ -94,6 +96,7 @@ export function useSketchRenderer({
         project,
         viewport,
         selectedEntityIds,
+        selectedVertices,
         editingImageId,
         entityDragTarget,
         toolMode,
@@ -125,5 +128,5 @@ export function useSketchRenderer({
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animId);
     };
-  }, [project, viewport, selectedEntityIds, editingImageId, entityDragTarget, toolMode, refScalePopup, snapToGridEnabled]);
+  }, [project, viewport, selectedEntityIds, selectedVertices, editingImageId, entityDragTarget, toolMode, refScalePopup, snapToGridEnabled]);
 }

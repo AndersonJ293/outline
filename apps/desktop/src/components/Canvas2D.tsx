@@ -11,6 +11,10 @@ import type { RefScalePopupState } from "../features/sketch/tools/useImageRefSca
 import { useImageRefScaleTool } from "../features/sketch/tools/useImageRefScaleTool";
 import { useImageTransformTool } from "../features/sketch/tools/useImageTransformTool";
 import { useEntityDragTool } from "../features/sketch/tools/useEntityDragTool";
+import { useMoveTool, type MovePlan } from "../features/sketch/tools/useMoveTool";
+import { useMirrorTool } from "../features/sketch/tools/useMirrorTool";
+import { translateEntityWhole } from "../features/sketch/entityDrag";
+import { hitTestEntityWithPoint } from "../features/sketch/hitTest";
 import { usePanTool } from "../features/sketch/tools/usePanTool";
 import { usePolylineTool } from "../features/sketch/tools/usePolylineTool";
 import { useRectangleTool } from "../features/sketch/tools/useRectangleTool";
@@ -69,6 +73,13 @@ export default function Canvas2D() {
   const cursorWorld = useRef<Point>({ x: 0, y: 0 });
   const snapTarget = useRef<Point>({ x: 0, y: 0 });
   const snapActive = useRef(false);
+  const isMoving = useRef(false);
+  const movePlan = useRef<MovePlan | null>(null);
+  const moveStart = useRef<Point>({ x: 0, y: 0 });
+  const movePushUndoDone = useRef(false);
+  const isPasteFloating = useRef(false);
+  const pasteIds = useRef<string[]>([]);
+  const pasteLast = useRef<Point>({ x: 0, y: 0 });
 
   const project = useStore((s) => s.project);
   const toolMode = useStore((s) => s.toolMode);
@@ -76,8 +87,13 @@ export default function Canvas2D() {
   const viewport = useStore((s) => s.viewport);
   const setViewport = useStore((s) => s.setViewport);
   const selectedEntityIds = useStore((s) => s.selectedEntityIds);
+  const selectedVertices = useStore((s) => s.selectedVertices);
   const selectEntity = useStore((s) => s.selectEntity);
   const setSelectedEntityIds = useStore((s) => s.setSelectedEntityIds);
+  const toggleVertex = useStore((s) => s.toggleVertex);
+  const copySelection = useStore((s) => s.copySelection);
+  const pasteAtPoint = useStore((s) => s.pasteAtPoint);
+  const undo = useStore((s) => s.undo);
   const addEntity = useStore((s) => s.addEntity);
   const updateImage = useStore((s) => s.updateImage);
   const setStatus = useStore((s) => s.setStatus);
@@ -126,6 +142,49 @@ export default function Canvas2D() {
     };
   }, []);
 
+  useEffect(() => {
+    const isEditable = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target.isContentEditable
+      );
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (isEditable(event.target)) return;
+      const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === "c") {
+        copySelection();
+        setStatus("Copied selection");
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && key === "v") {
+        event.preventDefault();
+        const at = cursorWorld.current;
+        const ids = pasteAtPoint(at);
+        if (ids.length === 0) return;
+        setToolMode("move");
+        isPasteFloating.current = true;
+        pasteIds.current = ids;
+        pasteLast.current = at;
+        setStatus("Paste: move to position, click to place, Esc to cancel");
+        return;
+      }
+      if (event.key === "Escape" && isPasteFloating.current) {
+        event.preventDefault();
+        isPasteFloating.current = false;
+        pasteIds.current = [];
+        undo();
+        setStatus("Paste cancelled");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [copySelection, pasteAtPoint, setToolMode, setStatus, undo]);
+
   const resolveSnap = useCallback(
     (world: Point, forceOff: boolean): { point: Point; snapped: boolean } => {
       const bypass = forceOff || altKeyPressed.current || !snapToGridEnabled;
@@ -171,6 +230,26 @@ export default function Canvas2D() {
     pushUndoDone: entityPushUndoDone,
     lastClickTime,
     lastClickKey,
+  });
+
+  const { tryStartMove, updateMove, finishMove } = useMoveTool({
+    project,
+    viewport,
+    updateEntity,
+    pushUndo,
+    setSelectedEntityIds,
+    toggleVertex,
+    setStatus,
+    isMoving,
+    movePlan,
+    moveStart,
+    movePushUndoDone,
+  });
+
+  const { handleMirrorMouseDown } = useMirrorTool({
+    project,
+    viewport,
+    setStatus,
   });
 
   const { handlePolylineMouseDown, finishPolyline, cancelPolyline, popPolylinePoint } =
@@ -280,9 +359,49 @@ export default function Canvas2D() {
         );
       }
 
+      // A click confirms a floating paste.
+      if (isPasteFloating.current) {
+        isPasteFloating.current = false;
+        pasteIds.current = [];
+        setStatus("Pasted");
+        return;
+      }
+
       if (handlePendingRectangleClick(world, viewport.zoom)) return;
 
+      if (toolMode === "move") {
+        if (tryStartMove(world, e.shiftKey)) return;
+        startSelectionDrag(world);
+        return;
+      }
+
+      if (toolMode === "mirror") {
+        handleMirrorMouseDown(world);
+        return;
+      }
+
       if (toolMode === "select") {
+        // Shift+click accumulates selection (vertex if a point is hit, else entity).
+        if (e.shiftKey) {
+          const hit = hitTestEntityWithPoint(
+            project?.sketch.entities ?? [],
+            world,
+            viewport,
+          );
+          if (hit?.kind === "point") {
+            toggleVertex(
+              { entityId: hit.entityId, pointIndex: hit.pointIndex },
+              true,
+            );
+            return;
+          }
+          if (hit) {
+            selectEntity(hit.entityId, true);
+            return;
+          }
+          startSelectionDrag(world);
+          return;
+        }
         if (startOrUpdateReferenceLine(world)) return;
         if (tryStartHandleDrag(world)) return;
         if (tryStartEntityDrag(world)) return;
@@ -324,6 +443,12 @@ export default function Canvas2D() {
       startOrUpdateReferenceLine,
       tryStartHandleDrag,
       tryStartEntityDrag,
+      tryStartMove,
+      handleMirrorMouseDown,
+      project,
+      toggleVertex,
+      selectEntity,
+      updateEntity,
     ],
   );
 
@@ -337,7 +462,25 @@ export default function Canvas2D() {
       snapTarget.current = snapped;
       snapActive.current = didSnap;
 
+      // Floating paste follows the cursor until a click confirms it.
+      if (isPasteFloating.current) {
+        const dx = snapped.x - pasteLast.current.x;
+        const dy = snapped.y - pasteLast.current.y;
+        if (dx !== 0 || dy !== 0) {
+          const entities = useStore.getState().project?.sketch.entities ?? [];
+          for (const id of pasteIds.current) {
+            const entity = entities.find((en) => en.id === id);
+            if (!entity) continue;
+            updateEntity(id, translateEntityWhole(entity, dx, dy));
+          }
+          pasteLast.current = snapped;
+        }
+        return;
+      }
+
       if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
+
+      if (toolMode === "move" && updateMove(world)) return;
 
       if (updateHandleDrag(world)) return;
 
@@ -368,6 +511,8 @@ export default function Canvas2D() {
       updateEntityDrag,
       updateImageTransform,
       updateReferenceLine,
+      updateMove,
+      updateEntity,
     ],
   );
 
@@ -376,6 +521,7 @@ export default function Canvas2D() {
       if (stopPan()) return;
 
       if (finishImageTransform()) return;
+      if (finishMove()) return;
       if (finishHandleDrag()) return;
       if (finishEntityDrag()) return;
       if (finishReferenceLine()) return;
@@ -396,6 +542,7 @@ export default function Canvas2D() {
       finishReferenceLine,
       finishSelectionDrag,
       finishRectangle,
+      finishMove,
       setEditingImageId,
     ],
   );
@@ -427,6 +574,7 @@ export default function Canvas2D() {
     project,
     viewport,
     selectedEntityIds,
+    selectedVertices,
     editingImageId,
     entityDragTarget,
     toolMode,
