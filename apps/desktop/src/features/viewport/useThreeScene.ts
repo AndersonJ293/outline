@@ -36,6 +36,7 @@ export function useThreeScene({
     cameraRef.current = camera;
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
     sceneRef.current = scene;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
