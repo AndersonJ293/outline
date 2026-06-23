@@ -41,7 +41,7 @@ export function useCutterActions({
 
     const operation: Operation = {
       id: generateId(),
-      type: "cookie_cutter_wall",
+      type: "extrude_thin",
       source_entity_id: entity.id,
       height_mm: wallHeight,
       wall_thickness_mm: wallThickness,

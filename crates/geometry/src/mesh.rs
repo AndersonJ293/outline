@@ -45,6 +45,53 @@ pub fn generate_wall_mesh(
     Some(build_wall_mesh(&inner_pts, &outer_pts, height))
 }
 
+/// Generates a solid extrusion: bottom cap + top cap + side walls.
+/// No offset, no hollow interior — used for `OperationKind::Extrude`.
+pub fn generate_extrude_mesh(points: &[Point], height: f64) -> Option<MeshData> {
+    if points.len() < 3 || height <= 0.0 {
+        return None;
+    }
+    Some(build_solid_mesh(points, height))
+}
+
+fn build_solid_mesh(points: &[Point], height: f64) -> MeshData {
+    let n = points.len();
+    let mut vertices = Vec::with_capacity(2 * n);
+    let mut triangles = Vec::with_capacity(2 * n + 2 * n);
+
+    for p in points {
+        vertices.push([p.x, p.y, 0.0]);
+    }
+    for p in points {
+        vertices.push([p.x, p.y, height]);
+    }
+
+    let b = |i: u32| i;
+    let t = |i: u32| (n as u32) + i;
+    let j = |i: usize| ((i + 1) % n) as u32;
+
+    // Top cap (CCW when viewed from +Z)
+    for i in 0..n {
+        let ni = i as u32;
+        let nj = j(i);
+        triangles.push([t(ni), t(nj), b(ni)]);
+        triangles.push([b(ni), t(nj), b(nj)]);
+    }
+
+    // Side walls
+    for i in 0..n {
+        let ni = i as u32;
+        let nj = j(i);
+        triangles.push([b(ni), b(nj), t(ni)]);
+        triangles.push([t(ni), b(nj), t(nj)]);
+    }
+
+    MeshData {
+        vertices,
+        triangles,
+    }
+}
+
 fn build_wall_mesh(inner: &[Point], outer: &[Point], height: f64) -> MeshData {
     let n = inner.len();
     let mut vertices = Vec::with_capacity(4 * n);

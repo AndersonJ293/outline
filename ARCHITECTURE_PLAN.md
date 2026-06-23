@@ -7,9 +7,11 @@
 > é (1) corrigir a *estratégia* de render 2D e (2) mover a fronteira de geometria
 > para o Rust, tornando o 3D reativo ao 2D (paradigma paramétrico estilo Fusion).
 >
-> **Status 2026-06-23:** Fases 0, 1 e 1b implementadas (branch `feat/parametric-rebuild`).
-> Render sob demanda + memoização de chains, rebuild paramétrico no Rust, chains e
-> spline portados para `crates/geometry`. Fase 2 e 3 pendentes.
+> **Status 2026-06-23:** Fases 0, 1, 1b, 2, 3a, 3b, 3c implementadas (branch
+> `feat/parametric-rebuild`). Render sob demanda, rebuild paramétrico no Rust,
+> canvas em duas camadas, viewport unificado 2D+3D, sketch como wireframe 3D,
+> planos de sketch arbitrários (XY/XZ/YZ + face selection). Falta: Fase 4 —
+> ferramentas no modo 3D (seleção, mover, extrusão normal/fin).
 
 ---
 
@@ -323,6 +325,114 @@ corretamente; não existe mais botão sketch/solid.
 
 ---
 
+### Fase 4 — Ferramentas no modo 3D (estilo Fusion)
+
+**Objetivo:** no modo 3D, o usuário pode selecionar entidades do sketch renderizadas
+como wireframes, movê-las, e extrudá-las (com ou sem parede fina) — sem sair do
+modo 3D. O botão "Generate Cutter" deixa de existir; a extrusão vira uma ferramenta
+do viewport, com sub-modo `normal` (perfis fechados) e `thin` (contorno, ex-parede
+de cookie cutter). A sidebar passa a refletir o modo atual (3D ou sketch).
+
+**Pré-requisito:** Fases 3a–3c concluídas (wireframes 3D + planos de trabalho).
+
+#### 4.1 — Seleção e mover no 3D
+
+- **Arquivo-alvo:** novo `features/viewport/useEntity3DSelect.ts` (~80 LOC).
+- Raycast nos meshes do `sketchGroupRef` (wireframes amarelos).
+- Hit 3D → mapear pra coordenadas 2D do `workingPlane` → identificar `entityId` e
+  chamar `selectEntity(hitEntityId)`. Suporte a `shiftKey` pra multi-seleção.
+- Drag: capturar delta no plano, mover `entity.points` e `entity.controlPoints`
+  proporcionalmente. Reusar `translateEntityWhole` já existente.
+- Toolmode novo: `"select3d"` (análogo ao `"select"` do sketch, mas pra 3D).
+
+#### 4.2 — Ferramenta de extrusão (substitui "Generate Cutter")
+
+- **Arquivo-alvo:** novo `features/viewport/useExtrudeTool.ts` (~120 LOC).
+- `toolMode: "extrude"`, `extrudeMode: "normal" | "thin"` (estado local na tool).
+- Click num wireframe de entidade:
+  - `normal`: precisa de perfil fechado (`chain fechado` detectado pelo Rust ou
+    pelo `chains.ts`). Extrusão sólida do perfil.
+  - `thin`: qualquer contorno (aberto também). Extrusão com parede fina
+    (cookie cutter — reusa `cookie_cutter_wall` que já existe no Rust).
+- Cria `Operation` no projeto com `type: "extrude"` ou `"extrude_thin"` e
+  `source_entity_id: entityId`. O `rebuild_document` existente (Fase 1) já
+  recalcula — só precisa do novo `Operation.type` no Rust.
+- Reativo: editar o sketch atualiza a extrusão automaticamente (já funciona
+  via Fase 1 — `useRebuildEffect`).
+
+#### 4.3 — Novos `Operation.type` no Rust
+
+**Arquivo-alvo:** `crates/geometry/src/entities.rs` e `crates/outline-core/src/commands.rs`.
+
+```rust
+// entities.rs
+pub enum OperationType {
+    CookieCutterWall, // existente
+    Extrude,          // novo — extrusão sólida de perfil fechado
+    ExtrudeThin,      // novo — extrusão fina de qualquer contorno
+}
+```
+
+```rust
+// outline-core/commands.rs — resolve_operation()
+match op.kind {
+    OperationType::Extrude => generate_extrude_mesh(profile, height),
+    OperationType::ExtrudeThin => generate_thin_wall_mesh(profile, height, thickness, offset_side),
+    OperationType::CookieCutterWall => generate_wall_mesh(...),  // já existe
+}
+```
+
+- `generate_extrude_mesh`: extrusão sólida simples (sem offset, sem parede oca).
+- `generate_thin_wall_mesh`: idêntico ao `generate_wall_mesh` atual — pode ser
+  alias, ou unificar os dois com um flag `hollow: bool`.
+- Adicionar testes em `crates/geometry/src/mesh.rs`.
+
+#### 4.4 — Sidebar por modo
+
+- **Estado atual:** `SketchToolbar` (col 1) sempre visível com tools de sketch.
+- **Alvo:** alternar entre `SketchSidebar` e `ModelSidebar` baseado em
+  `isSketching`.
+- **SketchSidebar** (já existe, manter): Select, Polyline, Rectangle, Spline,
+  Move, Mirror, Import Image, Snap, Undo/Redo.
+- **ModelSidebar** (novo, `components/app/ModelToolbar.tsx`):
+  - **Select** — `toolMode = "select3d"` (4.1)
+  - **Extrude** — toggle entre `normal` e `thin` (4.2). Sub-modo via dois botões
+    adjacentes ou dropdown.
+  - **Generate Cutter** (botão antigo do InspectorPanel) — **removido**.
+    Substituído pela ferramenta.
+- InspectorPanel (`components/app/InspectorPanel.tsx`) deixa de mostrar
+  `wallHeight` / `wallThickness` / `offsetSide` no topo — essas props migram pra
+  `ModelSidebar` quando `toolMode === "extrude"` (são parâmetros da ferramenta,
+  não estado global).
+
+#### 4.5 — Limpeza do `viewMode` legado
+
+- `viewMode: "sketch" | "solid" | "export"` no store ainda existe mas **não é
+  mais usado** (Fase 3a removeu a troca de viewports). Remover do `uiSlice`,
+  `types.ts` e `App.tsx`.
+- `ModeTabs.tsx` removido (já estava em desuso desde Fase 3a).
+
+#### Ordem sugerida
+
+1. **4.3** — adicionar `Operation.type` no Rust + testes. Sem dependência visual,
+   só contrato. Pequeno, valida o pipeline.
+2. **4.4** — `ModelSidebar` com Select e Extrude. Sidebar reflete modo. Remove
+   botão "Generate Cutter".
+3. **4.1** — seleção/mover 3D via raycast.
+4. **4.2** — completar extrusão (chamar Rust, criar Operation, ver mesh).
+5. **4.5** — limpeza do `viewMode` legado.
+
+**Esforço:** médio · **Risco:** médio (mexe em contrato Rust, ferramenta nova,
+sidebar por modo).
+
+**Critério de pronto:** no modo 3D, o usuário pode (1) clicar num wireframe
+amarelo e selecioná-lo, (2) arrastar pra mover, (3) escolher extrude normal ou
+thin, clicar no wireframe, ver o sólido aparecer, e editar o sketch pra ver
+o sólido atualizar. Sidebar mostra tools de 3D quando não está em sketch, e
+tools de sketch quando está. Botão "Generate Cutter" não existe mais.
+
+---
+
 ## 4. O que NÃO fazer
 
 - **Não** trocar React / Zustand / Vite / Tauri — custo puro, ganho zero.
@@ -339,9 +449,11 @@ corretamente; não existe mais botão sketch/solid.
 
 1. **Fase 0** ✅ — ganho imediato, isolado, não compromete decisões futuras.
 2. **Fase 1 + 1b** ✅ — rebuild paramétrico + geometria no Rust.
-3. **Fase 2** — culling + canvas em camadas + extrair Canvas2D (pré-requisito pra Fase 3).
-4. **Fase 3a** — viewport unificado (2D+3D mesma tela).
-5. **Fase 3b+** — sketch 3D, planos arbitrários (opcional, evoluir com o uso).
+3. **Fase 2** ✅ — culling + canvas em camadas + extrair Canvas2D (pré-requisito pra Fase 3).
+4. **Fase 3a** ✅ — viewport unificado (2D+3D mesma tela).
+5. **Fase 3b** ✅ — sketch como wireframe 3D.
+6. **Fase 3c** ✅ — planos de sketch arbitrários (XY/XZ/YZ + face selection).
+7. **Fase 4** — ferramentas no modo 3D (seleção, mover, extrusão normal/fin, sidebar por modo).
 
 > Observação para o agente executor: validar cada referência `arquivo:linha` deste
 > documento antes de editar — o código pode ter mudado desde 2026-06-23.

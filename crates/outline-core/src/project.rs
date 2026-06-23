@@ -74,6 +74,32 @@ pub struct Mesh {
     pub triangles: Vec<[u32; 3]>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OperationKind {
+    /// Solid extrusion of a closed profile.
+    Extrude,
+    /// Thin-wall extrusion of a contour (cookie-cutter style).
+    ExtrudeThin,
+}
+
+impl OperationKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            OperationKind::Extrude => "extrude",
+            OperationKind::ExtrudeThin => "extrude_thin",
+        }
+    }
+}
+
+impl Operation {
+    pub fn kind(&self) -> OperationKind {
+        match self.op_type.as_str() {
+            "extrude_thin" => OperationKind::ExtrudeThin,
+            _ => OperationKind::Extrude,
+        }
+    }
+}
+
 impl Project {
     pub fn new(name: &str) -> Self {
         Self {
