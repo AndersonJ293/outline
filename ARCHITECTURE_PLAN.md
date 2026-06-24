@@ -7,11 +7,14 @@
 > é (1) corrigir a *estratégia* de render 2D e (2) mover a fronteira de geometria
 > para o Rust, tornando o 3D reativo ao 2D (paradigma paramétrico estilo Fusion).
 >
-> **Status 2026-06-23:** Fases 0, 1, 1b, 2, 3a, 3b, 3c implementadas (branch
+> **Status 2026-06-23:** Fases 0, 1, 1b, 2, 3a, 3b, 3c, 4 implementadas (branch
 > `feat/parametric-rebuild`). Render sob demanda, rebuild paramétrico no Rust,
 > canvas em duas camadas, viewport unificado 2D+3D, sketch como wireframe 3D,
-> planos de sketch arbitrários (XY/XZ/YZ + face selection). Falta: Fase 4 —
-> ferramentas no modo 3D (seleção, mover, extrusão normal/fin).
+> planos de sketch arbitrários (XY/XZ/YZ + face selection), ferramentas 3D
+> (seleção, mover, extrusão normal/fin, sidebar por modo).
+> Próximas expansões opcionais: Fase 3d (edição paramétrica visual: arrastar
+> face → atualizar sketch, cotas/constraints), novos `Operation.type`
+> (revolve, pocket, sweep).
 
 ---
 
