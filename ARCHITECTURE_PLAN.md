@@ -453,7 +453,7 @@ tools de sketch quando está. Botão "Generate Cutter" não existe mais.
 4. **Fase 3a** ✅ — viewport unificado (2D+3D mesma tela).
 5. **Fase 3b** ✅ — sketch como wireframe 3D.
 6. **Fase 3c** ✅ — planos de sketch arbitrários (XY/XZ/YZ + face selection).
-7. **Fase 4** — ferramentas no modo 3D (seleção, mover, extrusão normal/fin, sidebar por modo).
+7. **Fase 4** ✅ — ferramentas no modo 3D (seleção, mover, extrusão normal/fin, sidebar por modo).
 
 > Observação para o agente executor: validar cada referência `arquivo:linha` deste
 > documento antes de editar — o código pode ter mudado desde 2026-06-23.
