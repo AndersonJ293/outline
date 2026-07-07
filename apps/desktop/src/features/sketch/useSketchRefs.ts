@@ -2,6 +2,7 @@ import { useRef } from "react";
 import type { Point } from "../../types";
 import type { MovePlan } from "./tools/useMoveTool";
 import type { SplineDrawingState } from "./tools/useSplineTool";
+import type { SnapGuide, SnapKind } from "./snapping";
 
 export interface SketchRefs {
   drawingPoints: { current: Point[] };
@@ -32,6 +33,11 @@ export interface SketchRefs {
   cursorWorld: { current: Point };
   snapTarget: { current: Point };
   snapActive: { current: boolean };
+  snapKind: { current: SnapKind };
+  snapGuides: { current: SnapGuide[] };
+  snapMarker: { current: Point | null };
+  /// Live numeric length the user is typing while drawing a segment.
+  drawLengthInput: { current: string };
   isMoving: { current: boolean };
   movePlan: { current: MovePlan | null };
   moveStart: { current: Point };
@@ -71,6 +77,10 @@ export function useSketchRefs(): SketchRefs {
     cursorWorld: useRef<Point>({ x: 0, y: 0 }),
     snapTarget: useRef<Point>({ x: 0, y: 0 }),
     snapActive: useRef(false),
+    snapKind: useRef<SnapKind>("none"),
+    snapGuides: useRef<SnapGuide[]>([]),
+    snapMarker: useRef<Point | null>(null),
+    drawLengthInput: useRef<string>(""),
     isMoving: useRef(false),
     movePlan: useRef<MovePlan | null>(null),
     moveStart: useRef<Point>({ x: 0, y: 0 }),

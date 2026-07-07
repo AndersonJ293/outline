@@ -18,6 +18,21 @@ pub struct SketchDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SketchProfileDto {
+    pub id: String,
+    #[serde(rename = "outerEntityId")]
+    pub outer_entity_id: String,
+    #[serde(
+        default,
+        rename = "innerEntityId",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub inner_entity_id: Option<String>,
+    #[serde(rename = "areaMm2")]
+    pub area_mm2: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SplineHandleDto {
     pub dx: f64,
     pub dy: f64,
@@ -62,10 +77,23 @@ pub struct OperationDto {
     pub id: String,
     #[serde(rename = "type")]
     pub op_type: String,
+    #[serde(default)]
     pub source_entity_id: String,
+    #[serde(
+        default,
+        rename = "sourceProfileId",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub source_profile_id: Option<String>,
+    #[serde(default = "default_boolean_operation")]
+    pub operation: String,
     pub height_mm: f64,
     pub wall_thickness_mm: f64,
     pub offset_side: String,
+}
+
+fn default_boolean_operation() -> String {
+    "new_body".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,6 +189,8 @@ impl From<&outline_core::project::Project> for ProjectDto {
                     id: op.id.clone(),
                     op_type: op.op_type.clone(),
                     source_entity_id: op.source_entity_id.clone(),
+                    source_profile_id: op.source_profile_id.clone(),
+                    operation: op.operation.clone(),
                     height_mm: op.height_mm,
                     wall_thickness_mm: op.wall_thickness_mm,
                     offset_side: op.offset_side.clone(),

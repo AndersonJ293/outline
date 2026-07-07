@@ -5,10 +5,13 @@ import {
   drawPendingRectangle,
   drawReferenceLine,
   drawRefScaleConfirm,
+  drawRubberBand,
   drawSelectionArea,
+  drawSnapInference,
   drawSnapTarget,
 } from "./renderInteraction";
 import type { SplineDrawingState } from "./tools/useSplineTool";
+import type { SnapGuide, SnapKind } from "./snapping";
 
 export interface RenderOverlayArgs {
   ctx: CanvasRenderingContext2D;
@@ -25,6 +28,10 @@ export interface RenderOverlayArgs {
   cursorWorld: MutableRefObject<Point>;
   snapTarget: MutableRefObject<Point>;
   snapActive: MutableRefObject<boolean>;
+  snapKind: MutableRefObject<SnapKind>;
+  snapGuides: MutableRefObject<SnapGuide[]>;
+  snapMarker: MutableRefObject<Point | null>;
+  drawLengthInput: MutableRefObject<string>;
   imageRefLineStart: MutableRefObject<Point | null>;
   imageRefLineEnd: MutableRefObject<Point | null>;
   refScalePopup: { screenX: number; screenY: number } | null;
@@ -46,6 +53,10 @@ export function renderOverlay({
   cursorWorld,
   snapTarget,
   snapActive,
+  snapKind,
+  snapGuides,
+  snapMarker,
+  drawLengthInput,
   imageRefLineStart,
   imageRefLineEnd,
   refScalePopup,
@@ -62,11 +73,24 @@ export function renderOverlay({
   drawDrawingPreview(
     ctx, viewport, toolMode, isDrawing, drawingPoints, closeToStart, splineState,
   );
+  drawRubberBand(
+    ctx, viewport, toolMode, isDrawing, drawingPoints, splineState, snapTarget.current,
+    drawLengthInput.current,
+  );
   drawSelectionArea(ctx, viewport, isSelectDragging, selectDragStart, selectDragEnd);
   drawPendingRectangle(ctx, viewport, pendingRectangle);
-  drawSnapTarget(
-    ctx, viewport, cursorWorld.current, snapTarget.current, snapActive.current, snapToGridEnabled,
-  );
+
+  // Snap visuals only belong to the drawing tools — not select/move/etc.
+  const isDrawingTool =
+    toolMode === "polyline" || toolMode === "spline" || toolMode === "rectangle";
+  if (isDrawingTool) {
+    drawSnapInference(
+      ctx, viewport, snapTarget.current, snapKind.current, snapGuides.current, snapMarker.current,
+    );
+    drawSnapTarget(
+      ctx, viewport, cursorWorld.current, snapTarget.current, snapActive.current, snapToGridEnabled,
+    );
+  }
 
   ctx.restore();
 }

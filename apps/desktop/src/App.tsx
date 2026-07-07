@@ -29,6 +29,10 @@ function App() {
     selectEntity,
     removeSelectedEntities,
     removeSelectedVertices,
+    removeOperation,
+    updateOperation,
+    selectedOperationId,
+    selectOperation,
     bodies,
     bodyErrors,
     setBodies,
@@ -139,6 +143,11 @@ function App() {
     setStatus("Sketch finished");
   };
 
+  const handleEditSketch = () => {
+    setIsSketching(true);
+    setStatus("Editing sketch");
+  };
+
   const handleCancelSketch = () => {
     setIsSketching(false);
     setStatus("Sketch cancelled");
@@ -206,6 +215,9 @@ function App() {
       ) : (
         <div className={s["tab-strip"]}>
           <button className={s["sketch-btn"]} onClick={handleCreateSketch}>Create Sketch</button>
+          {(project?.sketch.entities.length ?? 0) > 0 && (
+            <button className={s["sketch-btn"]} onClick={handleEditSketch}>Edit Sketch</button>
+          )}
           <div style={{ flex: 1 }} />
           <button className={s["toolbar-btn-sm"]} onClick={undo} title="Undo">↩</button>
           <button className={s["toolbar-btn-sm"]} onClick={redo} title="Redo">↪</button>
@@ -266,6 +278,10 @@ function App() {
         onSetEditingImageId={setEditingImageId}
         onSetEntityDragTarget={setEntityDragTarget}
         onRemoveSelected={removeSelectedEntities}
+        onRemoveOperation={removeOperation}
+        selectedOperationId={selectedOperationId}
+        onSelectOperation={selectOperation}
+        onUpdateOperation={updateOperation}
         onUpdateImage={updateImageCommitted}
         onToggleImageLockAspect={() => setImageLockAspect((locked) => !locked)}
         onSetImageRefScaleMode={setImageRefScaleMode}

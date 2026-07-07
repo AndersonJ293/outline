@@ -17,6 +17,21 @@ pub struct Sketch {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SketchProfile {
+    pub id: String,
+    #[serde(rename = "outerEntityId")]
+    pub outer_entity_id: String,
+    #[serde(
+        default,
+        rename = "innerEntityId",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub inner_entity_id: Option<String>,
+    #[serde(rename = "areaMm2")]
+    pub area_mm2: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SplineHandle {
     pub dx: f64,
     pub dy: f64,
@@ -61,10 +76,23 @@ pub struct Operation {
     pub id: String,
     #[serde(rename = "type")]
     pub op_type: String,
+    #[serde(default)]
     pub source_entity_id: String,
+    #[serde(
+        default,
+        rename = "sourceProfileId",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub source_profile_id: Option<String>,
+    #[serde(default = "default_boolean_operation")]
+    pub operation: String,
     pub height_mm: f64,
     pub wall_thickness_mm: f64,
     pub offset_side: String,
+}
+
+fn default_boolean_operation() -> String {
+    "new_body".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

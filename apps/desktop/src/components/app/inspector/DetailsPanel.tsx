@@ -1,8 +1,9 @@
 import { EntityPropertiesSection } from "./EntityPropertiesSection";
 import { ExtrudeToolSection } from "./ExtrudeToolSection";
 import { ImagePropertiesSection } from "./ImagePropertiesSection";
+import { OperationPropertiesSection } from "./OperationPropertiesSection";
 import { MeshSection } from "./MeshSection";
-import type { ExtrudeMode, Tool3DMode } from "../../../types";
+import type { ExtrudeMode, Operation, Tool3DMode } from "../../../types";
 import type { InspectorPanelProps } from "./types";
 import s from "./panel-shared.module.css";
 
@@ -22,6 +23,7 @@ type DetailsPanelProps = Pick<
   | "onToggleImageLockAspect"
   | "onSetImageRefScaleMode"
   | "onRemoveSelected"
+  | "onRemoveOperation"
   | "onSetWallHeight"
   | "onSetWallThickness"
   | "onSetOffsetSide"
@@ -30,6 +32,8 @@ type DetailsPanelProps = Pick<
 > & {
   tool3DMode: Tool3DMode;
   extrudeMode: ExtrudeMode;
+  selectedOperation: Operation | null;
+  onUpdateOperation: (id: string, updates: Partial<Operation>) => void;
 };
 
 export function DetailsPanel(props: DetailsPanelProps) {
@@ -53,8 +57,11 @@ export function DetailsPanel(props: DetailsPanelProps) {
     onSetOffsetSide,
     onSetPreviewWireframe,
     onExportStl,
+    onRemoveOperation,
     tool3DMode,
     extrudeMode,
+    selectedOperation,
+    onUpdateOperation,
   } = props;
 
   const bodyCount = Object.keys(bodies).length;
@@ -62,9 +69,11 @@ export function DetailsPanel(props: DetailsPanelProps) {
     ? "Entity"
     : selectedImage
       ? "Image"
-      : bodyCount > 0
-        ? "Mesh"
-        : null;
+      : selectedOperation
+        ? "Operation"
+        : bodyCount > 0
+          ? "Mesh"
+          : null;
 
   return (
     <div className={s["panel-details"]}>
@@ -85,6 +94,14 @@ export function DetailsPanel(props: DetailsPanelProps) {
           onToggleImageLockAspect={onToggleImageLockAspect}
           onSetImageRefScaleMode={onSetImageRefScaleMode}
           onRemoveSelected={onRemoveSelected}
+        />
+      )}
+
+      {selectedOperation && (
+        <OperationPropertiesSection
+          operation={selectedOperation}
+          onUpdateOperation={onUpdateOperation}
+          onRemoveOperation={onRemoveOperation}
         />
       )}
 

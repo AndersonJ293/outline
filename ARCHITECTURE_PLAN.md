@@ -309,11 +309,34 @@ sketch é a base técnica para sobrepor o 2D ao Three.js.
 
 #### Fase 3d — Edição paramétrica visual
 
-> Expansão futura se necessário.
-
 - Arrastar entidade no sketch → o 3D atualiza em tempo real (já funciona via Fase 1).
-- Arrastar face de sólido → o sketch de origem atualiza (bidirecional, complexo).
-- Dimensionamento paramétrico (cotas visíveis, constraints).
+- **Fatia 1 — Cotas lineares editáveis ✅** (estilo Fusion). Novo tipo
+  `Dimension` em `Sketch.dimensions` (frontend-only; o DTO Rust não precisou
+  mudar — cotas dirigem `entity.points`, que já fluem ao Rust, e a persistência
+  é JSON do frontend). Ferramenta `"dimension"` (tecla **D**): clicar num
+  segmento cria a cota com a medida atual; clicar na cota abre um input;
+  digitar um valor reposiciona a geometria (`applyLinearDimension`) e dispara o
+  `rebuild_document` → o 3D acompanha. Arquivos: `features/sketch/dimensions.ts`,
+  `renderDimensions.ts`, `tools/useDimensionTool.ts`, `DimensionPopup.tsx`.
+- **Fatia 2 — Snap inteligente ao desenhar ✅** (escolhido no lugar de um solver
+  pesado de constraints, por ser mais leve/fácil). `features/sketch/snapping.ts`:
+  `computeSnap` infere endpoint → midpoint → horizontal/vertical (relativo à
+  âncora do desenho) → alinhamento com vértices existentes → grid. Overlay mostra
+  guias tracejadas, marcador de endpoint (quadrado) / midpoint (triângulo), badge
+  H/V e linha de borracha (rubber-band) com comprimento ao vivo. Polyline em
+  progresso renderiza sólida (parece linha real desde o 1º ponto) e ganhou um
+  checkmark "V" perto do último ponto que encerra a ferramenta (além de Enter).
+- **Digitar medida ao desenhar ✅** (estilo Fusion). Ao puxar uma linha
+  (polyline/spline), digitar números trava o comprimento — a direção segue o
+  cursor (com snap H/V), Enter/Tab coloca o ponto, Backspace apaga dígito, Esc
+  limpa. O valor digitado aparece numa caixa destacada na ponta do rubber-band.
+  Captura de teclado em `UnifiedViewport` (listener em fase de captura para ter
+  prioridade sobre o Enter que encerra a polyline); buffer em
+  `drawLengthInput` (ref), desenhado pelo overlay.
+- **Fatia 3 — Bidirecional face→sketch** (arrastar face do sólido edita a
+  entidade de origem). *Pendente, a mais complexa.*
+- **Constraints persistentes + solver** ficam como opção futura, só se o snap não
+  bastar.
 
 **Por que depois da Fase 2:** a Fase 2 separa o canvas em camadas (estática +
 overlay), que é exatamente a estrutura necessária pra sobrepor o 2D ao Three.js sem

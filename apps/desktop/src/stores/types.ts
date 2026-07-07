@@ -1,4 +1,5 @@
 import type {
+  Dimension,
   Entity,
   ExtrudeMode,
   Mesh,
@@ -44,6 +45,10 @@ export interface AppStore {
 
   addEntity: (entity: Entity) => void;
   addOperation: (op: Operation) => void;
+  updateOperation: (id: string, updates: Partial<Operation>) => void;
+  removeOperation: (id: string) => void;
+  selectedOperationId: string | null;
+  selectOperation: (id: string | null) => void;
   addImage: (image: SketchImage) => void;
   updateEntity: (id: string, updates: Partial<Entity>) => void;
   translateEntity: (
@@ -56,6 +61,10 @@ export interface AppStore {
   updateImageCommitted: (id: string, updates: Partial<SketchImage>) => void;
   removeSelectedEntities: () => void;
   removeSelectedVertices: () => void;
+
+  addDimension: (dim: Dimension) => void;
+  updateDimensionValue: (id: string, value: number) => void;
+  removeDimension: (id: string) => void;
 
   toolMode: ToolMode;
   setToolMode: (mode: ToolMode) => void;

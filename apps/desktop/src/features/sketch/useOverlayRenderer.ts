@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, type RefObject, type MutableRefObject }
 import type { Point, ToolMode, ViewportState } from "../../types";
 import { renderOverlay } from "./renderOverlay";
 import type { SplineDrawingState } from "./tools/useSplineTool";
+import type { SnapGuide, SnapKind } from "./snapping";
 
 interface UseOverlayRendererArgs {
   canvasRef: RefObject<HTMLCanvasElement>;
@@ -18,6 +19,10 @@ interface UseOverlayRendererArgs {
   cursorWorld: MutableRefObject<Point>;
   snapTarget: MutableRefObject<Point>;
   snapActive: MutableRefObject<boolean>;
+  snapKind: MutableRefObject<SnapKind>;
+  snapGuides: MutableRefObject<SnapGuide[]>;
+  snapMarker: MutableRefObject<Point | null>;
+  drawLengthInput: MutableRefObject<string>;
   imageRefLineStart: MutableRefObject<Point | null>;
   imageRefLineEnd: MutableRefObject<Point | null>;
   refScalePopup: { screenX: number; screenY: number } | null;
@@ -40,6 +45,10 @@ export function useOverlayRenderer(args: UseOverlayRendererArgs): { requestRende
     cursorWorld,
     snapTarget,
     snapActive,
+    snapKind,
+    snapGuides,
+    snapMarker,
+    drawLengthInput,
     imageRefLineStart,
     imageRefLineEnd,
     refScalePopup,
@@ -68,6 +77,10 @@ export function useOverlayRenderer(args: UseOverlayRendererArgs): { requestRende
       cursorWorld,
       snapTarget,
       snapActive,
+      snapKind,
+      snapGuides,
+      snapMarker,
+      drawLengthInput,
       imageRefLineStart,
       imageRefLineEnd,
       refScalePopup,
@@ -88,6 +101,10 @@ export function useOverlayRenderer(args: UseOverlayRendererArgs): { requestRende
     cursorWorld,
     snapTarget,
     snapActive,
+    snapKind,
+    snapGuides,
+    snapMarker,
+    drawLengthInput,
     imageRefLineStart,
     imageRefLineEnd,
     refScalePopup,

@@ -26,6 +26,28 @@ export interface Sketch {
   plane: string;
   entities: Entity[];
   images?: SketchImage[];
+  dimensions?: Dimension[];
+}
+
+export interface SketchProfile {
+  id: string;
+  outerEntityId: string;
+  innerEntityId?: string;
+  areaMm2: number;
+}
+
+/// A linear dimension drives the length of one entity segment.
+/// The segment endpoints are `entity.points[segIdx]` and the next point
+/// (wrapping to index 0 when the entity is closed). Editing `value`
+/// repositions the geometry so the segment matches the requested length.
+export interface Dimension {
+  id: string;
+  kind: "linear";
+  entityId: string;
+  segIdx: number;
+  value: number;
+  /// Perpendicular offset (mm) of the dimension line from the segment.
+  offset: number;
 }
 
 export interface Point {
@@ -55,7 +77,9 @@ export interface Entity {
 export interface Operation {
   id: string;
   type: string;
-  source_entity_id: string;
+  source_entity_id?: string;
+  sourceProfileId?: string;
+  operation?: "join" | "cut" | "intersect" | "new_body";
   height_mm: number;
   wall_thickness_mm: number;
   offset_side: "center" | "inside" | "outside";
@@ -112,7 +136,8 @@ export type ToolMode =
   | "rectangle"
   | "spline"
   | "move"
-  | "mirror";
+  | "mirror"
+  | "dimension";
 
 export type Tool3DMode = "select3d" | "extrude";
 

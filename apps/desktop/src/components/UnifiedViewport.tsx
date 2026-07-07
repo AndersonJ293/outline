@@ -1,7 +1,9 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { useStore } from "../stores/useStore";
 import type { Point } from "../types";
-import { screenToWorld as toWorld, snapToGrid, getSnapStep } from "../features/sketch/geometry";
+import { screenToWorld as toWorld } from "../features/sketch/geometry";
+import { computeSnap, type SnapResult } from "../features/sketch/snapping";
+import { finishButtonAt } from "../features/sketch/renderInteraction";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
 import { useImageState } from "../features/sketch/useImageState";
 import { useSketchRefs } from "../features/sketch/useSketchRefs";
@@ -11,6 +13,8 @@ import { useImageTransformTool } from "../features/sketch/tools/useImageTransfor
 import { useEntityDragTool } from "../features/sketch/tools/useEntityDragTool";
 import { useMoveTool } from "../features/sketch/tools/useMoveTool";
 import { useMirrorTool } from "../features/sketch/tools/useMirrorTool";
+import { useDimensionTool } from "../features/sketch/tools/useDimensionTool";
+import { DimensionPopup, type DimensionPopupState } from "../features/sketch/DimensionPopup";
 import { translateEntityWhole } from "../features/sketch/entityDrag";
 import { hitTestEntityWithPoint } from "../features/sketch/hitTest";
 import { usePanTool } from "../features/sketch/tools/usePanTool";
@@ -46,7 +50,8 @@ export default function UnifiedViewport() {
     entityDragSegIdx, entityDragStart, entityPushUndoDone, lastClickTime, lastClickKey,
     splineState, isHandleDragging, handleDragEntityId, handleDragAnchorIndex,
     handleDragStart, handlePushUndoDone, altKeyPressed, cursorWorld, snapTarget,
-    snapActive, isMoving, movePlan, moveStart, movePushUndoDone,
+    snapActive, snapKind, snapGuides, snapMarker, drawLengthInput,
+    isMoving, movePlan, moveStart, movePushUndoDone,
     isPasteFloating, pasteIds, pasteLast,
   } = useSketchRefs();
   const {
@@ -67,8 +72,11 @@ export default function UnifiedViewport() {
     isSketching, workingPlane, faceSelectionActive, setFaceSelectionActive,
     planePickerActive, setPlanePickerActive, setIsSketching, setWorkingPlane,
     tool3DMode, setTool3DMode, extrudeMode, wallHeight, wallThickness, offsetSide,
-    addOperation, translateEntity,
+    addOperation, removeOperation, selectedOperationId, selectOperation, translateEntity,
+    addDimension, updateDimensionValue,
   } = useViewportStore();
+
+  const [dimPopup, setDimPopup] = useState<DimensionPopupState | null>(null);
 
   const screenToWorld = useCallback(
     (sx: number, sy: number): Point => {
@@ -93,17 +101,48 @@ export default function UnifiedViewport() {
     undo,
   });
 
+  const drawingAnchor = useCallback((): Point | null => {
+    if (toolMode === "polyline" && isDrawing.current && drawingPoints.current.length > 0) {
+      return drawingPoints.current[drawingPoints.current.length - 1];
+    }
+    if (toolMode === "spline" && splineState.current && splineState.current.anchors.length > 0) {
+      const a = splineState.current.anchors;
+      return a[a.length - 1];
+    }
+    if (toolMode === "rectangle" && drawingPoints.current.length > 0) {
+      return drawingPoints.current[0];
+    }
+    return null;
+  }, [toolMode, isDrawing, drawingPoints, splineState]);
+
+  // Inferred snapping (endpoint/midpoint/H-V/alignment) is always on unless
+  // Alt is held; the grid only contributes when its toggle is enabled.
   const resolveSnap = useCallback(
-    (world: Point, forceOff: boolean): { point: Point; snapped: boolean } => {
-      const bypass = forceOff || altKeyPressed.current || !snapToGridEnabled;
-      if (bypass) return { point: world, snapped: false };
-      const step = getSnapStep(viewport.zoom);
-      return { point: snapToGrid(world, step), snapped: true };
+    (world: Point, forceOff: boolean): SnapResult => {
+      return computeSnap(world, {
+        entities: project?.sketch.entities ?? [],
+        viewport,
+        gridEnabled: snapToGridEnabled,
+        bypass: forceOff || altKeyPressed.current,
+        anchor: drawingAnchor(),
+      });
     },
-    [snapToGridEnabled, viewport.zoom],
+    [project, snapToGridEnabled, viewport, altKeyPressed, drawingAnchor],
   );
 
-  const { sketchGroupRef, meshGroupRef, cameraRef, sceneRef } = useThreeScene({
+  const applySnapRefs = useCallback(
+    (world: Point, result: SnapResult) => {
+      cursorWorld.current = world;
+      snapTarget.current = result.point;
+      snapActive.current = result.snapped;
+      snapKind.current = result.kind;
+      snapGuides.current = result.guides;
+      snapMarker.current = result.marker;
+    },
+    [cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker],
+  );
+
+  const { sketchGroupRef, meshGroupRef, cameraRef, sceneRef, sceneRevision } = useThreeScene({
     containerRef: threeContainerRef,
     viewport,
     bodies,
@@ -111,6 +150,7 @@ export default function UnifiedViewport() {
     isSketching,
     workingPlane,
     tool3DMode,
+    selectedOperationId,
   });
 
   useSketchViewportReset({
@@ -145,6 +185,7 @@ export default function UnifiedViewport() {
     entities: project?.sketch.entities ?? [],
     sketchGroupRef,
     workingPlane,
+    sceneRevision,
   });
 
   useEntity3DSelect({
@@ -152,8 +193,10 @@ export default function UnifiedViewport() {
     containerRef,
     cameraRef,
     sketchGroupRef,
+    meshGroupRef,
     workingPlane,
     selectEntity,
+    selectOperation,
     translateEntity,
     setStatus,
   });
@@ -203,6 +246,10 @@ export default function UnifiedViewport() {
     cursorWorld,
     snapTarget,
     snapActive,
+    snapKind,
+    snapGuides,
+    snapMarker,
+    drawLengthInput,
     imageRefLineStart,
     imageRefLineEnd,
     refScalePopup,
@@ -235,6 +282,10 @@ export default function UnifiedViewport() {
   });
 
   const { handleMirrorMouseDown } = useMirrorTool({ project, viewport, setStatus });
+
+  const { handleDimensionMouseDown } = useDimensionTool({
+    project, viewport, addDimension, setDimPopup, setStatus,
+  });
 
   const { handlePolylineMouseDown, finishPolyline, cancelPolyline, popPolylinePoint } =
     usePolylineTool({ viewport, project, drawingPoints, isDrawing, closeToStart, addEntity, setStatus });
@@ -272,13 +323,48 @@ export default function UnifiedViewport() {
     setImageRefScaleMode, setStatus,
   });
 
+  // Recompute the preview endpoint from the typed length along the current
+  // cursor direction, so the rubber-band updates as digits are typed (without
+  // needing a mouse move).
+  const applyLockedLength = useCallback(() => {
+    const anchor = drawingAnchor();
+    const len = parseFloat(drawLengthInput.current);
+    if (!anchor || !(len > 0)) return;
+    const dx = snapTarget.current.x - anchor.x;
+    const dy = snapTarget.current.y - anchor.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 1e-6) {
+      snapTarget.current = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
+    }
+  }, [drawingAnchor, drawLengthInput, snapTarget]);
+
+  // Place a point at the typed length, in the current cursor direction.
+  const commitLockedLength = useCallback((): boolean => {
+    const anchor = drawingAnchor();
+    const len = parseFloat(drawLengthInput.current);
+    if (!anchor || !(len > 0)) return false;
+    const dx = snapTarget.current.x - anchor.x;
+    const dy = snapTarget.current.y - anchor.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 1e-6) return false;
+    const p = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
+    if (toolMode === "polyline") handlePolylineMouseDown(p);
+    else if (toolMode === "spline") handleSplineMouseDown(p);
+    else return false;
+    drawLengthInput.current = "";
+    requestRender();
+    return true;
+  }, [
+    drawingAnchor, snapTarget, drawLengthInput, toolMode,
+    handlePolylineMouseDown, handleSplineMouseDown, requestRender,
+  ]);
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (startPan(e)) return;
     const world = screenToWorld(e.clientX, e.clientY);
-    const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
-    cursorWorld.current = world;
-    snapTarget.current = snapped;
-    snapActive.current = didSnap;
+    const snapResult = resolveSnap(world, e.altKey);
+    const snapped = snapResult.point;
+    applySnapRefs(world, snapResult);
     if (e.altKey) setStatus(`Snap off (Alt) at (${world.x.toFixed(1)}, ${world.y.toFixed(1)})`);
 
     if (isPasteFloating.current) { isPasteFloating.current = false; pasteIds.current = []; setStatus("Pasted"); return; }
@@ -290,6 +376,12 @@ export default function UnifiedViewport() {
       return;
     }
     if (toolMode === "mirror") { handleMirrorMouseDown(world); return; }
+    if (toolMode === "dimension") {
+      const sx = world.x * viewport.zoom + viewport.offsetX;
+      const sy = world.y * viewport.zoom + viewport.offsetY;
+      handleDimensionMouseDown(world, sx, sy);
+      return;
+    }
 
     if (toolMode === "select") {
       if (e.shiftKey) {
@@ -309,26 +401,58 @@ export default function UnifiedViewport() {
       return;
     }
 
-    if (toolMode === "polyline") { handlePolylineMouseDown(snapped); return; }
-    if (toolMode === "spline") { handleSplineMouseDown(snapped); return; }
+    if (toolMode === "polyline") {
+      // A typed length wins over the raw click position (Fusion behavior).
+      if (drawLengthInput.current && commitLockedLength()) return;
+      if (isDrawing.current && drawingPoints.current.length >= 2) {
+        const last = drawingPoints.current[drawingPoints.current.length - 1];
+        const btn = finishButtonAt(last, viewport);
+        if (Math.hypot(world.x - btn.x, world.y - btn.y) < 12 / viewport.zoom) {
+          finishPolyline(false);
+          setToolMode("select");
+          return;
+        }
+      }
+      handlePolylineMouseDown(snapped);
+      drawLengthInput.current = "";
+      return;
+    }
+    if (toolMode === "spline") {
+      if (drawLengthInput.current && commitLockedLength()) return;
+      handleSplineMouseDown(snapped);
+      drawLengthInput.current = "";
+      return;
+    }
     if (toolMode === "rectangle") { startRectangle(snapped); return; }
     requestRender();
   }, [
-    screenToWorld, resolveSnap, setStatus, toolMode, viewport,
+    screenToWorld, resolveSnap, applySnapRefs, setStatus, toolMode, viewport,
     startPan, startSelectionDrag, handlePendingRectangleClick,
-    handlePolylineMouseDown, handleSplineMouseDown, startRectangle,
+    handlePolylineMouseDown, finishPolyline, setToolMode, handleSplineMouseDown, startRectangle,
     startImageTransform, startOrUpdateReferenceLine, tryStartHandleDrag,
-    tryStartEntityDrag, tryStartMove, handleMirrorMouseDown,
-    project, toggleVertex, selectEntity, requestRender,
+    tryStartEntityDrag, tryStartMove, handleMirrorMouseDown, handleDimensionMouseDown,
+    project, toggleVertex, selectEntity, requestRender, commitLockedLength, drawLengthInput,
   ]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (updatePan(e)) return;
     const world = screenToWorld(e.clientX, e.clientY);
-    const { point: snapped, snapped: didSnap } = resolveSnap(world, e.altKey);
-    cursorWorld.current = world;
-    snapTarget.current = snapped;
-    snapActive.current = didSnap;
+    const snapResult = resolveSnap(world, e.altKey);
+    const snapped = snapResult.point;
+    applySnapRefs(world, snapResult);
+    // While typing a length, lock the segment to it; direction follows cursor.
+    if (drawLengthInput.current && (toolMode === "polyline" || toolMode === "spline")) {
+      const anchor = drawingAnchor();
+      const len = parseFloat(drawLengthInput.current);
+      if (anchor && len > 0) {
+        const dx = snapResult.point.x - anchor.x;
+        const dy = snapResult.point.y - anchor.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1e-6) {
+          snapTarget.current = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
+        }
+      }
+    }
     requestRender();
 
     if (isPasteFloating.current) {
@@ -357,7 +481,7 @@ export default function UnifiedViewport() {
     const canvas = staticCanvasRef.current;
     if (canvas) canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
   }, [
-    screenToWorld, resolveSnap, toolMode, updatePan, updateSelectionDrag,
+    screenToWorld, resolveSnap, applySnapRefs, drawingAnchor, toolMode, updatePan, updateSelectionDrag,
     updateRectanglePreview, updateHandleDrag, updateEntityDrag,
     updateImageTransform, updateReferenceLine, updateMove, updateEntity, requestRender,
   ]);
@@ -377,6 +501,69 @@ export default function UnifiedViewport() {
     finishReferenceLine, finishSelectionDrag, finishRectangle, finishMove,
     setEditingImageId, requestRender,
   ]);
+
+  // Type a length while drawing (Fusion-style): digits build the value,
+  // Enter/Tab places the point, Esc clears, Backspace deletes a digit.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!isSketching) return;
+      if (toolMode !== "polyline" && toolMode !== "spline") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) {
+        return;
+      }
+      if (!drawingAnchor()) return;
+      const k = e.key;
+      if ((k >= "0" && k <= "9") || k === ".") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (k === "." && drawLengthInput.current.includes(".")) return;
+        drawLengthInput.current += k;
+        applyLockedLength();
+        requestRender();
+      } else if (k === "Backspace" && drawLengthInput.current.length > 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        drawLengthInput.current = drawLengthInput.current.slice(0, -1);
+        applyLockedLength();
+        requestRender();
+      } else if ((k === "Enter" || k === "Tab") && drawLengthInput.current.length > 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        commitLockedLength();
+      } else if (k === "Escape" && drawLengthInput.current.length > 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        drawLengthInput.current = "";
+        requestRender();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [isSketching, toolMode, drawingAnchor, drawLengthInput, applyLockedLength, commitLockedLength, requestRender]);
+
+  useEffect(() => {
+    drawLengthInput.current = "";
+  }, [toolMode, drawLengthInput]);
+
+  // Delete the selected operation (solid body) from the 3D view.
+  useEffect(() => {
+    if (isSketching) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) {
+        return;
+      }
+      if (!selectedOperationId) return;
+      e.preventDefault();
+      removeOperation(selectedOperationId);
+      setStatus("Operation removed");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isSketching, selectedOperationId, removeOperation, setStatus]);
 
   useCanvasKeyboardShortcuts({
     pendingRectangle, splineState, drawingPoints, refScalePopup,
@@ -413,6 +600,17 @@ export default function UnifiedViewport() {
           inputRef={refScaleInputRef}
           onConfirm={confirmRefScale}
           onPointerDown={(event) => event.stopPropagation()}
+        />
+      )}
+      {dimPopup && (
+        <DimensionPopup
+          popup={dimPopup}
+          onConfirm={(value) => {
+            updateDimensionValue(dimPopup.dimId, value);
+            setDimPopup(null);
+            setStatus(`Dimension set to ${value.toFixed(1)} mm`);
+          }}
+          onCancel={() => setDimPopup(null)}
         />
       )}
       {faceSelectionActive && (

@@ -4,6 +4,8 @@ import type {
   Entity,
   Operation,
   Mesh,
+  Sketch,
+  SketchProfile,
   ValidateProfileResult,
   GenerateMeshResult,
   RebuildInput,
@@ -59,6 +61,14 @@ export async function rebuildDocument(
 ): Promise<RebuildOutput> {
   return invoke<RebuildOutput>("rebuild_document", {
     inputJson: JSON.stringify(input),
+  });
+}
+
+export async function resolveSketchProfiles(
+  sketch: Sketch,
+): Promise<SketchProfile[]> {
+  return invoke<SketchProfile[]>("resolve_sketch_profiles", {
+    sketchJson: JSON.stringify(sketch),
   });
 }
 

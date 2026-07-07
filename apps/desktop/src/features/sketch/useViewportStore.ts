@@ -47,12 +47,18 @@ export interface ViewportStoreSelectors {
   wallThickness: number;
   offsetSide: "center" | "inside" | "outside";
   addOperation: (op: Operation) => void;
+  removeOperation: (id: string) => void;
+  selectedOperationId: string | null;
+  selectOperation: (id: string | null) => void;
   translateEntity: (
     id: string,
     dx: number,
     dy: number,
     options?: { pushUndo?: boolean; alreadyPushed?: boolean },
   ) => void;
+  addDimension: (dim: import("../../types").Dimension) => void;
+  updateDimensionValue: (id: string, value: number) => void;
+  removeDimension: (id: string) => void;
 }
 
 export function useViewportStore(): ViewportStoreSelectors {
@@ -101,6 +107,12 @@ export function useViewportStore(): ViewportStoreSelectors {
     wallThickness: useStore((s) => s.wallThickness),
     offsetSide: useStore((s) => s.offsetSide),
     addOperation: useStore((s) => s.addOperation),
+    removeOperation: useStore((s) => s.removeOperation),
+    selectedOperationId: useStore((s) => s.selectedOperationId),
+    selectOperation: useStore((s) => s.selectOperation),
     translateEntity: useStore((s) => s.translateEntity),
+    addDimension: useStore((s) => s.addDimension),
+    updateDimensionValue: useStore((s) => s.updateDimensionValue),
+    removeDimension: useStore((s) => s.removeDimension),
   };
 }

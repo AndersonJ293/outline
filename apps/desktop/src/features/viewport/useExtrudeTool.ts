@@ -70,12 +70,24 @@ export function useExtrudeTool({
       const entity = project.sketch.entities.find((ent) => ent.id === entityId);
       if (!entity) return;
 
+      const isThin = extrudeMode === "thin";
       const isClosed =
         entity.closed &&
         ((entity.type !== "spline" && entity.points.length >= 3) ||
           (entity.type === "spline" && (entity.controlPoints?.length ?? 0) >= 3));
-      if (!isClosed) {
-        setError("Cannot extrude an open contour. Close it first.");
+      // Thin extrude sweeps a wall along an open path, so it only needs a
+      // line/contour with >= 2 points. Solid extrude still requires closure.
+      const hasOpenPath =
+        (entity.type === "spline"
+          ? (entity.controlPoints?.length ?? 0) >= 2
+          : entity.points.length >= 2);
+      const canExtrude = isThin ? isClosed || hasOpenPath : isClosed;
+      if (!canExtrude) {
+        setError(
+          isThin
+            ? "Select a line or contour to thin-extrude."
+            : "Cannot extrude an open contour. Close it first.",
+        );
         return;
       }
 
@@ -84,6 +96,7 @@ export function useExtrudeTool({
         id: generateId(),
         type: opType,
         source_entity_id: entityId,
+        operation: "new_body",
         height_mm: wallHeight,
         wall_thickness_mm: wallThickness,
         offset_side: offsetSide,
@@ -118,20 +131,27 @@ export function useExtrudeTool({
       const entity = entityId
         ? project?.sketch.entities.find((e) => e.id === entityId)
         : null;
+      const isThin = extrudeMode === "thin";
       const isClosed = entity
         ? entity.closed &&
           ((entity.type !== "spline" && entity.points.length >= 3) ||
             (entity.type === "spline" && (entity.controlPoints?.length ?? 0) >= 3))
         : false;
-      if (isClosed && !hoveredRef.current) {
+      const hasOpenPath = entity
+        ? entity.type === "spline"
+          ? (entity.controlPoints?.length ?? 0) >= 2
+          : entity.points.length >= 2
+        : false;
+      const canExtrude = isThin ? isClosed || hasOpenPath : isClosed;
+      if (canExtrude && !hoveredRef.current) {
         hoveredRef.current = true;
         container.style.cursor = "crosshair";
-      } else if (!isClosed && hoveredRef.current) {
+      } else if (!canExtrude && hoveredRef.current) {
         hoveredRef.current = false;
         container.style.cursor = "";
       }
     },
-    [active, containerRef, pickEntity, project],
+    [active, containerRef, pickEntity, project, extrudeMode],
   );
 
   useEffect(() => {

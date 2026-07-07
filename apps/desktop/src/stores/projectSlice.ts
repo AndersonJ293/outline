@@ -1,6 +1,7 @@
-import type { Entity, Operation } from "../types";
+import type { Dimension, Entity, Operation } from "../types";
 import { generateId } from "../types";
 import { sampleSpline } from "../features/sketch/spline";
+import { applyLinearDimension } from "../features/sketch/dimensions";
 import type { AppStore, StoreSlice } from "./types";
 
 type ProjectSlice = Pick<
@@ -11,6 +12,8 @@ type ProjectSlice = Pick<
   | "selectedEntityIds"
   | "selectEntity"
   | "setSelectedEntityIds"
+  | "selectedOperationId"
+  | "selectOperation"
   | "selectedVertices"
   | "setSelectedVertices"
   | "toggleVertex"
@@ -19,6 +22,8 @@ type ProjectSlice = Pick<
   | "pasteAtPoint"
   | "addEntity"
   | "addOperation"
+  | "updateOperation"
+  | "removeOperation"
   | "addImage"
   | "updateEntity"
   | "translateEntity"
@@ -26,6 +31,9 @@ type ProjectSlice = Pick<
   | "updateImageCommitted"
   | "removeSelectedEntities"
   | "removeSelectedVertices"
+  | "addDimension"
+  | "updateDimensionValue"
+  | "removeDimension"
 >;
 
 function cloneEntity(entity: Entity): Entity {
@@ -57,12 +65,14 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       const current = new Set(get().selectedEntityIds);
       if (current.has(id)) current.delete(id);
       else current.add(id);
-      set({ selectedEntityIds: Array.from(current) });
+      set({ selectedEntityIds: Array.from(current), selectedOperationId: null });
     } else {
-      set({ selectedEntityIds: [id] });
+      set({ selectedEntityIds: [id], selectedOperationId: null });
     }
   },
   setSelectedEntityIds: (ids) => set({ selectedEntityIds: ids }),
+  selectedOperationId: null,
+  selectOperation: (id) => set({ selectedOperationId: id, selectedEntityIds: [] }),
 
   selectedVertices: [],
   setSelectedVertices: (vertices) => set({ selectedVertices: vertices }),
@@ -156,6 +166,29 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     set({ project: { ...project } });
   },
 
+  updateOperation: (id, updates) => {
+    const project = get().project;
+    if (!project) return;
+    const idx = project.operations.findIndex((op) => op.id === id);
+    if (idx === -1) return;
+    get().pushUndo();
+    const nextOperations = [...project.operations];
+    nextOperations[idx] = { ...nextOperations[idx], ...updates };
+    set({ project: { ...project, operations: nextOperations } });
+  },
+
+  removeOperation: (id) => {
+    const project = get().project;
+    if (!project) return;
+    get().pushUndo();
+    const nextOperations = project.operations.filter((op) => op.id !== id);
+    const selectedOperationId = get().selectedOperationId;
+    set({
+      project: { ...project, operations: nextOperations },
+      selectedOperationId: selectedOperationId === id ? null : selectedOperationId,
+    });
+  },
+
   addImage: (image) => {
     const project = get().project;
     if (!project) return;
@@ -198,12 +231,17 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       point: { x: cp.point.x + dx, y: cp.point.y + dy },
       handleOut: cp.handleOut,
     }));
-    project.sketch.entities[idx] = {
+    // New array/sketch references so identity-based consumers (the 3D sketch
+    // wireframe effect) re-run on every move, not only on event-driven renders.
+    const nextEntities = [...project.sketch.entities];
+    nextEntities[idx] = {
       ...entity,
       points: nextPoints,
       controlPoints: nextControlPoints,
     };
-    set({ project: { ...project } });
+    set({
+      project: { ...project, sketch: { ...project.sketch, entities: nextEntities } },
+    });
   },
 
   updateImage: (id, updates) => {
@@ -224,6 +262,9 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     get().pushUndo();
     project.sketch.entities = project.sketch.entities.filter((e) => !ids.includes(e.id));
     project.sketch.images = (project.sketch.images ?? []).filter((img) => !ids.includes(img.id));
+    project.sketch.dimensions = (project.sketch.dimensions ?? []).filter(
+      (d) => !ids.includes(d.entityId),
+    );
     const editingImageId = get().editingImageId;
     const nextEditingImageId =
       editingImageId && ids.includes(editingImageId) ? null : editingImageId;
@@ -243,6 +284,38 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       editingImageId: nextEditingImageId,
       entityDragTarget: nextEntityDragTarget,
     });
+  },
+
+  addDimension: (dim: Dimension) => {
+    const project = get().project;
+    if (!project) return;
+    get().pushUndo();
+    project.sketch.dimensions = [...(project.sketch.dimensions ?? []), dim];
+    set({ project: { ...project } });
+  },
+
+  updateDimensionValue: (id: string, value: number) => {
+    const project = get().project;
+    if (!project || value <= 0) return;
+    const dims = project.sketch.dimensions ?? [];
+    const dim = dims.find((d) => d.id === id);
+    if (!dim) return;
+    const idx = project.sketch.entities.findIndex((e) => e.id === dim.entityId);
+    if (idx === -1) return;
+    const updates = applyLinearDimension(project.sketch.entities[idx], dim.segIdx, value);
+    if (!updates) return;
+    get().pushUndo();
+    project.sketch.entities[idx] = { ...project.sketch.entities[idx], ...updates };
+    project.sketch.dimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
+    set({ project: { ...project }, bodies: {}, bodyErrors: {} });
+  },
+
+  removeDimension: (id: string) => {
+    const project = get().project;
+    if (!project) return;
+    get().pushUndo();
+    project.sketch.dimensions = (project.sketch.dimensions ?? []).filter((d) => d.id !== id);
+    set({ project: { ...project } });
   },
 
   removeSelectedVertices: () => {

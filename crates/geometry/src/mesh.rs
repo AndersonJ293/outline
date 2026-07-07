@@ -1,5 +1,5 @@
 use crate::entities::Point;
-use crate::offset::{compute_offset, polygon_signed_area};
+use crate::offset::{compute_offset, compute_open_offset, polygon_signed_area};
 
 pub struct MeshData {
     pub vertices: Vec<[f64; 3]>,
@@ -45,6 +45,78 @@ pub fn generate_wall_mesh(
     Some(build_wall_mesh(&inner_pts, &outer_pts, height))
 }
 
+/// Generates a thin wall swept along an *open* polyline (a "fence").
+/// The cross-section is a rectangle `thickness` wide by `height` tall, centered
+/// on the path. Used for `OperationKind::ExtrudeThin` when the profile is not a
+/// closed contour — mirrors Fusion's thin extrude of a single open line.
+pub fn generate_open_wall_mesh(points: &[Point], height: f64, thickness: f64) -> Option<MeshData> {
+    if points.len() < 2 || height <= 0.0 || thickness <= 0.0 {
+        return None;
+    }
+    let half = thickness / 2.0;
+    let left = compute_open_offset(points, half)?;
+    let right = compute_open_offset(points, -half)?;
+    if left.len() != right.len() || left.len() < 2 {
+        return None;
+    }
+    Some(build_open_wall_mesh(&left, &right, height))
+}
+
+fn build_open_wall_mesh(left: &[Point], right: &[Point], height: f64) -> MeshData {
+    let n = left.len();
+    let mut vertices = Vec::with_capacity(4 * n);
+    // left bottom, right bottom, left top, right top
+    for p in left.iter().take(n) {
+        vertices.push([p.x, p.y, 0.0]);
+    }
+    for p in right.iter().take(n) {
+        vertices.push([p.x, p.y, 0.0]);
+    }
+    for p in left.iter().take(n) {
+        vertices.push([p.x, p.y, height]);
+    }
+    for p in right.iter().take(n) {
+        vertices.push([p.x, p.y, height]);
+    }
+
+    let lb = |i: u32| i;
+    let rb = |i: u32| (n as u32) + i;
+    let lt = |i: u32| (2 * n as u32) + i;
+    let rt = |i: u32| (3 * n as u32) + i;
+
+    let mut triangles = Vec::with_capacity((n - 1) * 8 + 4);
+
+    for i in 0..(n - 1) {
+        let a = i as u32;
+        let b = (i + 1) as u32;
+
+        // top face
+        triangles.push([lt(a), rt(a), lt(b)]);
+        triangles.push([lt(b), rt(a), rt(b)]);
+        // bottom face
+        triangles.push([lb(a), lb(b), rb(a)]);
+        triangles.push([rb(a), lb(b), rb(b)]);
+        // left side wall
+        triangles.push([lb(a), lt(a), lb(b)]);
+        triangles.push([lb(b), lt(a), lt(b)]);
+        // right side wall
+        triangles.push([rb(a), rb(b), rt(a)]);
+        triangles.push([rt(a), rb(b), rt(b)]);
+    }
+
+    // end caps
+    let last = (n - 1) as u32;
+    triangles.push([lb(0), rb(0), lt(0)]);
+    triangles.push([lt(0), rb(0), rt(0)]);
+    triangles.push([lb(last), lt(last), rb(last)]);
+    triangles.push([rb(last), lt(last), rt(last)]);
+
+    MeshData {
+        vertices,
+        triangles,
+    }
+}
+
 /// Generates a solid extrusion: bottom cap + top cap + side walls.
 /// No offset, no hollow interior — used for `OperationKind::Extrude`.
 pub fn generate_extrude_mesh(points: &[Point], height: f64) -> Option<MeshData> {
@@ -52,6 +124,25 @@ pub fn generate_extrude_mesh(points: &[Point], height: f64) -> Option<MeshData> 
         return None;
     }
     Some(build_solid_mesh(points, height))
+}
+
+pub fn generate_profile_extrude_mesh(
+    outer: &[Point],
+    inner: Option<&[Point]>,
+    height: f64,
+) -> Option<MeshData> {
+    if outer.len() < 3 || height <= 0.0 {
+        return None;
+    }
+    match inner {
+        Some(inner_pts) => {
+            if inner_pts.len() != outer.len() || inner_pts.len() < 3 {
+                return None;
+            }
+            Some(build_wall_mesh(inner_pts, outer, height))
+        }
+        None => Some(build_solid_mesh(outer, height)),
+    }
 }
 
 fn build_solid_mesh(points: &[Point], height: f64) -> MeshData {
@@ -155,6 +246,23 @@ mod tests {
         let mesh = generate_wall_mesh(&pts, 15.0, 1.2, "center").unwrap();
         assert_eq!(mesh.vertices.len(), 4 * 4);
         assert_eq!(mesh.triangles.len(), 4 * 2 * 4);
+    }
+
+    #[test]
+    fn test_profile_extrude_ring() {
+        let outer = vec![p(0.0, 0.0), p(40.0, 0.0), p(40.0, 40.0), p(0.0, 40.0)];
+        let inner = vec![p(5.0, 5.0), p(35.0, 5.0), p(35.0, 35.0), p(5.0, 35.0)];
+        let mesh = generate_profile_extrude_mesh(&outer, Some(&inner), 2.0).unwrap();
+        assert_eq!(mesh.vertices.len(), 16);
+        assert_eq!(mesh.triangles.len(), 32);
+    }
+
+    #[test]
+    fn test_profile_extrude_solid() {
+        let outer = vec![p(0.0, 0.0), p(40.0, 0.0), p(40.0, 40.0), p(0.0, 40.0)];
+        let mesh = generate_profile_extrude_mesh(&outer, None, 2.0).unwrap();
+        assert_eq!(mesh.vertices.len(), 8);
+        assert_eq!(mesh.triangles.len(), 16);
     }
 
     #[test]

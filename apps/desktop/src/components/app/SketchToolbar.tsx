@@ -67,6 +67,25 @@ export function SketchToolbar({
           >
             ⇋
           </button>
+          <button
+            className={`${s["toolbar-btn"]} ${toolMode === "dimension" ? s.active : ""}`}
+            onClick={() => onToolModeChange("dimension")}
+            title="Dimension (D) — click a segment, type a length to drive the geometry"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 5v6M14 5v6M2 8h12" />
+              <path d="M4 6.5L2 8l2 1.5M12 6.5L14 8l-2 1.5" />
+            </svg>
+          </button>
           <div className={s["toolbar-divider"]} />
           <button
             className={`${s["toolbar-btn"]} ${snapToGrid ? s.active : ""}`}

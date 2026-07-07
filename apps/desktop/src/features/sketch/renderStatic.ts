@@ -4,6 +4,7 @@ import type { EntityDragTarget, Vertex } from "../../stores/types";
 import { drawEntities } from "./renderEntities";
 import { drawGrid, drawGridLabel } from "./renderGrid";
 import { drawImages } from "./renderImages";
+import { drawDimensions } from "./renderDimensions";
 
 export interface RenderStaticArgs {
   ctx: CanvasRenderingContext2D;
@@ -39,6 +40,7 @@ export function renderStatic({
   drawGrid(ctx, ctx.canvas, viewport);
   drawImages(ctx, project, viewport, editingImageId, imageCache, isImageResizing, imageResizeId);
   drawEntities(ctx, project, viewport, selectedEntityIds, entityDragTarget, selectedVertices);
+  drawDimensions(ctx, project, viewport);
   drawGridLabel(ctx, viewport);
 
   ctx.restore();

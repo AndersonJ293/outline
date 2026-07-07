@@ -13,6 +13,9 @@ type ProjectTreeProps = Pick<
   | "onSetEditingImageId"
   | "onSetEntityDragTarget"
   | "onRemoveSelected"
+  | "onRemoveOperation"
+  | "selectedOperationId"
+  | "onSelectOperation"
 >;
 
 type CategoryId = "sketch" | "images" | "operations" | "mesh";
@@ -46,6 +49,9 @@ export function ProjectTree({
   onSetEditingImageId,
   onSetEntityDragTarget,
   onRemoveSelected,
+  onRemoveOperation,
+  selectedOperationId,
+  onSelectOperation,
 }: ProjectTreeProps) {
   const [collapsed, setCollapsed] = useState<Record<CategoryId, boolean>>(COLLAPSED_DEFAULT);
 
@@ -123,7 +129,15 @@ export function ProjectTree({
         {operations.length === 0 ? (
           <EmptyRow text="No operations defined" />
         ) : (
-          operations.map((op) => <OperationRow key={op.id} op={op} />)
+          operations.map((op) => (
+            <OperationRow
+              key={op.id}
+              op={op}
+              selected={op.id === selectedOperationId}
+              onSelect={() => onSelectOperation(op.id)}
+              onRemove={() => onRemoveOperation(op.id)}
+            />
+          ))
         )}
       </Category>
 
@@ -256,14 +270,35 @@ function ImageRow({ image, selected, onSelect, onRemove }: ImageRowProps) {
   );
 }
 
-function OperationRow({ op }: { op: Operation }) {
+function OperationRow({
+  op,
+  selected,
+  onSelect,
+  onRemove,
+}: {
+  op: Operation;
+  selected: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
   const label = `${op.type} · ${op.height_mm} mm`;
   return (
-    <div className={`${s["tree-row"]} ${s.readonly}`}>
-      <span className={s["tree-row-main"]}>
+    <div className={`${s["tree-row"]} ${selected ? s.selected : ""}`}>
+      <button type="button" className={s["tree-row-main"]} onClick={onSelect} title={label}>
         <span className={s["tree-item-icon"]}>⊞</span>
         <span className={s["tree-item-label"]}>{label}</span>
-      </span>
+      </button>
+      <button
+        type="button"
+        className={s["tree-row-remove"]}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove();
+        }}
+        title="Remove"
+      >
+        ✕
+      </button>
     </div>
   );
 }

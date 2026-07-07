@@ -126,11 +126,29 @@ interface UseSketchWireframeArgs {
   entities: Entity[];
   sketchGroupRef: RefObject<THREE.Group | null>;
   workingPlane: WorkingPlane;
+  /// Bumped when the Three.js scene/groups are recreated (e.g. StrictMode
+  /// double-mount), forcing a rebuild against the current group references.
+  sceneRevision?: number;
 }
 
-export function useSketchWireframe({ entities, sketchGroupRef, workingPlane }: UseSketchWireframeArgs) {
+function buildVertexGeometry(entity: Entity, plane: WorkingPlane): THREE.BufferGeometry | null {
+  if (entity.points.length < 1) return null;
+  const positions = new Float32Array(entity.points.length * 3);
+  for (let i = 0; i < entity.points.length; i++) {
+    const v = planePointToWorld(plane, entity.points[i].x, entity.points[i].y);
+    positions[i * 3] = v.x;
+    positions[i * 3 + 1] = v.y;
+    positions[i * 3 + 2] = v.z;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  return geo;
+}
+
+export function useSketchWireframe({ entities, sketchGroupRef, workingPlane, sceneRevision }: UseSketchWireframeArgs) {
   const linesRef = useRef<THREE.Line[]>([]);
   const hitMeshesRef = useRef<THREE.Mesh[]>([]);
+  const pointsRef = useRef<THREE.Points[]>([]);
 
   useEffect(() => {
     const group = sketchGroupRef.current;
@@ -146,18 +164,27 @@ export function useSketchWireframe({ entities, sketchGroupRef, workingPlane }: U
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }
+    for (const pts of pointsRef.current) {
+      group.remove(pts);
+      pts.geometry.dispose();
+      (pts.material as THREE.Material).dispose();
+    }
     linesRef.current = [];
     hitMeshesRef.current = [];
+    pointsRef.current = [];
 
     for (const entity of entities) {
       const geometry = buildEntityGeometry(entity, workingPlane);
       if (!geometry) continue;
 
+      // Match the 2D sketch look: white lines, slightly transparent, with
+      // visible vertices — so the sketch reads the same in the 3D view.
       const material = new THREE.LineBasicMaterial({
-        color: 0xf4c542,
+        color: 0xffffff,
         linewidth: 1,
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.65,
+        depthTest: false,
       });
 
       const closed = entity.closed && entity.points.length > 2;
@@ -165,8 +192,26 @@ export function useSketchWireframe({ entities, sketchGroupRef, workingPlane }: U
         ? new THREE.LineLoop(geometry, material)
         : new THREE.Line(geometry, material);
       line.userData.entityId = entity.id;
+      line.renderOrder = 1;
       group.add(line);
       linesRef.current.push(line);
+
+      const vertGeo = buildVertexGeometry(entity, workingPlane);
+      if (vertGeo) {
+        const vertMat = new THREE.PointsMaterial({
+          color: 0x4fc3f7,
+          size: 6,
+          sizeAttenuation: false,
+          transparent: true,
+          opacity: 0.9,
+          depthTest: false,
+        });
+        const verts = new THREE.Points(vertGeo, vertMat);
+        verts.userData.entityId = entity.id;
+        verts.renderOrder = 2;
+        group.add(verts);
+        pointsRef.current.push(verts);
+      }
 
       const pts =
         entity.type === "spline" && entity.controlPoints && entity.controlPoints.length > 0
@@ -198,8 +243,14 @@ export function useSketchWireframe({ entities, sketchGroupRef, workingPlane }: U
         mesh.geometry.dispose();
         (mesh.material as THREE.Material).dispose();
       }
+      for (const pts of pointsRef.current) {
+        group.remove(pts);
+        pts.geometry.dispose();
+        (pts.material as THREE.Material).dispose();
+      }
       linesRef.current = [];
       hitMeshesRef.current = [];
+      pointsRef.current = [];
     };
-  }, [entities, sketchGroupRef, workingPlane]);
+  }, [entities, sketchGroupRef, workingPlane, sceneRevision]);
 }

@@ -115,6 +115,9 @@ export function useAppShortcuts({
           } else if (key === "x") {
             event.preventDefault();
             setToolMode("mirror");
+          } else if (key === "d") {
+            event.preventDefault();
+            setToolMode("dimension");
           }
         } else {
           if (key === "v") {

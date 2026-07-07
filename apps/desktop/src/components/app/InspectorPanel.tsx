@@ -30,6 +30,10 @@ export function InspectorPanel({
   onSetEditingImageId,
   onSetEntityDragTarget,
   onRemoveSelected,
+  onRemoveOperation,
+  selectedOperationId,
+  onSelectOperation,
+  onUpdateOperation,
   onUpdateImage,
   onToggleImageLockAspect,
   onSetImageRefScaleMode,
@@ -42,8 +46,13 @@ export function InspectorPanel({
   extrudeMode,
 }: InspectorPanelProps & InspectorPanelExtras) {
   const bodyCount = Object.keys(bodies).length;
+  const selectedOperation =
+    project?.operations.find((op) => op.id === selectedOperationId) ?? null;
   const hasDetails =
-    selectedEntityIds.length > 0 || bodyCount > 0 || tool3DMode === "extrude";
+    selectedEntityIds.length > 0 ||
+    bodyCount > 0 ||
+    tool3DMode === "extrude" ||
+    selectedOperation !== null;
 
   return (
     <div className={s["panel-shell"]}>
@@ -72,6 +81,9 @@ export function InspectorPanel({
               onSetEditingImageId={onSetEditingImageId}
               onSetEntityDragTarget={onSetEntityDragTarget}
               onRemoveSelected={onRemoveSelected}
+              onRemoveOperation={onRemoveOperation}
+              selectedOperationId={selectedOperationId}
+              onSelectOperation={onSelectOperation}
             />
           </div>
         </div>
@@ -92,6 +104,9 @@ export function InspectorPanel({
             onToggleImageLockAspect={onToggleImageLockAspect}
             onSetImageRefScaleMode={onSetImageRefScaleMode}
             onRemoveSelected={onRemoveSelected}
+            onRemoveOperation={onRemoveOperation}
+            selectedOperation={selectedOperation}
+            onUpdateOperation={onUpdateOperation}
             onSetWallHeight={onSetWallHeight}
             onSetWallThickness={onSetWallThickness}
             onSetOffsetSide={onSetOffsetSide}

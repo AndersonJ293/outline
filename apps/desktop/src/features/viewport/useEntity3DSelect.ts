@@ -7,8 +7,10 @@ interface UseEntity3DSelectArgs {
   containerRef: RefObject<HTMLDivElement | null>;
   cameraRef: RefObject<THREE.OrthographicCamera | null>;
   sketchGroupRef: RefObject<THREE.Group | null>;
+  meshGroupRef: RefObject<THREE.Group | null>;
   workingPlane: WorkingPlane;
   selectEntity: (id: string | null, shiftKey?: boolean) => void;
+  selectOperation: (id: string | null) => void;
   translateEntity: (
     id: string,
     dx: number,
@@ -38,8 +40,10 @@ export function useEntity3DSelect({
   containerRef,
   cameraRef,
   sketchGroupRef,
+  meshGroupRef,
   workingPlane,
   selectEntity,
+  selectOperation,
   translateEntity,
   setStatus,
 }: UseEntity3DSelectArgs) {
@@ -77,11 +81,44 @@ export function useEntity3DSelect({
     [containerRef, cameraRef, sketchGroupRef],
   );
 
+  const pickBody = useCallback(
+    (clientX: number, clientY: number): string | null => {
+      const container = containerRef.current;
+      const camera = cameraRef.current;
+      const group = meshGroupRef.current;
+      if (!container || !camera || !group) return null;
+
+      const rect = container.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      const raycaster = raycasterRef.current;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(group.children, false);
+      if (intersects.length === 0) return null;
+      return (intersects[0].object.userData as { operationId?: string }).operationId ?? null;
+    },
+    [containerRef, cameraRef, meshGroupRef],
+  );
+
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
       if (e.button !== 0) return;
       const pick = pickEntity(e.clientX, e.clientY);
-      if (!pick) return;
+      if (!pick) {
+        // No sketch entity hit — try selecting a solid body (operation).
+        const opId = pickBody(e.clientX, e.clientY);
+        if (opId) {
+          selectOperation(opId);
+          setStatus("Operation selected");
+          e.preventDefault();
+        } else {
+          selectOperation(null);
+          selectEntity(null);
+        }
+        return;
+      }
       const startPoint = worldToPlane(workingPlane, pick.world);
       selectEntity(pick.entityId, e.shiftKey);
       dragStateRef.current = {
@@ -91,7 +128,7 @@ export function useEntity3DSelect({
       };
       e.preventDefault();
     },
-    [pickEntity, workingPlane, selectEntity],
+    [pickEntity, pickBody, workingPlane, selectEntity, selectOperation, setStatus],
   );
 
   const handlePointerMove = useCallback(

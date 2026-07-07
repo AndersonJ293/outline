@@ -5,6 +5,7 @@ import { CLOSE_THRESHOLD, HANDLE_RADIUS } from "./constants";
 import { rectanglePoints } from "./geometry";
 import { autoHandleFor, sampleSpline } from "./spline";
 import type { SplineDrawingState } from "./tools/useSplineTool";
+import type { SnapGuide, SnapKind } from "./snapping";
 
 export function drawReferenceLine(
   ctx: CanvasRenderingContext2D,
@@ -67,13 +68,17 @@ export function drawDrawingPreview(
 
   if (drawingPoints.current.length === 0) return;
 
-  ctx.strokeStyle = "rgba(79, 195, 247, 0.6)";
-  ctx.lineWidth = 2 / viewport.zoom;
-  ctx.setLineDash([4 / viewport.zoom, 4 / viewport.zoom]);
-
   if (toolMode === "rectangle" && drawingPoints.current.length === 2) {
+    ctx.strokeStyle = "rgba(79, 195, 247, 0.6)";
+    ctx.lineWidth = 2 / viewport.zoom;
+    ctx.setLineDash([4 / viewport.zoom, 4 / viewport.zoom]);
     drawRectanglePreview(ctx, viewport, drawingPoints.current[0], drawingPoints.current[1]);
   } else {
+    // Committed segments of an in-progress polyline render solid, so the
+    // line looks real from the first point (Fusion-style).
+    ctx.strokeStyle = "#4fc3f7";
+    ctx.lineWidth = 2 / viewport.zoom;
+    ctx.setLineDash([]);
     drawPolylinePreview(ctx, drawingPoints.current, closeToStart.current);
   }
 
@@ -244,6 +249,157 @@ function drawClosePreview(
   ctx.beginPath();
   ctx.arc(first.x, first.y, (HANDLE_RADIUS + 4) / viewport.zoom, 0, Math.PI * 2);
   ctx.fill();
+}
+
+/// World position of the "finish" checkmark, offset up-right from a point.
+export function finishButtonAt(last: Point, viewport: ViewportState): Point {
+  return { x: last.x + 22 / viewport.zoom, y: last.y - 22 / viewport.zoom };
+}
+
+/// Last placed point of the active drawing, used to anchor the rubber band
+/// and the finish checkmark.
+export function activeDrawingLast(
+  toolMode: ToolMode,
+  drawingPoints: MutableRefObject<Point[]>,
+  splineState: MutableRefObject<SplineDrawingState | null> | null,
+): Point | null {
+  if (toolMode === "polyline" && drawingPoints.current.length > 0) {
+    return drawingPoints.current[drawingPoints.current.length - 1];
+  }
+  if (toolMode === "spline" && splineState?.current && splineState.current.anchors.length > 0) {
+    const a = splineState.current.anchors;
+    return a[a.length - 1];
+  }
+  return null;
+}
+
+/// Rubber-band segment from the last placed point to the cursor/snap point,
+/// with a live length label.
+export function drawRubberBand(
+  ctx: CanvasRenderingContext2D,
+  viewport: ViewportState,
+  toolMode: ToolMode,
+  isDrawing: MutableRefObject<boolean>,
+  drawingPoints: MutableRefObject<Point[]>,
+  splineState: MutableRefObject<SplineDrawingState | null>,
+  snap: Point,
+  lengthInput = "",
+): void {
+  if (!isDrawing.current) return;
+  const last = activeDrawingLast(toolMode, drawingPoints, splineState);
+  if (!last) return;
+
+  const z = viewport.zoom;
+  ctx.save();
+  ctx.strokeStyle = "rgba(79, 195, 247, 0.9)";
+  ctx.lineWidth = 1.5 / z;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(last.x, last.y);
+  ctx.lineTo(snap.x, snap.y);
+  ctx.stroke();
+
+  const tx = snap.x + 8 / z;
+  const ty = snap.y - 8 / z;
+  if (lengthInput.length > 0) {
+    // The user is typing a locked length — show it boxed with a caret.
+    const text = `${lengthInput}| mm`;
+    ctx.font = `bold ${12 / z}px monospace`;
+    const w = ctx.measureText(text).width + 8 / z;
+    const h = 16 / z;
+    ctx.fillStyle = "#4fc3f7";
+    ctx.fillRect(tx - 4 / z, ty - 12 / z, w, h);
+    ctx.fillStyle = "#0b0b0d";
+    ctx.fillText(text, tx, ty);
+  } else {
+    const len = pointDistance(last, snap);
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = `${11 / z}px monospace`;
+    ctx.fillText(`${len.toFixed(1)} mm`, tx, ty);
+  }
+  ctx.restore();
+
+  // Finish checkmark near the last point (only for polyline, which has a
+  // discrete finish; spline uses double-click/Enter).
+  if (toolMode === "polyline" && drawingPoints.current.length >= 2) {
+    drawFinishButton(ctx, viewport, finishButtonAt(last, viewport));
+  }
+}
+
+function drawFinishButton(
+  ctx: CanvasRenderingContext2D,
+  viewport: ViewportState,
+  center: Point,
+): void {
+  const z = viewport.zoom;
+  const r = 9 / z;
+  ctx.save();
+  ctx.fillStyle = "#4caf50";
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.8 / z;
+  ctx.beginPath();
+  ctx.moveTo(center.x - 4 / z, center.y);
+  ctx.lineTo(center.x - 1 / z, center.y + 3.5 / z);
+  ctx.lineTo(center.x + 5 / z, center.y - 4 / z);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/// Inference visuals: alignment guides, endpoint/midpoint markers, and an
+/// H/V badge when the cursor locks to a horizontal or vertical line.
+export function drawSnapInference(
+  ctx: CanvasRenderingContext2D,
+  viewport: ViewportState,
+  snap: Point,
+  kind: SnapKind,
+  guides: SnapGuide[],
+  marker: Point | null,
+): void {
+  const z = viewport.zoom;
+
+  if (guides.length > 0) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(76, 175, 80, 0.7)";
+    ctx.lineWidth = 1 / z;
+    ctx.setLineDash([6 / z, 4 / z]);
+    for (const g of guides) {
+      ctx.beginPath();
+      ctx.moveTo(g.from.x, g.from.y);
+      ctx.lineTo(g.to.x, g.to.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  if (marker) {
+    ctx.save();
+    ctx.strokeStyle = "#ffeb3b";
+    ctx.lineWidth = 1.5 / z;
+    ctx.setLineDash([]);
+    const r = 5 / z;
+    if (kind === "midpoint") {
+      ctx.beginPath();
+      ctx.moveTo(marker.x, marker.y - r);
+      ctx.lineTo(marker.x + r, marker.y + r);
+      ctx.lineTo(marker.x - r, marker.y + r);
+      ctx.closePath();
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(marker.x - r, marker.y - r, 2 * r, 2 * r);
+    }
+    ctx.restore();
+  }
+
+  if (kind === "horizontal" || kind === "vertical") {
+    ctx.save();
+    ctx.fillStyle = "#ff9800";
+    ctx.font = `bold ${11 / z}px monospace`;
+    ctx.fillText(kind === "horizontal" ? "— H" : "| V", snap.x + 10 / z, snap.y + 16 / z);
+    ctx.restore();
+  }
 }
 
 export function drawSnapTarget(

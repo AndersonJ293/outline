@@ -150,6 +150,8 @@ fn rebuild_document(input_json: String) -> Result<RebuildOutputDto, String> {
             id: op.id,
             op_type: op.op_type,
             source_entity_id: op.source_entity_id,
+            source_profile_id: op.source_profile_id,
+            operation: op.operation,
             height_mm: op.height_mm,
             wall_thickness_mm: op.wall_thickness_mm,
             offset_side: op.offset_side,
@@ -178,6 +180,58 @@ fn rebuild_document(input_json: String) -> Result<RebuildOutputDto, String> {
         .collect();
 
     Ok(RebuildOutputDto { bodies })
+}
+
+#[tauri::command]
+fn resolve_sketch_profiles(sketch_json: String) -> Result<Vec<SketchProfileDto>, String> {
+    let sketch: commands::SketchDto =
+        serde_json::from_str(&sketch_json).map_err(|e| format!("Failed to parse sketch: {}", e))?;
+
+    let entities: Vec<outline_core::project::Entity> = sketch
+        .entities
+        .into_iter()
+        .map(|e| outline_core::project::Entity {
+            id: e.id,
+            entity_type: e.entity_type,
+            points: e
+                .points
+                .into_iter()
+                .map(|p| outline_core::project::Point { x: p.x, y: p.y })
+                .collect(),
+            closed: e.closed,
+            control_points: e.control_points.map(|cps| {
+                cps.into_iter()
+                    .map(|cp| outline_core::project::SplineControlPoint {
+                        point: outline_core::project::Point {
+                            x: cp.point.x,
+                            y: cp.point.y,
+                        },
+                        handle_out: outline_core::project::SplineHandle {
+                            dx: cp.handle_out.dx,
+                            dy: cp.handle_out.dy,
+                        },
+                    })
+                    .collect()
+            }),
+            sampling_steps: e.sampling_steps,
+        })
+        .collect();
+    let core_sketch = outline_core::project::Sketch {
+        plane: sketch.plane,
+        entities,
+    };
+
+    Ok(
+        outline_core::commands::resolve_sketch_profiles(&core_sketch)
+            .into_iter()
+            .map(|profile| SketchProfileDto {
+                id: profile.id,
+                outer_entity_id: profile.outer_entity_id,
+                inner_entity_id: profile.inner_entity_id,
+                area_mm2: profile.area_mm2,
+            })
+            .collect(),
+    )
 }
 
 #[tauri::command]
@@ -211,6 +265,7 @@ pub fn run() {
             read_file,
             read_image_base64,
             rebuild_document,
+            resolve_sketch_profiles,
         ])
         .run(tauri::generate_context!())
         .expect("Failed to start Outline");
