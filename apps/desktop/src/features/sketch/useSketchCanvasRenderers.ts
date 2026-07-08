@@ -41,6 +41,7 @@ type UseSketchCanvasRenderersArgs = {
   imageRefLineEnd: MutableRefObject<Point | null>;
   refScalePopup: RefScalePopupState | null;
   snapToGridEnabled: boolean;
+  activeDimId?: string | null;
 };
 
 export function useSketchCanvasRenderers(args: UseSketchCanvasRenderersArgs) {
@@ -55,6 +56,7 @@ export function useSketchCanvasRenderers(args: UseSketchCanvasRenderersArgs) {
     imageCache: args.imageCache,
     isImageResizing: args.isImageResizing,
     imageResizeId: args.imageResizeId,
+    activeDimId: args.activeDimId,
   });
 
   useCanvasResize(

@@ -14,6 +14,7 @@ interface UseStaticRendererArgs {
   imageCache: MutableRefObject<Map<string, HTMLImageElement>>;
   isImageResizing: MutableRefObject<boolean>;
   imageResizeId: MutableRefObject<string | null>;
+  activeDimId?: string | null;
 }
 
 export function useStaticRenderer(args: UseStaticRendererArgs): { requestRender: () => void } {
@@ -28,6 +29,7 @@ export function useStaticRenderer(args: UseStaticRendererArgs): { requestRender:
     imageCache,
     isImageResizing,
     imageResizeId,
+    activeDimId,
   } = args;
 
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -49,6 +51,7 @@ export function useStaticRenderer(args: UseStaticRendererArgs): { requestRender:
       imageCache,
       isImageResizing,
       imageResizeId,
+      activeDimId,
     });
   }, [
     canvasRef,
@@ -61,6 +64,7 @@ export function useStaticRenderer(args: UseStaticRendererArgs): { requestRender:
     imageCache,
     isImageResizing,
     imageResizeId,
+    activeDimId,
   ]);
 
   const requestRender = useCallback(() => {

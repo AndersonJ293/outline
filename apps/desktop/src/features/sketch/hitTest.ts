@@ -39,68 +39,60 @@ export function hitTestEntity(
   world: Point,
   viewport: ViewportState,
 ): string | null {
-  for (const entity of entities) {
-    const pts = displayPoints(entity);
-    for (const pt of pts) {
-      const dx = (pt.x - world.x) * viewport.zoom;
-      const dy = (pt.y - world.y) * viewport.zoom;
-      if (Math.sqrt(dx * dx + dy * dy) < HANDLE_RADIUS * 3) {
-        return entity.id;
-      }
-    }
-
-    if (hitCircleOutline(entity, world, viewport)) {
-      return entity.id;
-    }
-
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i];
-      const b = pts[i + 1] ?? (entity.closed ? pts[0] : null);
-      if (!b) continue;
-      if (distanceToSegment(world, a, b) * viewport.zoom < LINE_HIT_RADIUS) {
-        return entity.id;
-      }
-    }
-  }
-
-  return null;
+  return hitTestEntityWithPoint(entities, world, viewport)?.entityId ?? null;
 }
 
 export type EntityHit =
   | { kind: "point"; entityId: string; pointIndex: number }
   | { kind: "segment"; entityId: string; segIdx: number };
 
+/// Picks the nearest hit across all entities, not the first one encountered.
+/// Curves offset by a small distance sit only a few pixels apart, so
+/// first-match-wins would keep grabbing the underlying original curve.
+/// Point handles still win over edges at equal distance (easier to grab).
 export function hitTestEntityWithPoint(
   entities: Entity[],
   world: Point,
   viewport: ViewportState,
 ): EntityHit | null {
+  const pointRadius = HANDLE_RADIUS * 3;
+  let bestPoint: { hit: EntityHit; dist: number } | null = null;
+  let bestSegment: { hit: EntityHit; dist: number } | null = null;
+
   for (const entity of entities) {
     const pts = displayPoints(entity);
     for (let i = 0; i < pts.length; i++) {
       const pt = pts[i];
       const dx = (pt.x - world.x) * viewport.zoom;
       const dy = (pt.y - world.y) * viewport.zoom;
-      if (Math.sqrt(dx * dx + dy * dy) < HANDLE_RADIUS * 3) {
-        return { kind: "point", entityId: entity.id, pointIndex: i };
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < pointRadius && (!bestPoint || dist < bestPoint.dist)) {
+        bestPoint = { hit: { kind: "point", entityId: entity.id, pointIndex: i }, dist };
       }
     }
 
     if (hitCircleOutline(entity, world, viewport)) {
-      return { kind: "segment", entityId: entity.id, segIdx: 0 };
+      const dist = Math.abs(
+        pointDistance(world, entity.center!) - entity.radiusMm!,
+      ) * viewport.zoom;
+      if (!bestSegment || dist < bestSegment.dist) {
+        bestSegment = { hit: { kind: "segment", entityId: entity.id, segIdx: 0 }, dist };
+      }
+      continue;
     }
 
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i];
       const b = pts[i + 1] ?? (entity.closed ? pts[0] : null);
       if (!b) continue;
-      if (distanceToSegment(world, a, b) * viewport.zoom < LINE_HIT_RADIUS) {
-        return { kind: "segment", entityId: entity.id, segIdx: i };
+      const dist = distanceToSegment(world, a, b) * viewport.zoom;
+      if (dist < LINE_HIT_RADIUS && (!bestSegment || dist < bestSegment.dist)) {
+        bestSegment = { hit: { kind: "segment", entityId: entity.id, segIdx: i }, dist };
       }
     }
   }
 
-  return null;
+  return (bestPoint ?? bestSegment)?.hit ?? null;
 }
 
 export function hitTestImage(images: SketchImage[] | undefined, world: Point): string | null {

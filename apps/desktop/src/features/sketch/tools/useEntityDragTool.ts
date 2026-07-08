@@ -10,6 +10,7 @@ import {
   applySplineSegmentMove,
   translateEntityWhole,
 } from "../entityDrag";
+import { applyConnectionConstraints, dependentOffsetEntityIds, isOffsetResult } from "../dimensions";
 import type { EntityDragTarget } from "../../../stores/types";
 
 type EntityDragMode = "point" | "segment" | "entity";
@@ -63,6 +64,18 @@ export function useEntityDragTool({
         lastClickTime.current = 0;
         lastClickKey.current = "";
         return false;
+      }
+
+      if (isOffsetResult(project, hit.entityId)) {
+        // Derived curve: selectable (e.g. for delete), but never dragged
+        // directly — it only moves together with its source entity.
+        dragMode.current = null;
+        dragEntityId.current = null;
+        setEntityDragTarget(null);
+        lastClickTime.current = 0;
+        lastClickKey.current = "";
+        selectEntity(hit.entityId);
+        return true;
       }
 
       const now = Date.now();
@@ -216,6 +229,14 @@ export function useEntityDragTool({
       }
       if (!newPoints) return false;
 
+      if (!isCircle) {
+        newPoints = applyConnectionConstraints(
+          project?.sketch.entities ?? [],
+          entity,
+          newPoints,
+        );
+      }
+
       if (!pushUndoDone.current) {
         pushUndo();
         pushUndoDone.current = true;
@@ -229,6 +250,17 @@ export function useEntityDragTool({
           ...(newControlPoints ? { controlPoints: newControlPoints } : {}),
         },
       );
+
+      // A rigid whole-entity translation (circles always move this way; other
+      // shapes only in "entity" mode) carries any offset curves along.
+      if (isCircle || mode === "entity") {
+        for (const depId of dependentOffsetEntityIds(project, entity.id)) {
+          const dep = project?.sketch.entities.find((e) => e.id === depId);
+          if (!dep) continue;
+          updateEntity(depId, translateEntityWhole(dep, dx, dy));
+        }
+      }
+
       dragStart.current = world;
       return true;
     },

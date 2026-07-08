@@ -47,7 +47,7 @@ export function usePanTool({
     (event: React.WheelEvent) => {
       event.preventDefault();
       const factor = event.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.min(10, Math.max(0.1, viewport.zoom * factor));
+      const newZoom = Math.min(100, Math.max(0.05, viewport.zoom * factor));
 
       const canvas = canvasRef.current;
       if (!canvas) return;

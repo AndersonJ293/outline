@@ -125,6 +125,20 @@ export function closestPointOnEntity(entity: Entity, point: Point): Point | null
   return best;
 }
 
+const COINCIDENT_TOL_MM = 1e-3;
+
+/// True when `point` (a vertex of `selfId`) sits on another entity's
+/// boundary — used to draw Fusion-style connected (filled) vs free
+/// (hollow) endpoint markers.
+export function isPointConnected(entities: Entity[], selfId: string, point: Point): boolean {
+  for (const other of entities) {
+    if (other.id === selfId) continue;
+    const nearest = closestPointOnEntity(other, point);
+    if (nearest && pointDistance(nearest, point) < COINCIDENT_TOL_MM) return true;
+  }
+  return false;
+}
+
 export interface OffsetDimensionLayout {
   /// Anchor on the source curve.
   a: Point;
@@ -133,14 +147,29 @@ export interface OffsetDimensionLayout {
   mid: Point;
 }
 
-/// Geometry for an offset annotation: a leader line from a stable reference
-/// point on the source curve to the nearest point on the offset curve.
+/// Deterministic pseudo-angle (radians) from a string id. Used to spread
+/// concentric offset leader lines around the circle instead of stacking
+/// them all on the same radius — each generated curve has a fresh id, so
+/// chained offsets (offset-of-an-offset) fan out automatically.
+function angleFromId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return (hash % 360) * (Math.PI / 180);
+}
+
+/// Geometry for an offset annotation: a leader line from a reference point
+/// on the source curve to the nearest point on the offset curve. For
+/// circles the reference point is placed at an id-derived angle so several
+/// offsets of the same family don't all land on the same radial line.
 export function offsetDimensionLayout(
   source: Entity,
   offsetEntity: Entity,
 ): OffsetDimensionLayout | null {
   const a = source.type === "circle" && source.center && source.radiusMm
-    ? { x: source.center.x + source.radiusMm, y: source.center.y }
+    ? {
+        x: source.center.x + source.radiusMm * Math.cos(angleFromId(source.id)),
+        y: source.center.y + source.radiusMm * Math.sin(angleFromId(source.id)),
+      }
     : source.points[0];
   if (!a) return null;
   const b = closestPointOnEntity(offsetEntity, a);
@@ -149,7 +178,9 @@ export function offsetDimensionLayout(
   return { a, b, mid };
 }
 
-/// Return the id of the dimension whose line/label is under the cursor.
+/// Return the id of the dimension whose line/label is nearest the cursor
+/// (not just the first one in range — offset annotations of the same
+/// family can sit close together).
 export function hitTestDimension(
   project: Project | null,
   world: Point,
@@ -157,14 +188,19 @@ export function hitTestDimension(
 ): string | null {
   const dims = project?.sketch.dimensions;
   if (!dims) return null;
+  let bestId: string | null = null;
+  let bestDist = LINE_HIT_RADIUS * 1.5;
+
   for (const dim of dims) {
     if (dim.kind === "linear") {
       const entity = project!.sketch.entities.find((e) => e.id === dim.entityId);
       if (!entity) continue;
       const layout = dimensionLayout(entity, dim);
       if (!layout) continue;
-      if (distanceToSegment(world, layout.da, layout.db) * viewport.zoom < LINE_HIT_RADIUS * 1.5) {
-        return dim.id;
+      const dist = distanceToSegment(world, layout.da, layout.db) * viewport.zoom;
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestId = dim.id;
       }
     } else {
       const source = project!.sketch.entities.find((e) => e.id === dim.entityId);
@@ -172,10 +208,56 @@ export function hitTestDimension(
       if (!source || !offsetEntity) continue;
       const layout = offsetDimensionLayout(source, offsetEntity);
       if (!layout) continue;
-      if (distanceToSegment(world, layout.a, layout.b) * viewport.zoom < LINE_HIT_RADIUS * 1.5) {
-        return dim.id;
+      const dist = distanceToSegment(world, layout.a, layout.b) * viewport.zoom;
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestId = dim.id;
       }
     }
   }
-  return null;
+
+  return bestId;
+}
+
+/// True when `entityId` is the generated curve of an offset — a derived
+/// entity that is only ever moved by moving its source (or edited via the
+/// offset annotation), never dragged directly.
+export function isOffsetResult(project: Project | null, entityId: string): boolean {
+  return (project?.sketch.dimensions ?? []).some(
+    (d) => d.kind === "offset" && d.offsetEntityId === entityId,
+  );
+}
+
+/// Re-project any point that was coincident with another curve (before the
+/// drag) onto that same curve at its dragged position — a Fusion-style
+/// coincidence constraint: a connected endpoint glides along the curve it
+/// touches instead of detaching when dragged.
+export function applyConnectionConstraints(
+  entities: Entity[],
+  entity: Entity,
+  newPoints: Point[],
+): Point[] {
+  const original = entity.points;
+  return newPoints.map((p, i) => {
+    const orig = original[i];
+    if (!orig) return p;
+    for (const other of entities) {
+      if (other.id === entity.id) continue;
+      const nearest = closestPointOnEntity(other, orig);
+      if (nearest && pointDistance(nearest, orig) < COINCIDENT_TOL_MM) {
+        return closestPointOnEntity(other, p) ?? p;
+      }
+    }
+    return p;
+  });
+}
+
+/// Ids of every offset curve generated from `entityId`, so a whole-entity
+/// translation can carry its dependents along.
+export function dependentOffsetEntityIds(project: Project | null, entityId: string): string[] {
+  const ids: string[] = [];
+  for (const d of project?.sketch.dimensions ?? []) {
+    if (d.kind === "offset" && d.entityId === entityId) ids.push(d.offsetEntityId);
+  }
+  return ids;
 }

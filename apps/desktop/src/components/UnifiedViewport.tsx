@@ -217,15 +217,6 @@ export default function UnifiedViewport() {
     setError,
   });
 
-  const { requestRender } = useSketchCanvasRenderers({
-    containerRef, staticCanvasRef, overlayCanvasRef, project, viewport, toolMode,
-    selectedEntityIds, selectedVertices, editingImageId, entityDragTarget, imageCache,
-    isImageResizing, imageResizeId, isDrawing, drawingPoints, closeToStart,
-    isSelectDragging, selectDragStart, selectDragEnd, pendingRectangle, splineState,
-    cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker, drawLengthInput,
-    imageRefLineStart, imageRefLineEnd, refScalePopup, snapToGridEnabled,
-  });
-
   const { startPan, updatePan, stopPan, handleWheel } = usePanTool({
     canvasRef: staticCanvasRef,
     viewport,
@@ -265,6 +256,16 @@ export default function UnifiedViewport() {
   useEffect(() => {
     if (toolMode !== "offset" && offsetPopup) cancelOffset();
   }, [toolMode, offsetPopup, cancelOffset]);
+
+  const { requestRender } = useSketchCanvasRenderers({
+    containerRef, staticCanvasRef, overlayCanvasRef, project, viewport, toolMode,
+    selectedEntityIds, selectedVertices, editingImageId, entityDragTarget, imageCache,
+    isImageResizing, imageResizeId, isDrawing, drawingPoints, closeToStart,
+    isSelectDragging, selectDragStart, selectDragEnd, pendingRectangle, splineState,
+    cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker, drawLengthInput,
+    imageRefLineStart, imageRefLineEnd, refScalePopup, snapToGridEnabled,
+    activeDimId: offsetPopup?.dimId ?? dimPopup?.dimId ?? null,
+  });
 
   const { handlePolylineMouseDown, finishPolyline, cancelPolyline, popPolylinePoint } =
     usePolylineTool({ viewport, project, drawingPoints, isDrawing, closeToStart, addEntity, setStatus });
@@ -337,10 +338,14 @@ export default function UnifiedViewport() {
     if (toolMode === "dimension") {
       const sx = world.x * viewport.zoom + viewport.offsetX;
       const sy = world.y * viewport.zoom + viewport.offsetY;
+      // Prevent the canvas' native mousedown focus grab from racing the
+      // popup input's focus() call below (same click, same tick).
+      e.preventDefault();
       handleDimensionMouseDown(world, sx, sy);
       return;
     }
     if (toolMode === "offset") {
+      e.preventDefault();
       handleOffsetMouseDown(world);
       return;
     }

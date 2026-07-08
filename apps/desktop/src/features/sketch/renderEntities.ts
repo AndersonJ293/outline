@@ -2,6 +2,7 @@ import type { EntityDragTarget, Vertex } from "../../stores/types";
 import type { Entity, Project, ViewportState } from "../../types";
 import { HANDLE_RADIUS } from "./constants";
 import { chainContour, computeChainsMemo } from "./chains";
+import { isPointConnected } from "./dimensions";
 
 const CULL_MARGIN = 50;
 
@@ -195,16 +196,33 @@ export function drawEntities(
         isActivePoint || isSelectedVertex
           ? (HANDLE_RADIUS + 2) / viewport.zoom
           : HANDLE_RADIUS / viewport.zoom;
+      // Fusion-style coincidence marker: a vertex sitting on another curve
+      // renders filled/dark instead of the default hollow-white free point.
+      const isConnected =
+        !isActivePoint &&
+        !isSelectedVertex &&
+        !isEntityMoveable &&
+        entity.type !== "circle" &&
+        isPointConnected(project.sketch.entities, entity.id, pt);
       ctx.fillStyle = isActivePoint
         ? "#ff9800"
         : isSelectedVertex
           ? "#8bc34a"
           : isEntityMoveable
             ? "#4fc3f7"
-            : "rgba(255,255,255,0.8)";
+            : isConnected
+              ? "#1a1a1e"
+              : "rgba(255,255,255,0.8)";
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
       ctx.fill();
+      if (isConnected) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,0.9)";
+        ctx.lineWidth = 1 / viewport.zoom;
+        ctx.stroke();
+        ctx.restore();
+      }
       if (isSelectedVertex) {
         ctx.save();
         ctx.strokeStyle = "#ffffff";

@@ -97,6 +97,29 @@ describe("sketch hit testing", () => {
     it("returns null when far from any entity", () => {
       expect(hitTestEntityWithPoint(entities, { x: 80, y: 80 }, viewport)).toBeNull();
     });
+
+    it("picks the nearest curve when two overlap within tolerance, not the first in the array", () => {
+      // A tight offset pair: clicking right on the inner edge must not fall
+      // back to the outer curve just because it was created first.
+      const outer: Entity = {
+        id: "outer",
+        type: "circle",
+        closed: true,
+        center: { x: 0, y: 0 },
+        radiusMm: 100,
+        points: [],
+      };
+      const inner: Entity = {
+        id: "inner",
+        type: "circle",
+        closed: true,
+        center: { x: 0, y: 0 },
+        radiusMm: 95,
+        points: [],
+      };
+      const hit = hitTestEntityWithPoint([outer, inner], { x: 95, y: 0 }, viewport);
+      expect(hit).toEqual({ kind: "segment", entityId: "inner", segIdx: 0 });
+    });
   });
 
   describe("hitTestSplineHandle", () => {

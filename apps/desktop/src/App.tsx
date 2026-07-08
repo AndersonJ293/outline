@@ -247,9 +247,6 @@ function App() {
           {(project?.sketch.entities.length ?? 0) > 0 && (
             <button className={s["sketch-btn"]} onClick={handleEditSketch}>Edit Sketch</button>
           )}
-          <div style={{ flex: 1 }} />
-          <button className={s["toolbar-btn-sm"]} onClick={undo} title="Undo">↩</button>
-          <button className={s["toolbar-btn-sm"]} onClick={redo} title="Redo">↪</button>
         </div>
       )}
 

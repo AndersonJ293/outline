@@ -66,4 +66,19 @@ describe("computeSnap", () => {
     const r = computeSnap({ x: 11.2, y: 9.1 }, ctx({ gridEnabled: true }));
     expect(r.kind).toBe("grid");
   });
+
+  it("snaps onto a circle's boundary so a new curve can connect to it", () => {
+    const circle: Entity = {
+      id: "c1",
+      type: "circle",
+      closed: true,
+      center: { x: 0, y: 0 },
+      radiusMm: 50,
+      points: [],
+    };
+    // Just inside the circle's edge, far from its only vertex (the center).
+    const r = computeSnap({ x: 49, y: 1 }, ctx({ entities: [circle] }));
+    expect(r.kind).toBe("curve");
+    expect(Math.hypot(r.point.x, r.point.y)).toBeCloseTo(50, 3);
+  });
 });

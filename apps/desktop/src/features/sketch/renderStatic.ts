@@ -17,6 +17,9 @@ export interface RenderStaticArgs {
   imageCache: MutableRefObject<Map<string, HTMLImageElement>>;
   isImageResizing: MutableRefObject<boolean>;
   imageResizeId: MutableRefObject<string | null>;
+  /// Dimension currently open for editing in a popup — rendered highlighted
+  /// so it's obvious which annotation the input is about to change.
+  activeDimId?: string | null;
 }
 
 export function renderStatic({
@@ -30,6 +33,7 @@ export function renderStatic({
   imageCache,
   isImageResizing,
   imageResizeId,
+  activeDimId,
 }: RenderStaticArgs): void {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -40,7 +44,7 @@ export function renderStatic({
   drawGrid(ctx, ctx.canvas, viewport);
   drawImages(ctx, project, viewport, editingImageId, imageCache, isImageResizing, imageResizeId);
   drawEntities(ctx, project, viewport, selectedEntityIds, entityDragTarget, selectedVertices);
-  drawDimensions(ctx, project, viewport);
+  drawDimensions(ctx, project, viewport, activeDimId ?? null);
   drawGridLabel(ctx, viewport);
 
   ctx.restore();

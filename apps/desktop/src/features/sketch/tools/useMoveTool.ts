@@ -4,6 +4,7 @@ import type { Entity, Point, Project, ViewportState } from "../../../types";
 import type { Vertex } from "../../../stores/types";
 import { hitTestEntityWithPoint } from "../hitTest";
 import { translateEntityVertices, translateEntityWhole } from "../entityDrag";
+import { applyConnectionConstraints, dependentOffsetEntityIds, isOffsetResult } from "../dimensions";
 
 /// A snapshot of what the current move drag affects: whole entities translated
 /// in full, plus loose vertices grouped per entity.
@@ -54,6 +55,8 @@ export function useMoveTool({
       const entities = project?.sketch.entities ?? [];
       const hit = hitTestEntityWithPoint(entities, world, viewport);
       if (!hit) return false;
+      // Derived offset curves only move together with their source.
+      if (isOffsetResult(project, hit.entityId)) return false;
 
       const { selectedEntityIds, selectedVertices } = useStore.getState();
       // Builds the per-entity vertex map. When `excludeWhole` is set, vertices
@@ -129,19 +132,33 @@ export function useMoveTool({
     (dx: number, dy: number) => {
       const plan = movePlan.current;
       if (!plan) return;
-      const entities = useStore.getState().project?.sketch.entities ?? [];
+      const liveProject = useStore.getState().project;
+      const entities = liveProject?.sketch.entities ?? [];
 
       for (const id of plan.wholeIds) {
         const entity = entities.find((e) => e.id === id);
         if (!entity) continue;
         const geo = translateEntityWhole(entity, dx, dy);
+        if (entity.type !== "circle") {
+          geo.points = applyConnectionConstraints(entities, entity, geo.points);
+        }
         updateEntity(id, geo);
+
+        for (const depId of dependentOffsetEntityIds(liveProject, id)) {
+          if (plan.wholeIds.includes(depId)) continue;
+          const dep = entities.find((e) => e.id === depId);
+          if (!dep) continue;
+          updateEntity(depId, translateEntityWhole(dep, dx, dy));
+        }
       }
       for (const [id, indices] of plan.vertexMap) {
         if (plan.wholeIds.includes(id)) continue;
         const entity = entities.find((e) => e.id === id);
         if (!entity) continue;
         const geo = translateEntityVertices(entity, indices, dx, dy);
+        if (entity.type !== "circle") {
+          geo.points = applyConnectionConstraints(entities, entity, geo.points);
+        }
         updateEntity(id, geo);
       }
     },

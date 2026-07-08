@@ -2,12 +2,14 @@ import type { Entity, Point, ViewportState } from "../../types";
 import { pointDistance } from "../../types";
 import { SNAP_PX } from "./constants";
 import { getSnapStep, snapToGrid } from "./geometry";
+import { closestPointOnEntity } from "./dimensions";
 
 export type SnapKind =
   | "none"
   | "grid"
   | "endpoint"
   | "midpoint"
+  | "curve"
   | "horizontal"
   | "vertical"
   | "align";
@@ -82,7 +84,12 @@ export function computeSnap(world: Point, ctx: SnapContext): SnapResult {
   const mp = nearestWithin(world, mids, tol);
   if (mp) return { point: { ...mp }, snapped: true, kind: "midpoint", guides: [], marker: { ...mp } };
 
-  // 3. Independent X and Y inference (anchor H/V > vertex alignment > grid).
+  // 3. On-curve — connect to any point along a curve's boundary (e.g. a
+  // circle's edge), not just its vertices. Fusion calls this a curve snap.
+  const cp = nearestPointOnEntities(world, entities, tol);
+  if (cp) return { point: { ...cp }, snapped: true, kind: "curve", guides: [], marker: { ...cp } };
+
+  // 4. Independent X and Y inference (anchor H/V > vertex alignment > grid).
   const x = resolveAxis("x", world, anchor, verts, tol);
   const y = resolveAxis("y", world, anchor, verts, tol);
 
@@ -100,13 +107,28 @@ export function computeSnap(world: Point, ctx: SnapContext): SnapResult {
     return { point, snapped: true, kind, guides, marker: null };
   }
 
-  // 4. Grid fallback.
+  // 5. Grid fallback.
   if (gridEnabled) {
     const step = getSnapStep(viewport.zoom);
     return { point: snapToGrid(world, step), snapped: true, kind: "grid", guides: [], marker: null };
   }
 
   return { point: { ...world }, ...RAW };
+}
+
+function nearestPointOnEntities(world: Point, entities: Entity[], tol: number): Point | null {
+  let best: Point | null = null;
+  let bestD = tol;
+  for (const e of entities) {
+    const p = closestPointOnEntity(e, world);
+    if (!p) continue;
+    const d = pointDistance(world, p);
+    if (d < bestD) {
+      bestD = d;
+      best = p;
+    }
+  }
+  return best;
 }
 
 function nearestWithin(world: Point, points: Point[], tol: number): Point | null {
