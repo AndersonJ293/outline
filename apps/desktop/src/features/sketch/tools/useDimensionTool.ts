@@ -30,7 +30,7 @@ export function useDimensionTool({
       if (existingId) {
         const dim = project.sketch.dimensions?.find((d) => d.id === existingId);
         if (dim) {
-          setDimPopup({ dimId: dim.id, current: dim.value, screenX, screenY });
+          setDimPopup({ dimId: dim.id, current: dim.value, screenX, screenY, nonce: Date.now() });
           return true;
         }
       }
@@ -50,7 +50,7 @@ export function useDimensionTool({
           (d) => d.kind === "diameter" && d.entityId === entity.id,
         );
         if (existing) {
-          setDimPopup({ dimId: existing.id, current: existing.value, screenX, screenY, label: "Diâmetro:" });
+          setDimPopup({ dimId: existing.id, current: existing.value, screenX, screenY, label: "Diâmetro:", nonce: Date.now() });
           return true;
         }
         const angle =
@@ -66,7 +66,7 @@ export function useDimensionTool({
           angle,
         };
         addDimension(dim);
-        setDimPopup({ dimId: dim.id, current: value, screenX, screenY, label: "Diâmetro:" });
+        setDimPopup({ dimId: dim.id, current: value, screenX, screenY, label: "Diâmetro:", nonce: Date.now() });
         setStatus(`Diameter ${value.toFixed(1)} mm — type a value to drive it`);
         return true;
       }
@@ -87,7 +87,7 @@ export function useDimensionTool({
         offset: 16 / viewport.zoom,
       };
       addDimension(dim);
-      setDimPopup({ dimId: dim.id, current: length, screenX, screenY });
+      setDimPopup({ dimId: dim.id, current: length, screenX, screenY, nonce: Date.now() });
       setStatus(`Dimension ${length.toFixed(1)} mm — type a value to drive it`);
       return true;
     },

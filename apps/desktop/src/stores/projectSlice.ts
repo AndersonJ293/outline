@@ -154,9 +154,9 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     });
 
     get().pushUndo();
-    project.sketch.entities.push(...pasted);
+    const nextEntities = [...project.sketch.entities, ...pasted];
     set({
-      project: { ...project },
+      project: { ...project, sketch: { ...project.sketch, entities: nextEntities } },
       selectedEntityIds: newIds,
       selectedVertices: [],
     });
@@ -167,8 +167,11 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const project = get().project;
     if (!project) return;
     get().pushUndo();
-    project.sketch.entities.push(entity);
-    set({ project: { ...project }, selectedEntityIds: [entity.id] });
+    const nextEntities = [...project.sketch.entities, entity];
+    set({
+      project: { ...project, sketch: { ...project.sketch, entities: nextEntities } },
+      selectedEntityIds: [entity.id],
+    });
   },
 
   addOperation: (op) => {
@@ -206,9 +209,9 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const project = get().project;
     if (!project) return;
     get().pushUndo();
-    project.sketch.images = [...(project.sketch.images ?? []), image];
+    const nextImages = [...(project.sketch.images ?? []), image];
     set({
-      project: { ...project },
+      project: { ...project, sketch: { ...project.sketch, images: nextImages } },
       selectedEntityIds: [image.id],
       editingImageId: image.id,
     });
@@ -226,8 +229,9 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     if (!project) return;
     const idx = project.sketch.entities.findIndex((e) => e.id === id);
     if (idx === -1) return;
-    project.sketch.entities[idx] = { ...project.sketch.entities[idx], ...updates };
-    set({ project: { ...project } });
+    const nextEntities = [...project.sketch.entities];
+    nextEntities[idx] = { ...nextEntities[idx], ...updates };
+    set({ project: { ...project, sketch: { ...project.sketch, entities: nextEntities } } });
   },
 
   translateEntity: (id, dx, dy, options) => {
@@ -268,8 +272,9 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     if (!images) return;
     const idx = images.findIndex((img) => img.id === id);
     if (idx === -1) return;
-    images[idx] = { ...images[idx], ...updates };
-    set({ project: { ...project } });
+    const nextImages = [...images];
+    nextImages[idx] = { ...nextImages[idx], ...updates };
+    set({ project: { ...project, sketch: { ...project.sketch, images: nextImages } } });
   },
 
   removeSelectedEntities: () => {
@@ -277,9 +282,9 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const ids = get().selectedEntityIds;
     if (!project || ids.length === 0) return;
     get().pushUndo();
-    project.sketch.entities = project.sketch.entities.filter((e) => !ids.includes(e.id));
-    project.sketch.images = (project.sketch.images ?? []).filter((img) => !ids.includes(img.id));
-    project.sketch.dimensions = (project.sketch.dimensions ?? []).filter(
+    const nextEntities = project.sketch.entities.filter((e) => !ids.includes(e.id));
+    const nextImages = (project.sketch.images ?? []).filter((img) => !ids.includes(img.id));
+    const nextDimensions = (project.sketch.dimensions ?? []).filter(
       (d) => !ids.includes(d.entityId) && !(d.kind === "offset" && ids.includes(d.offsetEntityId)),
     );
     const editingImageId = get().editingImageId;
@@ -291,7 +296,15 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
         ? null
         : entityDragTarget;
     set({
-      project: { ...project },
+      project: {
+        ...project,
+        sketch: {
+          ...project.sketch,
+          entities: nextEntities,
+          images: nextImages,
+          dimensions: nextDimensions,
+        },
+      },
       selectedEntityIds: [],
       selectedVertices: get().selectedVertices.filter(
         (v) => !ids.includes(v.entityId),
@@ -307,8 +320,8 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const project = get().project;
     if (!project) return;
     get().pushUndo();
-    project.sketch.dimensions = [...(project.sketch.dimensions ?? []), dim];
-    set({ project: { ...project } });
+    const nextDimensions = [...(project.sketch.dimensions ?? []), dim];
+    set({ project: { ...project, sketch: { ...project.sketch, dimensions: nextDimensions } } });
   },
 
   updateDimensionValue: (id: string, value: number) => {
@@ -322,8 +335,12 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       // Geometry for offset curves is recomputed by useOffsetTool (it may
       // need an async backend call); this just records the new value.
       if (!Number.isFinite(value) || value === 0) return;
-      project.sketch.dimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
-      set({ project: { ...project }, bodies: {}, bodyErrors: {} });
+      const nextDimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
+      set({
+        project: { ...project, sketch: { ...project.sketch, dimensions: nextDimensions } },
+        bodies: {},
+        bodyErrors: {},
+      });
       return;
     }
 
@@ -337,13 +354,21 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       const radiusMm = value / 2;
       const edge = { x: entity.center.x + radiusMm, y: entity.center.y };
       get().pushUndo();
-      project.sketch.entities[idx] = {
+      const nextEntities = [...project.sketch.entities];
+      nextEntities[idx] = {
         ...entity,
         radiusMm,
         points: circlePoints(entity.center, edge, entity.samplingSteps ?? (entity.points.length || 96)),
       };
-      project.sketch.dimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
-      set({ project: { ...project }, bodies: {}, bodyErrors: {} });
+      const nextDimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
+      set({
+        project: {
+          ...project,
+          sketch: { ...project.sketch, entities: nextEntities, dimensions: nextDimensions },
+        },
+        bodies: {},
+        bodyErrors: {},
+      });
       return;
     }
 
@@ -351,19 +376,27 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const updates = applyLinearDimension(project.sketch.entities[idx], dim.segIdx, value);
     if (!updates) return;
     get().pushUndo();
-    project.sketch.entities[idx] = { ...project.sketch.entities[idx], ...updates };
-    project.sketch.dimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
-    set({ project: { ...project }, bodies: {}, bodyErrors: {} });
+    const nextEntities = [...project.sketch.entities];
+    nextEntities[idx] = { ...nextEntities[idx], ...updates };
+    const nextDimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
+    set({
+      project: {
+        ...project,
+        sketch: { ...project.sketch, entities: nextEntities, dimensions: nextDimensions },
+      },
+      bodies: {},
+      bodyErrors: {},
+    });
   },
 
   removeDimension: (id: string) => {
     const project = get().project;
     if (!project) return;
     get().pushUndo();
-    project.sketch.dimensions = (project.sketch.dimensions ?? []).filter((d) => d.id !== id);
+    const nextDimensions = (project.sketch.dimensions ?? []).filter((d) => d.id !== id);
     const selectedDimensionId = get().selectedDimensionId;
     set({
-      project: { ...project },
+      project: { ...project, sketch: { ...project.sketch, dimensions: nextDimensions } },
       selectedDimensionId: selectedDimensionId === id ? null : selectedDimensionId,
     });
   },
@@ -374,20 +407,20 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     const project = get().project;
     if (!project) return;
     const dims = project.sketch.dimensions ?? [];
-    project.sketch.dimensions = dims.map((d) =>
+    const nextDimensions = dims.map((d) =>
       d.id === id && d.kind === "diameter" ? { ...d, angle } : d,
     );
-    set({ project: { ...project } });
+    set({ project: { ...project, sketch: { ...project.sketch, dimensions: nextDimensions } } });
   },
 
   updateLinearDimensionOffset: (id: string, offset: number) => {
     const project = get().project;
     if (!project) return;
     const dims = project.sketch.dimensions ?? [];
-    project.sketch.dimensions = dims.map((d) =>
+    const nextDimensions = dims.map((d) =>
       d.id === id && d.kind === "linear" ? { ...d, offset } : d,
     );
-    set({ project: { ...project } });
+    set({ project: { ...project, sketch: { ...project.sketch, dimensions: nextDimensions } } });
   },
 
   selectedDimensionId: null,
@@ -449,9 +482,8 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       }
     }
 
-    project.sketch.entities = remaining;
     set({
-      project: { ...project },
+      project: { ...project, sketch: { ...project.sketch, entities: remaining } },
       selectedVertices: [],
       bodies: {},
       bodyErrors: {},

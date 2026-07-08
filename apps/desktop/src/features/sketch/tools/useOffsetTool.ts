@@ -20,11 +20,12 @@ type UseOffsetToolArgs = {
 };
 
 /// Offsetting a circle is exact: same center, radius shrunk/grown by the
-/// distance. This matches the sign convention of the generic polygon
-/// offset in Rust (positive distance moves inward).
+/// distance. Positive distance grows the curve outward (matches Fusion);
+/// the underlying Rust polygon offset uses the opposite sign, so callers
+/// negate `distance` before reaching it.
 function offsetCircle(entity: Entity, distance: number): Partial<Entity> | null {
   if (!entity.center || !entity.radiusMm) return null;
-  const radiusMm = entity.radiusMm - distance;
+  const radiusMm = entity.radiusMm + distance;
   if (radiusMm <= 0) return null;
   const center = entity.center;
   return {
@@ -46,6 +47,7 @@ export function useOffsetTool({
   setError,
 }: UseOffsetToolArgs) {
   const lastDistanceRef = useRef("1");
+  const popupNonceRef = useRef(0);
   const [offsetPopup, setOffsetPopup] = useState<OffsetPopupState | null>(null);
 
   const handleOffsetMouseDown = useCallback(
@@ -63,6 +65,7 @@ export function useOffsetTool({
             current: dim.value,
             screenX: world.x * viewport.zoom + viewport.offsetX,
             screenY: world.y * viewport.zoom + viewport.offsetY,
+            nonce: ++popupNonceRef.current,
           });
           setStatus("Offset: enter distance");
           return true;
@@ -84,6 +87,7 @@ export function useOffsetTool({
         current: Number.isFinite(current) && current !== 0 ? current : 1,
         screenX: world.x * viewport.zoom + viewport.offsetX,
         screenY: world.y * viewport.zoom + viewport.offsetY,
+        nonce: ++popupNonceRef.current,
       });
       setStatus("Offset: enter distance");
       return true;
@@ -178,7 +182,7 @@ async function createOffsetEntity(entity: Entity, distance: number): Promise<Ent
     const updates = offsetCircle(entity, distance);
     return updates ? { ...entity, id: generateId(), ...updates } : null;
   }
-  const result = await offsetSketchEntity(entity, distance, generateId());
+  const result = await offsetSketchEntity(entity, -distance, generateId());
   return result.ok && result.entity ? result.entity : null;
 }
 
@@ -186,7 +190,7 @@ async function recomputeOffset(source: Entity, distance: number): Promise<Partia
   if (source.type === "circle") {
     return offsetCircle(source, distance);
   }
-  const result = await offsetSketchEntity(source, distance, generateId());
+  const result = await offsetSketchEntity(source, -distance, generateId());
   if (!result.ok || !result.entity) return null;
   return { points: result.entity.points, closed: result.entity.closed };
 }

@@ -60,6 +60,7 @@ export function useDimensionDragTool({
             screenX,
             screenY,
             label: dim.kind === "diameter" ? "Diâmetro:" : "Comprimento:",
+            nonce: Date.now(),
           });
         }
         return true;

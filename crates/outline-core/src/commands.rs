@@ -663,9 +663,10 @@ mod tests {
             .map(|p| geometry::entities::Point { x: p.x, y: p.y })
             .collect();
         let mesh = geometry::mesh::generate_extrude_mesh(&points, 15.0).unwrap();
-        // n=4 points, 2*n vertices (bottom + top), 4*n triangles (2 caps + 2 sides per edge)
+        // n=4 points, 2*n vertices (bottom + top); triangles = 2*(n-2) cap
+        // triangles (top+bottom) + 2*n side-wall triangles.
         assert_eq!(mesh.vertices.len(), 8);
-        assert_eq!(mesh.triangles.len(), 16);
+        assert_eq!(mesh.triangles.len(), 12);
     }
 
     #[test]

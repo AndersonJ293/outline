@@ -3,6 +3,7 @@ import { DimensionPopup, type DimensionPopupState } from "../features/sketch/Dim
 import { OffsetPopup, type OffsetPopupState } from "../features/sketch/OffsetPopup";
 import { RefScalePopup } from "../features/sketch/RefScalePopup";
 import type { RefScalePopupState } from "../features/sketch/tools/useImageRefScaleTool";
+import { ExtrudePopup, type ExtrudePopupState } from "./ExtrudePopup";
 import s from "./Canvas2D.module.css";
 
 type ViewportChromeProps = {
@@ -20,6 +21,9 @@ type ViewportChromeProps = {
   offsetPopup: OffsetPopupState | null;
   onConfirmOffset: (value: number) => void;
   onCancelOffset: () => void;
+  extrudePopup: ExtrudePopupState | null;
+  onConfirmExtrude: (height: number, thickness?: number) => void;
+  onCancelExtrude: () => void;
   faceSelectionActive: boolean;
   onMouseDown?: (event: React.MouseEvent) => void;
   onMouseMove?: (event: React.MouseEvent) => void;
@@ -42,6 +46,9 @@ export function ViewportChrome({
   offsetPopup,
   onConfirmOffset,
   onCancelOffset,
+  extrudePopup,
+  onConfirmExtrude,
+  onCancelExtrude,
   faceSelectionActive,
   onMouseDown,
   onMouseMove,
@@ -92,6 +99,13 @@ export function ViewportChrome({
           popup={offsetPopup}
           onConfirm={onConfirmOffset}
           onCancel={onCancelOffset}
+        />
+      )}
+      {extrudePopup && (
+        <ExtrudePopup
+          popup={extrudePopup}
+          onConfirm={onConfirmExtrude}
+          onCancel={onCancelExtrude}
         />
       )}
       {faceSelectionActive && <FaceSelectionHint />}

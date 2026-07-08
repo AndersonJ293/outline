@@ -6,6 +6,9 @@ export interface DimensionPopupState {
   screenX: number;
   screenY: number;
   label?: string;
+  /// Bumped on every open so the focus effect re-runs even when reopening
+  /// the same dimension twice in a row (dimId stays identical).
+  nonce: number;
 }
 
 interface DimensionPopupProps {
@@ -20,7 +23,7 @@ export function DimensionPopup({ popup, onConfirm, onCancel }: DimensionPopupPro
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, [popup.dimId]);
+  }, [popup.nonce]);
 
   return (
     <div

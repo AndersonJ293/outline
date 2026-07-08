@@ -17,6 +17,7 @@ interface UseCanvasKeyboardShortcutsArgs {
   cancelSpline: () => boolean;
   popSplineAnchor: () => boolean;
   finishSpline: (close: boolean) => boolean;
+  finishCircle: () => boolean;
   cancelReferenceLine: () => void;
   setToolMode: (mode: ToolMode) => void;
   toolMode: ToolMode;
@@ -45,6 +46,7 @@ export function useCanvasKeyboardShortcuts({
   cancelSpline,
   popSplineAnchor,
   finishSpline,
+  finishCircle,
   cancelReferenceLine,
   setToolMode,
   toolMode,
@@ -53,7 +55,10 @@ export function useCanvasKeyboardShortcuts({
 }: UseCanvasKeyboardShortcutsArgs): void {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      const isPolylineDrawing = drawingPoints.current.length > 0;
+      // `drawingPoints` is shared with the circle/rectangle tools too — only
+      // treat it as an in-progress polyline when that tool is actually active.
+      const isPolylineDrawing = toolMode === "polyline" && drawingPoints.current.length > 0;
+      const isCircleDrawing = toolMode === "circle" && drawingPoints.current.length === 2;
       if (
         (splineState.current || isPolylineDrawing) &&
         ((event.ctrlKey && event.key.toLowerCase() === "z") ||
@@ -80,6 +85,11 @@ export function useCanvasKeyboardShortcuts({
         if (isPolylineDrawing) {
           event.preventDefault();
           finishPolyline(false);
+          setToolMode("select");
+        }
+        if (isCircleDrawing) {
+          event.preventDefault();
+          finishCircle();
           setToolMode("select");
         }
         return;
@@ -124,11 +134,13 @@ export function useCanvasKeyboardShortcuts({
     cancelSpline,
     popSplineAnchor,
     finishSpline,
+    finishCircle,
     cancelReferenceLine,
     setToolMode,
     pendingRectangle,
     splineState,
     drawingPoints,
+    toolMode,
   ]);
 
   useEffect(() => {

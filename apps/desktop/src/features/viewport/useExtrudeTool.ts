@@ -1,7 +1,9 @@
-import { useEffect, useRef, useCallback, type RefObject } from "react";
+import { useEffect, useRef, useCallback, useState, type RefObject } from "react";
 import * as THREE from "three";
 import type { ExtrudeMode, Project } from "../../types";
 import { generateId } from "../../types";
+import { PROFILE_HOVER_OPACITY } from "./useProfileFaces";
+import type { ExtrudePopupState } from "../../components/ExtrudePopup";
 
 interface UseExtrudeToolArgs {
   active: boolean;
@@ -14,6 +16,8 @@ interface UseExtrudeToolArgs {
   wallThickness: number;
   offsetSide: "center" | "inside" | "outside";
   addOperation: (op: import("../../types").Operation) => void;
+  setWallHeight: (h: number) => void;
+  setWallThickness: (t: number) => void;
   setStatus: (text: string) => void;
   setError: (text: string | null) => void;
 }
@@ -29,14 +33,19 @@ export function useExtrudeTool({
   wallThickness,
   offsetSide,
   addOperation,
+  setWallHeight,
+  setWallThickness,
   setStatus,
   setError,
 }: UseExtrudeToolArgs) {
   const raycasterRef = useRef(new THREE.Raycaster());
   const hoveredRef = useRef(false);
+  const hoveredFaceRef = useRef<THREE.Mesh | null>(null);
+  const popupNonceRef = useRef(0);
+  const [pendingExtrude, setPendingExtrude] = useState<ExtrudePopupState | null>(null);
 
-  const pickEntity = useCallback(
-    (clientX: number, clientY: number): string | null => {
+  const pickHit = useCallback(
+    (clientX: number, clientY: number): THREE.Intersection | null => {
       const container = containerRef.current;
       const camera = cameraRef.current;
       const group = sketchGroupRef.current;
@@ -51,20 +60,26 @@ export function useExtrudeTool({
       const raycaster = raycasterRef.current;
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(group.children, false);
-      if (intersects.length === 0) return null;
-
-      const hit = intersects[0];
-      return (hit.object.userData as { entityId?: string }).entityId ?? null;
+      return intersects.length > 0 ? intersects[0] : null;
     },
     [containerRef, cameraRef, sketchGroupRef],
   );
+
+  const clearHoverHighlight = useCallback(() => {
+    const mesh = hoveredFaceRef.current;
+    if (!mesh) return;
+    (mesh.material as THREE.MeshBasicMaterial).opacity = (mesh.userData.baseOpacity as number) ?? 0;
+    hoveredFaceRef.current = null;
+  }, []);
 
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
       if (e.button !== 0) return;
       if (!project) return;
-      const entityId = pickEntity(e.clientX, e.clientY);
-      if (!entityId) return;
+      const container = containerRef.current;
+      const hit = pickHit(e.clientX, e.clientY);
+      const entityId = (hit?.object.userData as { entityId?: string } | undefined)?.entityId;
+      if (!container || !entityId) return;
       e.preventDefault();
 
       const entity = project.sketch.entities.find((ent) => ent.id === entityId);
@@ -91,35 +106,20 @@ export function useExtrudeTool({
         return;
       }
 
-      const opType = extrudeMode === "thin" ? "extrude_thin" : "extrude";
-      const operation: import("../../types").Operation = {
-        id: generateId(),
-        type: opType,
-        source_entity_id: entityId,
-        operation: "new_body",
-        height_mm: wallHeight,
-        wall_thickness_mm: wallThickness,
-        offset_side: offsetSide,
-      };
-      addOperation(operation);
+      const rect = container.getBoundingClientRect();
+      setPendingExtrude({
+        entityId,
+        screenX: e.clientX - rect.left,
+        screenY: e.clientY - rect.top,
+        mode: extrudeMode,
+        height: wallHeight,
+        thickness: wallThickness,
+        nonce: ++popupNonceRef.current,
+      });
       setError(null);
-      setStatus(
-        extrudeMode === "thin"
-          ? `Thin wall extrude added (height=${wallHeight}mm, wall=${wallThickness}mm, offset=${offsetSide})`
-          : `Solid extrude added (height=${wallHeight}mm)`,
-      );
+      setStatus("Extrude: enter height");
     },
-    [
-      pickEntity,
-      project,
-      extrudeMode,
-      wallHeight,
-      wallThickness,
-      offsetSide,
-      addOperation,
-      setStatus,
-      setError,
-    ],
+    [pickHit, project, extrudeMode, wallHeight, wallThickness, containerRef, setStatus, setError],
   );
 
   const handlePointerMove = useCallback(
@@ -127,7 +127,8 @@ export function useExtrudeTool({
       if (!active) return;
       const container = containerRef.current;
       if (!container) return;
-      const entityId = pickEntity(e.clientX, e.clientY);
+      const hit = pickHit(e.clientX, e.clientY);
+      const entityId = (hit?.object.userData as { entityId?: string } | undefined)?.entityId ?? null;
       const entity = entityId
         ? project?.sketch.entities.find((e) => e.id === entityId)
         : null;
@@ -150,8 +151,20 @@ export function useExtrudeTool({
         hoveredRef.current = false;
         container.style.cursor = "";
       }
+
+      const faceMesh =
+        canExtrude && (hit?.object as THREE.Mesh | undefined)?.userData.isProfileFace
+          ? (hit!.object as THREE.Mesh)
+          : null;
+      if (faceMesh !== hoveredFaceRef.current) {
+        clearHoverHighlight();
+        if (faceMesh) {
+          (faceMesh.material as THREE.MeshBasicMaterial).opacity = PROFILE_HOVER_OPACITY;
+          hoveredFaceRef.current = faceMesh;
+        }
+      }
     },
-    [active, containerRef, pickEntity, project, extrudeMode],
+    [active, containerRef, pickHit, project, extrudeMode, clearHoverHighlight],
   );
 
   useEffect(() => {
@@ -165,8 +178,44 @@ export function useExtrudeTool({
       container.removeEventListener("pointermove", handlePointerMove);
       container.style.cursor = "";
       hoveredRef.current = false;
+      clearHoverHighlight();
     };
-  }, [active, handlePointerDown, handlePointerMove, containerRef]);
+  }, [active, handlePointerDown, handlePointerMove, containerRef, clearHoverHighlight]);
 
-  return { active };
+  useEffect(() => {
+    if (!active && pendingExtrude) setPendingExtrude(null);
+  }, [active, pendingExtrude]);
+
+  const confirmExtrude = useCallback(
+    (height: number, thickness?: number) => {
+      if (!pendingExtrude) return;
+      setWallHeight(height);
+      if (pendingExtrude.mode === "thin" && thickness !== undefined) setWallThickness(thickness);
+
+      const opType = pendingExtrude.mode === "thin" ? "extrude_thin" : "extrude";
+      addOperation({
+        id: generateId(),
+        type: opType,
+        source_entity_id: pendingExtrude.entityId,
+        operation: "new_body",
+        height_mm: height,
+        wall_thickness_mm: thickness ?? wallThickness,
+        offset_side: offsetSide,
+      });
+      setPendingExtrude(null);
+      setStatus(
+        pendingExtrude.mode === "thin"
+          ? `Thin wall extrude added (height=${height}mm, wall=${thickness ?? wallThickness}mm, offset=${offsetSide})`
+          : `Solid extrude added (height=${height}mm)`,
+      );
+    },
+    [pendingExtrude, addOperation, offsetSide, wallThickness, setWallHeight, setWallThickness, setStatus],
+  );
+
+  const cancelExtrude = useCallback(() => {
+    setPendingExtrude(null);
+    setStatus("Extrude canceled");
+  }, [setStatus]);
+
+  return { active, pendingExtrude, confirmExtrude, cancelExtrude };
 }

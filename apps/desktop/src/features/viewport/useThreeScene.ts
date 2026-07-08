@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, type RefObject } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Tool3DMode, ViewportState, Mesh, WorkingPlane } from "../../types";
+import { computeFaceGroups } from "./faceGrouping";
 
 interface UseThreeSceneArgs {
   containerRef: RefObject<HTMLDivElement>;
@@ -318,24 +319,27 @@ export function useThreeScene({
       geometry.computeVertexNormals();
 
       const selected = opId === selectedOperationId;
-      const material = new THREE.MeshPhysicalMaterial({
-        color: selected ? 0xff9800 : 0x4fc3f7,
+      // Fusion's default body look: opaque matte grey, no transparency — the
+      // sketch still shows through because its lines use depthTest: false
+      // (useSketchWireframe.ts), independent of the body's own opacity.
+      const material = new THREE.MeshStandardMaterial({
+        color: selected ? 0xff9800 : 0xb0b0b0,
         emissive: selected ? 0x663300 : 0x000000,
         metalness: 0.1,
         roughness: 0.6,
         side: THREE.DoubleSide,
-        transparent: true,
-        opacity: selected ? 0.95 : 0.85,
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.userData.operationId = opId;
+      mesh.userData.faceGroups = computeFaceGroups(geometry);
       meshGroup.add(mesh);
 
-      const wireGeo = new THREE.WireframeGeometry(geometry);
+      // Hard-edge outline only. Threshold set well above a circle's facet
+      // angle (96 segments -> 3.75deg between neighboring facets) so the
+      // curved wall reads as smooth, while real corners (~90deg) still show.
+      const wireGeo = new THREE.EdgesGeometry(geometry, 20);
       const wireMat = new THREE.LineBasicMaterial({
-        color: 0x88ddff,
-        transparent: true,
-        opacity: 0.3,
+        color: 0x2b2b2b,
       });
       const wireframeLine = new THREE.LineSegments(wireGeo, wireMat);
       wireframeLine.visible = previewWireframe;
@@ -343,5 +347,5 @@ export function useThreeScene({
     }
   }, [bodies, previewWireframe, sceneRevision, selectedOperationId]);
 
-  return { sketchGroupRef, meshGroupRef, cameraRef, sceneRef, sceneRevision };
+  return { sketchGroupRef, meshGroupRef, wireframeGroupRef, cameraRef, sceneRef, sceneRevision };
 }

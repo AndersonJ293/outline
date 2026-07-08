@@ -44,7 +44,9 @@ export interface ViewportStoreSelectors {
   setTool3DMode: (mode: Tool3DMode) => void;
   extrudeMode: "normal" | "thin";
   wallHeight: number;
+  setWallHeight: (h: number) => void;
   wallThickness: number;
+  setWallThickness: (t: number) => void;
   offsetSide: "center" | "inside" | "outside";
   addOperation: (op: Operation) => void;
   removeOperation: (id: string) => void;
@@ -108,7 +110,9 @@ export function useViewportStore(): ViewportStoreSelectors {
     setTool3DMode: useStore((s) => s.setTool3DMode),
     extrudeMode: useStore((s) => s.extrudeMode),
     wallHeight: useStore((s) => s.wallHeight),
+    setWallHeight: useStore((s) => s.setWallHeight),
     wallThickness: useStore((s) => s.wallThickness),
+    setWallThickness: useStore((s) => s.setWallThickness),
     offsetSide: useStore((s) => s.offsetSide),
     addOperation: useStore((s) => s.addOperation),
     removeOperation: useStore((s) => s.removeOperation),

@@ -7,6 +7,9 @@ export interface OffsetPopupState {
   current: number;
   screenX: number;
   screenY: number;
+  /// Bumped on every open so the focus effect re-runs even when reopening
+  /// the same annotation twice in a row (entityId/dimId stay identical).
+  nonce: number;
 }
 
 interface OffsetPopupProps {
@@ -21,7 +24,7 @@ export function OffsetPopup({ popup, onConfirm, onCancel }: OffsetPopupProps) {
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, [popup.entityId]);
+  }, [popup.nonce]);
 
   return (
     <div

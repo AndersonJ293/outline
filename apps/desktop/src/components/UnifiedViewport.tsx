@@ -32,9 +32,13 @@ import { useSketchViewportReset } from "../features/sketch/useSketchViewportRese
 import { useCanvasShortcuts } from "../features/sketch/useCanvasShortcuts";
 import { useThreeScene } from "../features/viewport/useThreeScene";
 import { useSketchWireframe } from "../features/viewport/useSketchWireframe";
+import { useSketchImages } from "../features/viewport/useSketchImages";
+import { useProfileFaces } from "../features/viewport/useProfileFaces";
+import { useSketchProfiles } from "../features/sketch/useSketchProfiles";
 import { useFaceSelection } from "../features/viewport/useFaceSelection";
 import { usePlanePicker3D } from "../features/viewport/usePlanePicker3D";
 import { useEntity3DSelect } from "../features/viewport/useEntity3DSelect";
+import { useFaceEdgeHover } from "../features/viewport/useFaceEdgeHover";
 import { useExtrudeTool } from "../features/viewport/useExtrudeTool";
 import { useOperationDeleteShortcut } from "../features/viewport/useOperationDeleteShortcut";
 import { ViewportChrome } from "./ViewportChrome";
@@ -73,7 +77,7 @@ export default function UnifiedViewport() {
     pushUndo, snapToGrid: snapToGridEnabled, updateEntity, bodies, previewWireframe,
     isSketching, workingPlane, faceSelectionActive, setFaceSelectionActive,
     planePickerActive, setPlanePickerActive, setIsSketching, setWorkingPlane,
-    tool3DMode, setTool3DMode, extrudeMode, wallHeight, wallThickness, offsetSide,
+    tool3DMode, setTool3DMode, extrudeMode, wallHeight, setWallHeight, wallThickness, setWallThickness, offsetSide,
     addOperation, removeOperation, selectedOperationId, selectOperation, translateEntity,
     addDimension, updateDimensionValue, rotateDiameterDimension, updateLinearDimensionOffset,
     selectedDimensionId, setSelectedDimensionId,
@@ -145,7 +149,7 @@ export default function UnifiedViewport() {
     [cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker],
   );
 
-  const { sketchGroupRef, meshGroupRef, cameraRef, sceneRef, sceneRevision } = useThreeScene({
+  const { sketchGroupRef, meshGroupRef, wireframeGroupRef, cameraRef, sceneRef, sceneRevision } = useThreeScene({
     containerRef: threeContainerRef,
     viewport,
     bodies,
@@ -191,6 +195,23 @@ export default function UnifiedViewport() {
     sceneRevision,
   });
 
+  useSketchImages({
+    images: project?.sketch.images ?? [],
+    sketchGroupRef,
+    workingPlane,
+    sceneRevision,
+  });
+
+  const { profiles } = useSketchProfiles(project?.sketch ?? null);
+
+  useProfileFaces({
+    profiles,
+    entities: project?.sketch.entities ?? [],
+    sketchGroupRef,
+    workingPlane,
+    sceneRevision,
+  });
+
   useEntity3DSelect({
     active: !isSketching && tool3DMode === "select3d",
     containerRef,
@@ -204,7 +225,15 @@ export default function UnifiedViewport() {
     setStatus,
   });
 
-  useExtrudeTool({
+  useFaceEdgeHover({
+    active: !isSketching && tool3DMode === "select3d",
+    containerRef,
+    cameraRef,
+    meshGroupRef,
+    wireframeGroupRef,
+  });
+
+  const { pendingExtrude, confirmExtrude, cancelExtrude } = useExtrudeTool({
     active: !isSketching && tool3DMode === "extrude",
     containerRef,
     cameraRef,
@@ -215,6 +244,8 @@ export default function UnifiedViewport() {
     wallThickness,
     offsetSide,
     addOperation,
+    setWallHeight,
+    setWallThickness,
     setStatus,
     setError,
   });
@@ -281,6 +312,13 @@ export default function UnifiedViewport() {
 
   const { handleCircleMouseDown, updateCirclePreview } =
     useCircleTool({ drawingPoints, isDrawing, addEntity, setStatus });
+
+  // Enter/Space while previewing a circle confirms it at the current edge
+  // point, mirroring finishPolyline/finishSpline's "confirm current" behavior.
+  const finishCircle = useCallback((): boolean => {
+    if (toolMode !== "circle" || !isDrawing.current || drawingPoints.current.length !== 2) return false;
+    return handleCircleMouseDown(drawingPoints.current[1]);
+  }, [toolMode, isDrawing, drawingPoints, handleCircleMouseDown]);
 
   const { handleSplineMouseDown, finishSpline, cancelSpline, popSplineAnchor } = useSplineTool({
     viewport, project, isDrawing, splineState, addEntity, setStatus,
@@ -520,7 +558,7 @@ export default function UnifiedViewport() {
     pendingRectangle, splineState, drawingPoints, refScalePopup,
     confirmPendingRectangle, cancelPendingRectangle, cancelRefScale,
     cancelPolyline, popPolylinePoint, finishPolyline,
-    cancelSpline, popSplineAnchor, finishSpline, cancelReferenceLine,
+    cancelSpline, popSplineAnchor, finishSpline, finishCircle, cancelReferenceLine,
     setToolMode, toolMode, setEditingImageId, setEntityDragTarget,
   });
 
@@ -547,6 +585,9 @@ export default function UnifiedViewport() {
         void confirmOffset(value);
       }}
       onCancelOffset={cancelOffset}
+      extrudePopup={pendingExtrude}
+      onConfirmExtrude={confirmExtrude}
+      onCancelExtrude={cancelExtrude}
       faceSelectionActive={faceSelectionActive}
       onMouseDown={isSketching ? handleMouseDown : undefined}
       onMouseMove={isSketching ? handleMouseMove : undefined}

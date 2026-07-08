@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { resolveSketchProfiles } from "../../../commands";
 import type { Sketch, SketchProfile } from "../../../types";
+import { useSketchProfiles } from "../../../features/sketch/useSketchProfiles";
 import s from "./ProjectTree.module.css";
 
 type ProfileSectionProps = {
@@ -9,31 +8,7 @@ type ProfileSectionProps = {
 };
 
 export function ProfileSection({ sketch, onCreateExtrude }: ProfileSectionProps) {
-  const [profiles, setProfiles] = useState<SketchProfile[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!sketch) {
-      setProfiles([]);
-      setError(null);
-      return;
-    }
-    resolveSketchProfiles(sketch)
-      .then((result) => {
-        if (cancelled) return;
-        setProfiles(result);
-        setError(null);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setProfiles([]);
-        setError(`Profiles failed: ${err}`);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sketch]);
+  const { profiles, error } = useSketchProfiles(sketch);
 
   if (error) return <div className={s["tree-empty"]}>{error}</div>;
   if (profiles.length === 0) return <div className={s["tree-empty"]}>No closed profiles</div>;

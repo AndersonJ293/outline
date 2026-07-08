@@ -145,10 +145,80 @@ pub fn generate_profile_extrude_mesh(
     }
 }
 
+/// Ear-clipping triangulation of a simple (non-self-intersecting) 2D
+/// polygon. Handles convex and concave outlines alike; winding of the
+/// returned triangles matches the input polygon's own winding.
+fn triangulate_polygon(points: &[Point]) -> Vec<[u32; 3]> {
+    let n = points.len();
+    if n < 3 {
+        return Vec::new();
+    }
+    let ccw = polygon_signed_area(points) > 0.0;
+
+    let is_convex_corner = |a: Point, b: Point, c: Point| -> bool {
+        let cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+        if ccw {
+            cross > 0.0
+        } else {
+            cross < 0.0
+        }
+    };
+
+    let point_in_triangle = |p: Point, a: Point, b: Point, c: Point| -> bool {
+        let d1 = (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y);
+        let d2 = (p.x - c.x) * (b.y - c.y) - (b.x - c.x) * (p.y - c.y);
+        let d3 = (p.x - a.x) * (c.y - a.y) - (c.x - a.x) * (p.y - a.y);
+        let has_neg = d1 < 0.0 || d2 < 0.0 || d3 < 0.0;
+        let has_pos = d1 > 0.0 || d2 > 0.0 || d3 > 0.0;
+        !(has_neg && has_pos)
+    };
+
+    let mut indices: Vec<usize> = (0..n).collect();
+    let mut triangles = Vec::with_capacity(n.saturating_sub(2));
+    let mut guard = 0;
+
+    while indices.len() > 2 {
+        guard += 1;
+        if guard > n * n + 8 {
+            break; // Degenerate/self-intersecting input: stop rather than loop forever.
+        }
+        let m = indices.len();
+        let mut clipped = false;
+        for i in 0..m {
+            let prev = indices[(i + m - 1) % m];
+            let cur = indices[i];
+            let next = indices[(i + 1) % m];
+            let (a, b, c) = (points[prev], points[cur], points[next]);
+            if !is_convex_corner(a, b, c) {
+                continue;
+            }
+            let contains_other = indices.iter().any(|&idx| {
+                idx != prev && idx != cur && idx != next && point_in_triangle(points[idx], a, b, c)
+            });
+            if contains_other {
+                continue;
+            }
+            triangles.push([prev as u32, cur as u32, next as u32]);
+            indices.remove(i);
+            clipped = true;
+            break;
+        }
+        if !clipped {
+            // No valid ear found (degenerate input) — fan the remainder
+            // rather than looping forever.
+            let first = indices[0];
+            for w in 1..indices.len() - 1 {
+                triangles.push([first as u32, indices[w] as u32, indices[w + 1] as u32]);
+            }
+            break;
+        }
+    }
+    triangles
+}
+
 fn build_solid_mesh(points: &[Point], height: f64) -> MeshData {
     let n = points.len();
     let mut vertices = Vec::with_capacity(2 * n);
-    let mut triangles = Vec::with_capacity(2 * n + 2 * n);
 
     for p in points {
         vertices.push([p.x, p.y, 0.0]);
@@ -161,12 +231,14 @@ fn build_solid_mesh(points: &[Point], height: f64) -> MeshData {
     let t = |i: u32| (n as u32) + i;
     let j = |i: usize| ((i + 1) % n) as u32;
 
-    // Top cap (CCW when viewed from +Z)
-    for i in 0..n {
-        let ni = i as u32;
-        let nj = j(i);
-        triangles.push([t(ni), t(nj), b(ni)]);
-        triangles.push([b(ni), t(nj), b(nj)]);
+    let cap_tris = triangulate_polygon(points);
+    let mut triangles = Vec::with_capacity(2 * cap_tris.len() + 2 * n);
+
+    for tri in &cap_tris {
+        // Bottom cap faces -Z, so its winding is reversed relative to the
+        // polygon's own (top-facing) orientation.
+        triangles.push([b(tri[0]), b(tri[2]), b(tri[1])]);
+        triangles.push([t(tri[0]), t(tri[1]), t(tri[2])]);
     }
 
     // Side walls
@@ -262,7 +334,29 @@ mod tests {
         let outer = vec![p(0.0, 0.0), p(40.0, 0.0), p(40.0, 40.0), p(0.0, 40.0)];
         let mesh = generate_profile_extrude_mesh(&outer, None, 2.0).unwrap();
         assert_eq!(mesh.vertices.len(), 8);
-        assert_eq!(mesh.triangles.len(), 16);
+        // 2 side-wall triangles per edge (8) + 2 cap triangles per end (4).
+        assert_eq!(mesh.triangles.len(), 12);
+    }
+
+    #[test]
+    fn test_solid_mesh_has_capped_ends() {
+        // A capped extrusion of a rectangle must be watertight: every edge
+        // shared by exactly two triangles. An uncapped tube leaves the top
+        // and bottom rim edges with only one adjacent triangle.
+        let outer = vec![p(0.0, 0.0), p(40.0, 0.0), p(40.0, 40.0), p(0.0, 40.0)];
+        let mesh = generate_extrude_mesh(&outer, 2.0).unwrap();
+
+        use std::collections::HashMap;
+        let mut edge_counts: HashMap<(u32, u32), u32> = HashMap::new();
+        for tri in &mesh.triangles {
+            for k in 0..3 {
+                let a = tri[k];
+                let b = tri[(k + 1) % 3];
+                let key = if a < b { (a, b) } else { (b, a) };
+                *edge_counts.entry(key).or_insert(0) += 1;
+            }
+        }
+        assert!(edge_counts.values().all(|&count| count == 2));
     }
 
     #[test]
