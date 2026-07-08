@@ -27,6 +27,9 @@ function App() {
     setExtrudeMode,
     selectedEntityIds,
     selectedVertices,
+    selectedDimensionId,
+    setSelectedDimensionId,
+    removeDimension,
     selectEntity,
     removeSelectedEntities,
     removeSelectedVertices,
@@ -106,10 +109,13 @@ function App() {
   useAppShortcuts({
     selectedEntityIds,
     selectedVertices,
+    selectedDimensionId,
     project,
     isSketching,
     removeSelectedEntities,
     removeSelectedVertices,
+    removeDimension,
+    setSelectedDimensionId,
     undo,
     redo,
     handleNewProject,
@@ -279,7 +285,7 @@ function App() {
         />
       )}
 
-      <div style={{ gridRow: 3, gridColumn: 2, position: "relative", overflow: "hidden" }}>
+      <div style={{ gridRow: 3, gridColumn: 2, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <UnifiedViewport />
         <StatusBar project={project} statusText={statusText} errorText={errorText} />
       </div>

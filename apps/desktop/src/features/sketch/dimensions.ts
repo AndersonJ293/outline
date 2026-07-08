@@ -1,4 +1,5 @@
 import type {
+  DiameterDimension,
   Dimension,
   Entity,
   LinearDimension,
@@ -151,7 +152,7 @@ export interface OffsetDimensionLayout {
 /// concentric offset leader lines around the circle instead of stacking
 /// them all on the same radius — each generated curve has a fresh id, so
 /// chained offsets (offset-of-an-offset) fan out automatically.
-function angleFromId(id: string): number {
+export function angleFromId(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return (hash % 360) * (Math.PI / 180);
@@ -178,6 +179,30 @@ export function offsetDimensionLayout(
   return { a, b, mid };
 }
 
+export interface DiameterDimensionLayout {
+  /// The two points where the dimension line crosses the circle's boundary.
+  a: Point;
+  b: Point;
+  center: Point;
+}
+
+/// Geometry for a diameter annotation: a straight line through the circle's
+/// center at `dim.angle`, crossing the boundary at `a` and `b`.
+export function diameterDimensionLayout(
+  entity: Entity,
+  dim: DiameterDimension,
+): DiameterDimensionLayout | null {
+  if (entity.type !== "circle" || !entity.center || !entity.radiusMm) return null;
+  const { center, radiusMm } = entity;
+  const ux = Math.cos(dim.angle);
+  const uy = Math.sin(dim.angle);
+  return {
+    a: { x: center.x - ux * radiusMm, y: center.y - uy * radiusMm },
+    b: { x: center.x + ux * radiusMm, y: center.y + uy * radiusMm },
+    center: { ...center },
+  };
+}
+
 /// Return the id of the dimension whose line/label is nearest the cursor
 /// (not just the first one in range — offset annotations of the same
 /// family can sit close together).
@@ -198,6 +223,16 @@ export function hitTestDimension(
       const layout = dimensionLayout(entity, dim);
       if (!layout) continue;
       const dist = distanceToSegment(world, layout.da, layout.db) * viewport.zoom;
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestId = dim.id;
+      }
+    } else if (dim.kind === "diameter") {
+      const entity = project!.sketch.entities.find((e) => e.id === dim.entityId);
+      if (!entity) continue;
+      const layout = diameterDimensionLayout(entity, dim);
+      if (!layout) continue;
+      const dist = distanceToSegment(world, layout.a, layout.b) * viewport.zoom;
       if (dist < bestDist) {
         bestDist = dist;
         bestId = dim.id;

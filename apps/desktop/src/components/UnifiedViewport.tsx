@@ -13,6 +13,7 @@ import { useEntityDragTool } from "../features/sketch/tools/useEntityDragTool";
 import { useMoveTool } from "../features/sketch/tools/useMoveTool";
 import { useMirrorTool } from "../features/sketch/tools/useMirrorTool";
 import { useDimensionTool } from "../features/sketch/tools/useDimensionTool";
+import { useDimensionDragTool } from "../features/sketch/tools/useDimensionDragTool";
 import { useOffsetTool } from "../features/sketch/tools/useOffsetTool";
 import { useCircleTool } from "../features/sketch/tools/useCircleTool";
 import type { DimensionPopupState } from "../features/sketch/DimensionPopup";
@@ -53,7 +54,7 @@ export default function UnifiedViewport() {
     handleDragEntityId, handleDragAnchorIndex, handleDragStart, handlePushUndoDone,
     altKeyPressed, cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker,
     drawLengthInput, isMoving, movePlan, moveStart, movePushUndoDone, isPasteFloating,
-    pasteIds, pasteLast,
+    pasteIds, pasteLast, isDraggingDim, dragDimId, dimPushUndoDone, dimLastClickTime, dimLastClickId,
   } = sketchRefs;
   const {
     imageCache, isImageMoving, imageMoveStartId, imageMoveStartPos,
@@ -74,7 +75,8 @@ export default function UnifiedViewport() {
     planePickerActive, setPlanePickerActive, setIsSketching, setWorkingPlane,
     tool3DMode, setTool3DMode, extrudeMode, wallHeight, wallThickness, offsetSide,
     addOperation, removeOperation, selectedOperationId, selectOperation, translateEntity,
-    addDimension, updateDimensionValue,
+    addDimension, updateDimensionValue, rotateDiameterDimension, updateLinearDimensionOffset,
+    selectedDimensionId, setSelectedDimensionId,
   } = useViewportStore();
 
   const [dimPopup, setDimPopup] = useState<DimensionPopupState | null>(null);
@@ -248,6 +250,13 @@ export default function UnifiedViewport() {
     project, viewport, addDimension, setDimPopup, setStatus,
   });
 
+  const { tryStartDimensionDrag, updateDimensionDrag, finishDimensionDrag } = useDimensionDragTool({
+    project, viewport, rotateDiameterDimension, updateLinearDimensionOffset, pushUndo,
+    setSelectedDimensionId, setDimPopup,
+    isDraggingDim, dragDimId, pushUndoDone: dimPushUndoDone,
+    lastClickTime: dimLastClickTime, lastClickId: dimLastClickId,
+  });
+
   const { handleOffsetMouseDown, offsetPopup, confirmOffset, cancelOffset } = useOffsetTool({
     project, viewport, addEntity, updateEntity, addDimension, updateDimensionValue,
     pushUndo, setStatus, setError,
@@ -264,7 +273,7 @@ export default function UnifiedViewport() {
     isSelectDragging, selectDragStart, selectDragEnd, pendingRectangle, splineState,
     cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker, drawLengthInput,
     imageRefLineStart, imageRefLineEnd, refScalePopup, snapToGridEnabled,
-    activeDimId: offsetPopup?.dimId ?? dimPopup?.dimId ?? null,
+    activeDimId: offsetPopup?.dimId ?? dimPopup?.dimId ?? selectedDimensionId ?? null,
   });
 
   const { handlePolylineMouseDown, finishPolyline, cancelPolyline, popPolylinePoint } =
@@ -315,6 +324,8 @@ export default function UnifiedViewport() {
     drawingAnchor,
     handlePolylineMouseDown,
     handleSplineMouseDown,
+    handleCircleMouseDown,
+    updateCirclePreview,
     requestRender,
   });
 
@@ -363,8 +374,14 @@ export default function UnifiedViewport() {
         const imageResult = startImageTransform(world, e.shiftKey);
         if (imageResult === "started" || imageResult === "locked") return;
       }
+      // Entity/vertex handles always win over a dimension annotation that
+      // happens to pass nearby — grabbing geometry must never be hijacked
+      // by an unrelated dimension line sitting close to it.
       if (tryStartHandleDrag(world)) return;
       if (tryStartEntityDrag(world)) return;
+      const sx = world.x * viewport.zoom + viewport.offsetX;
+      const sy = world.y * viewport.zoom + viewport.offsetY;
+      if (tryStartDimensionDrag(world, sx, sy)) return;
       const imageResult = startImageTransform(world, e.shiftKey);
       if (imageResult === "started") return;
       if (imageResult === "locked") return;
@@ -394,7 +411,12 @@ export default function UnifiedViewport() {
       drawLengthInput.current = "";
       return;
     }
-    if (toolMode === "circle") { handleCircleMouseDown(snapped); return; }
+    if (toolMode === "circle") {
+      if (drawLengthInput.current && commitLockedLength()) return;
+      handleCircleMouseDown(snapped);
+      drawLengthInput.current = "";
+      return;
+    }
     if (toolMode === "rectangle") { startRectangle(snapped); return; }
     requestRender();
   }, [
@@ -403,8 +425,8 @@ export default function UnifiedViewport() {
     handlePolylineMouseDown, finishPolyline, setToolMode, handleSplineMouseDown,
     handleCircleMouseDown, startRectangle,
     startImageTransform, startOrUpdateReferenceLine, tryStartHandleDrag,
-    tryStartEntityDrag, tryStartMove, handleMirrorMouseDown, handleDimensionMouseDown,
-    handleOffsetMouseDown,
+    tryStartEntityDrag, tryStartMove, tryStartDimensionDrag, handleMirrorMouseDown,
+    handleDimensionMouseDown, handleOffsetMouseDown,
     project, toggleVertex, selectEntity, editingImageId, requestRender, commitLockedLength, drawLengthInput,
   ]);
 
@@ -415,7 +437,10 @@ export default function UnifiedViewport() {
     const snapped = snapResult.point;
     applySnapRefs(world, snapResult);
     // While typing a length, lock the segment to it; direction follows cursor.
-    if (drawLengthInput.current && (toolMode === "polyline" || toolMode === "spline")) {
+    if (
+      drawLengthInput.current &&
+      (toolMode === "polyline" || toolMode === "spline" || toolMode === "circle")
+    ) {
       const anchor = drawingAnchor();
       const len = parseFloat(drawLengthInput.current);
       if (anchor && len > 0) {
@@ -423,7 +448,12 @@ export default function UnifiedViewport() {
         const dy = snapResult.point.y - anchor.y;
         const d = Math.hypot(dx, dy);
         if (d > 1e-6) {
-          snapTarget.current = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
+          // A circle's typed value is its diameter; every other tool treats
+          // it as a direct distance.
+          const dist = toolMode === "circle" ? len / 2 : len;
+          const point = { x: anchor.x + (dx / d) * dist, y: anchor.y + (dy / d) * dist };
+          snapTarget.current = point;
+          if (toolMode === "circle") updateCirclePreview(point);
         }
       }
     }
@@ -447,6 +477,7 @@ export default function UnifiedViewport() {
     if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
     if (toolMode === "circle" && updateCirclePreview(snapped)) return;
     if (toolMode === "move" && updateMove(world)) return;
+    if (updateDimensionDrag(world)) return;
     if (updateHandleDrag(world)) return;
     if (updateEntityDrag(world)) return;
     if (updateImageTransform(world)) return;
@@ -457,7 +488,7 @@ export default function UnifiedViewport() {
     if (canvas) canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
   }, [
     screenToWorld, resolveSnap, applySnapRefs, drawingAnchor, toolMode, updatePan, updateSelectionDrag,
-    updateRectanglePreview, updateCirclePreview, updateHandleDrag, updateEntityDrag,
+    updateRectanglePreview, updateCirclePreview, updateHandleDrag, updateEntityDrag, updateDimensionDrag,
     updateImageTransform, updateReferenceLine, updateMove, updateEntity, requestRender,
   ]);
 
@@ -465,6 +496,7 @@ export default function UnifiedViewport() {
     if (stopPan()) return;
     if (finishImageTransform()) return;
     if (finishMove()) return;
+    if (finishDimensionDrag()) return;
     if (finishHandleDrag()) return;
     if (finishEntityDrag()) return;
     if (finishReferenceLine()) return;
@@ -472,7 +504,7 @@ export default function UnifiedViewport() {
     if (toolMode === "rectangle" && finishRectangle()) return;
     requestRender();
   }, [
-    toolMode, stopPan, finishImageTransform, finishHandleDrag, finishEntityDrag,
+    toolMode, stopPan, finishImageTransform, finishHandleDrag, finishEntityDrag, finishDimensionDrag,
     finishReferenceLine, finishSelectionDrag, finishRectangle, finishMove,
     setEditingImageId, requestRender,
   ]);

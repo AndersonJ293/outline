@@ -1,6 +1,7 @@
 import type { Dimension, Entity, Operation } from "../types";
 import { generateId } from "../types";
 import { sampleSpline } from "../features/sketch/spline";
+import { circlePoints } from "../features/sketch/geometry";
 import { applyLinearDimension } from "../features/sketch/dimensions";
 import type { AppStore, StoreSlice } from "./types";
 
@@ -34,6 +35,10 @@ type ProjectSlice = Pick<
   | "addDimension"
   | "updateDimensionValue"
   | "removeDimension"
+  | "rotateDiameterDimension"
+  | "updateLinearDimensionOffset"
+  | "selectedDimensionId"
+  | "setSelectedDimensionId"
 >;
 
 function cloneEntity(entity: Entity): Entity {
@@ -65,12 +70,17 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       const current = new Set(get().selectedEntityIds);
       if (current.has(id)) current.delete(id);
       else current.add(id);
-      set({ selectedEntityIds: Array.from(current), selectedOperationId: null });
+      set({
+        selectedEntityIds: Array.from(current),
+        selectedOperationId: null,
+        selectedDimensionId: null,
+      });
     } else {
-      set({ selectedEntityIds: [id], selectedOperationId: null });
+      set({ selectedEntityIds: [id], selectedOperationId: null, selectedDimensionId: null });
     }
   },
-  setSelectedEntityIds: (ids) => set({ selectedEntityIds: ids }),
+  setSelectedEntityIds: (ids) =>
+    set({ selectedEntityIds: ids, selectedDimensionId: ids.length > 0 ? null : get().selectedDimensionId }),
   selectedOperationId: null,
   selectOperation: (id) => set({ selectedOperationId: id, selectedEntityIds: [] }),
 
@@ -320,6 +330,24 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     if (value <= 0) return;
     const idx = project.sketch.entities.findIndex((e) => e.id === dim.entityId);
     if (idx === -1) return;
+
+    if (dim.kind === "diameter") {
+      const entity = project.sketch.entities[idx];
+      if (entity.type !== "circle" || !entity.center) return;
+      const radiusMm = value / 2;
+      const edge = { x: entity.center.x + radiusMm, y: entity.center.y };
+      get().pushUndo();
+      project.sketch.entities[idx] = {
+        ...entity,
+        radiusMm,
+        points: circlePoints(entity.center, edge, entity.samplingSteps ?? (entity.points.length || 96)),
+      };
+      project.sketch.dimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
+      set({ project: { ...project }, bodies: {}, bodyErrors: {} });
+      return;
+    }
+
+    if (dim.kind !== "linear") return;
     const updates = applyLinearDimension(project.sketch.entities[idx], dim.segIdx, value);
     if (!updates) return;
     get().pushUndo();
@@ -333,7 +361,47 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     if (!project) return;
     get().pushUndo();
     project.sketch.dimensions = (project.sketch.dimensions ?? []).filter((d) => d.id !== id);
+    const selectedDimensionId = get().selectedDimensionId;
+    set({
+      project: { ...project },
+      selectedDimensionId: selectedDimensionId === id ? null : selectedDimensionId,
+    });
+  },
+
+  // No pushUndo here — the drag tool that calls these pushes once at drag
+  // start, matching the pattern used by entity/move drag tools.
+  rotateDiameterDimension: (id: string, angle: number) => {
+    const project = get().project;
+    if (!project) return;
+    const dims = project.sketch.dimensions ?? [];
+    project.sketch.dimensions = dims.map((d) =>
+      d.id === id && d.kind === "diameter" ? { ...d, angle } : d,
+    );
     set({ project: { ...project } });
+  },
+
+  updateLinearDimensionOffset: (id: string, offset: number) => {
+    const project = get().project;
+    if (!project) return;
+    const dims = project.sketch.dimensions ?? [];
+    project.sketch.dimensions = dims.map((d) =>
+      d.id === id && d.kind === "linear" ? { ...d, offset } : d,
+    );
+    set({ project: { ...project } });
+  },
+
+  selectedDimensionId: null,
+  setSelectedDimensionId: (id: string | null) => {
+    if (id === null) {
+      set({ selectedDimensionId: null });
+      return;
+    }
+    set({
+      selectedDimensionId: id,
+      selectedEntityIds: [],
+      selectedVertices: [],
+      selectedOperationId: null,
+    });
   },
 
   removeSelectedVertices: () => {

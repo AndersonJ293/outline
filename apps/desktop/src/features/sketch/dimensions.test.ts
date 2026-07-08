@@ -11,6 +11,7 @@ import {
   isPointConnected,
   hitTestDimension,
   applyConnectionConstraints,
+  diameterDimensionLayout,
 } from "./dimensions";
 
 function rect(): Entity {
@@ -228,6 +229,38 @@ describe("applyConnectionConstraints", () => {
     const dragged = [{ x: 50, y: 50 }, { x: 110, y: 100 }];
     const result = applyConnectionConstraints([c, line], line, dragged);
     expect(result).toEqual(dragged);
+  });
+});
+
+describe("diameterDimensionLayout", () => {
+  it("places both endpoints on the circle boundary, on opposite sides", () => {
+    const c = circle("c1", 10);
+    const layout = diameterDimensionLayout(c, {
+      id: "d1",
+      kind: "diameter",
+      entityId: "c1",
+      value: 20,
+      angle: 0,
+    });
+    expect(layout).not.toBeNull();
+    expect(layout!.a).toEqual({ x: -10, y: 0 });
+    expect(layout!.b).toEqual({ x: 10, y: 0 });
+    expect(layout!.center).toEqual({ x: 0, y: 0 });
+  });
+
+  it("follows the requested angle", () => {
+    const c = circle("c1", 10);
+    const layout = diameterDimensionLayout(c, {
+      id: "d1",
+      kind: "diameter",
+      entityId: "c1",
+      value: 20,
+      angle: Math.PI / 2,
+    });
+    expect(layout!.a.x).toBeCloseTo(0);
+    expect(layout!.a.y).toBeCloseTo(-10);
+    expect(layout!.b.x).toBeCloseTo(0);
+    expect(layout!.b.y).toBeCloseTo(10);
   });
 });
 

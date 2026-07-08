@@ -1,5 +1,5 @@
 import type { Point, Project, ViewportState } from "../../types";
-import { dimensionLayout, offsetDimensionLayout } from "./dimensions";
+import { diameterDimensionLayout, dimensionLayout, offsetDimensionLayout } from "./dimensions";
 
 const COLOR = "#4fc3f7";
 const ACTIVE_COLOR = "#ff9800";
@@ -99,7 +99,51 @@ export function drawDimensions(
       drawArrowTick(ctx, db, ux, uy, tick);
 
       drawLabel(ctx, `${dim.value.toFixed(1)} mm`, mid, z, color);
-    } else {
+    } else if (dim.kind === "diameter") {
+      const entity = entities.find((e) => e.id === dim.entityId);
+      if (!entity) {
+        ctx.restore();
+        continue;
+      }
+      const layout = diameterDimensionLayout(entity, dim);
+      if (!layout) {
+        ctx.restore();
+        continue;
+      }
+      const { a, b, center } = layout;
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (len < 1e-6) {
+        ctx.restore();
+        continue;
+      }
+      const ux = (b.x - a.x) / len;
+      const uy = (b.y - a.y) / len;
+      // Line extends a bit past the far edge so the label sits outside the
+      // circle, Fusion-style.
+      const leader = 18 / z;
+      const labelAnchor = { x: b.x + ux * leader, y: b.y + uy * leader };
+
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(labelAnchor.x, labelAnchor.y);
+      ctx.stroke();
+
+      const dotR = 2.5 / z;
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, dotR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, dotR, 0, Math.PI * 2);
+      ctx.fill();
+      // Hollow marker at the center, matching the connected/free vertex style.
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(20,20,24,0.85)";
+      ctx.fill();
+      ctx.stroke();
+
+      drawLabel(ctx, `Ø${dim.value.toFixed(1)} mm`, labelAnchor, z, color);
+    } else if (dim.kind === "offset") {
       const source = entities.find((e) => e.id === dim.entityId);
       const offsetEntity = entities.find((e) => e.id === dim.offsetEntityId);
       if (!source || !offsetEntity) {

@@ -5,10 +5,13 @@ import type { EntityDragTarget, Vertex } from "../stores/types";
 interface UseAppShortcutsArgs {
   selectedEntityIds: string[];
   selectedVertices: Vertex[];
+  selectedDimensionId: string | null;
   project: Project | null;
   isSketching: boolean;
   removeSelectedEntities: () => void;
   removeSelectedVertices: () => void;
+  removeDimension: (id: string) => void;
+  setSelectedDimensionId: (id: string | null) => void;
   undo: () => void;
   redo: () => void;
   handleNewProject: () => void;
@@ -32,10 +35,13 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function useAppShortcuts({
   selectedEntityIds,
   selectedVertices,
+  selectedDimensionId,
   project,
   isSketching,
   removeSelectedEntities,
   removeSelectedVertices,
+  removeDimension,
+  setSelectedDimensionId,
   undo,
   redo,
   handleNewProject,
@@ -60,6 +66,10 @@ export function useAppShortcuts({
           setStatus(
             `${selectedVertices.length} point${selectedVertices.length === 1 ? "" : "s"} removed`,
           );
+        } else if (selectedDimensionId && project) {
+          removeDimension(selectedDimensionId);
+          setSelectedDimensionId(null);
+          setStatus("Dimension removed");
         } else if (selectedEntityIds.length > 0 && project) {
           removeSelectedEntities();
           setStatus(`${selectedEntityIds.length} entit${selectedEntityIds.length === 1 ? "y" : "ies"} removed`);
@@ -93,6 +103,7 @@ export function useAppShortcuts({
         selectEntity(null);
         setEditingImageId(null);
         setEntityDragTarget(null);
+        setSelectedDimensionId(null);
       }
       if (!event.ctrlKey && !event.altKey && !event.metaKey) {
         const key = event.key.toLowerCase();
@@ -142,10 +153,13 @@ export function useAppShortcuts({
   }, [
     selectedEntityIds,
     selectedVertices,
+    selectedDimensionId,
     project,
     isSketching,
     removeSelectedEntities,
     removeSelectedVertices,
+    removeDimension,
+    setSelectedDimensionId,
     undo,
     redo,
     handleNewProject,

@@ -65,6 +65,11 @@ export interface AppStore {
   addDimension: (dim: Dimension) => void;
   updateDimensionValue: (id: string, value: number) => void;
   removeDimension: (id: string) => void;
+  rotateDiameterDimension: (id: string, angle: number) => void;
+  updateLinearDimensionOffset: (id: string, offset: number) => void;
+
+  selectedDimensionId: string | null;
+  setSelectedDimensionId: (id: string | null) => void;
 
   toolMode: ToolMode;
   setToolMode: (mode: ToolMode) => void;

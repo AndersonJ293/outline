@@ -9,8 +9,16 @@ type UseLockedLengthInputArgs = {
   drawingAnchor: () => Point | null;
   handlePolylineMouseDown: (point: Point) => boolean;
   handleSplineMouseDown: (point: Point) => boolean;
+  handleCircleMouseDown: (point: Point) => boolean;
+  updateCirclePreview: (point: Point) => boolean;
   requestRender: () => void;
 };
+
+/// For a circle, the typed value is the diameter (matches the "Ø" label
+/// shown while drawing); every other tool treats it as a direct distance.
+function lengthToDistance(toolMode: ToolMode, len: number): number {
+  return toolMode === "circle" ? len / 2 : len;
+}
 
 export function useLockedLengthInput({
   active,
@@ -20,6 +28,8 @@ export function useLockedLengthInput({
   drawingAnchor,
   handlePolylineMouseDown,
   handleSplineMouseDown,
+  handleCircleMouseDown,
+  updateCirclePreview,
   requestRender,
 }: UseLockedLengthInputArgs) {
   const applyLockedLength = useCallback(() => {
@@ -30,9 +40,12 @@ export function useLockedLengthInput({
     const dy = snapTarget.current.y - anchor.y;
     const d = Math.hypot(dx, dy);
     if (d > 1e-6) {
-      snapTarget.current = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
+      const dist = lengthToDistance(toolMode, len);
+      const point = { x: anchor.x + (dx / d) * dist, y: anchor.y + (dy / d) * dist };
+      snapTarget.current = point;
+      if (toolMode === "circle") updateCirclePreview(point);
     }
-  }, [drawingAnchor, drawLengthInput, snapTarget]);
+  }, [drawingAnchor, drawLengthInput, snapTarget, toolMode, updateCirclePreview]);
 
   const commitLockedLength = useCallback((): boolean => {
     const anchor = drawingAnchor();
@@ -42,9 +55,11 @@ export function useLockedLengthInput({
     const dy = snapTarget.current.y - anchor.y;
     const d = Math.hypot(dx, dy);
     if (d < 1e-6) return false;
-    const point = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
+    const dist = lengthToDistance(toolMode, len);
+    const point = { x: anchor.x + (dx / d) * dist, y: anchor.y + (dy / d) * dist };
     if (toolMode === "polyline") handlePolylineMouseDown(point);
     else if (toolMode === "spline") handleSplineMouseDown(point);
+    else if (toolMode === "circle") handleCircleMouseDown(point);
     else return false;
     drawLengthInput.current = "";
     requestRender();
@@ -56,13 +71,14 @@ export function useLockedLengthInput({
     toolMode,
     handlePolylineMouseDown,
     handleSplineMouseDown,
+    handleCircleMouseDown,
     requestRender,
   ]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!active) return;
-      if (toolMode !== "polyline" && toolMode !== "spline") return;
+      if (toolMode !== "polyline" && toolMode !== "spline" && toolMode !== "circle") return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const focused = document.activeElement;
       if (

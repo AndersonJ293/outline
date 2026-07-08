@@ -60,7 +60,17 @@ export interface OffsetDimension {
   value: number;
 }
 
-export type Dimension = LinearDimension | OffsetDimension;
+/// Diameter annotation for a circle: a line through the center at `angle`
+/// (radians), editable/draggable/deletable like Fusion's diameter dimension.
+export interface DiameterDimension {
+  id: string;
+  kind: "diameter";
+  entityId: string;
+  value: number;
+  angle: number;
+}
+
+export type Dimension = LinearDimension | OffsetDimension | DiameterDimension;
 
 export interface Point {
   x: number;

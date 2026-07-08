@@ -59,6 +59,10 @@ export interface ViewportStoreSelectors {
   addDimension: (dim: import("../../types").Dimension) => void;
   updateDimensionValue: (id: string, value: number) => void;
   removeDimension: (id: string) => void;
+  rotateDiameterDimension: (id: string, angle: number) => void;
+  updateLinearDimensionOffset: (id: string, offset: number) => void;
+  selectedDimensionId: string | null;
+  setSelectedDimensionId: (id: string | null) => void;
 }
 
 export function useViewportStore(): ViewportStoreSelectors {
@@ -114,5 +118,9 @@ export function useViewportStore(): ViewportStoreSelectors {
     addDimension: useStore((s) => s.addDimension),
     updateDimensionValue: useStore((s) => s.updateDimensionValue),
     removeDimension: useStore((s) => s.removeDimension),
+    rotateDiameterDimension: useStore((s) => s.rotateDiameterDimension),
+    updateLinearDimensionOffset: useStore((s) => s.updateLinearDimensionOffset),
+    selectedDimensionId: useStore((s) => s.selectedDimensionId),
+    setSelectedDimensionId: useStore((s) => s.setSelectedDimensionId),
   };
 }

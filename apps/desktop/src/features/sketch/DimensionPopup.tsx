@@ -5,6 +5,7 @@ export interface DimensionPopupState {
   current: number;
   screenX: number;
   screenY: number;
+  label?: string;
 }
 
 interface DimensionPopupProps {
@@ -43,7 +44,7 @@ export function DimensionPopup({ popup, onConfirm, onCancel }: DimensionPopupPro
     >
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <span style={{ fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
-          Comprimento:
+          {popup.label ?? "Comprimento:"}
         </span>
         <input
           ref={inputRef}

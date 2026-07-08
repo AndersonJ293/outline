@@ -45,6 +45,11 @@ export interface SketchRefs {
   isPasteFloating: { current: boolean };
   pasteIds: { current: string[] };
   pasteLast: { current: Point };
+  isDraggingDim: { current: boolean };
+  dragDimId: { current: string | null };
+  dimPushUndoDone: { current: boolean };
+  dimLastClickTime: { current: number };
+  dimLastClickId: { current: string };
 }
 
 export function useSketchRefs(): SketchRefs {
@@ -88,5 +93,10 @@ export function useSketchRefs(): SketchRefs {
     isPasteFloating: useRef(false),
     pasteIds: useRef<string[]>([]),
     pasteLast: useRef<Point>({ x: 0, y: 0 }),
+    isDraggingDim: useRef(false),
+    dragDimId: useRef<string | null>(null),
+    dimPushUndoDone: useRef(false),
+    dimLastClickTime: useRef(0),
+    dimLastClickId: useRef(""),
   };
 }
