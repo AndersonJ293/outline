@@ -12,6 +12,7 @@ import { SketchToolbar } from "./components/app/SketchToolbar";
 import { StatusBar } from "./components/app/StatusBar";
 import { TopBar } from "./components/app/TopBar";
 import { useStore } from "./stores/useStore";
+import { generateId, type SketchProfile } from "./types";
 import s from "./App.module.css";
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
     removeSelectedEntities,
     removeSelectedVertices,
     removeOperation,
+    addOperation,
     updateOperation,
     selectedOperationId,
     selectOperation,
@@ -153,6 +155,33 @@ function App() {
     setStatus("Sketch cancelled");
   };
 
+  const handleTreeSelectEntity = (id: string, shiftKey?: boolean) => {
+    if (isSketching) setToolMode("select");
+    selectEntity(id, shiftKey);
+  };
+
+  const handleCreateProfileExtrude = (profile: SketchProfile) => {
+    const raw = window.prompt("Extrude height (mm)", String(wallHeight));
+    if (raw === null) return;
+    const height = Number(raw.replace(",", "."));
+    if (!Number.isFinite(height) || height <= 0) {
+      setError("Extrude height must be greater than zero.");
+      return;
+    }
+    const opId = generateId();
+    addOperation({
+      id: opId,
+      type: "extrude",
+      sourceProfileId: profile.id,
+      operation: "join",
+      height_mm: height,
+      wall_thickness_mm: 0,
+      offset_side: "center",
+    });
+    selectOperation(opId);
+    setStatus(`Profile extrude added (${height} mm)`);
+  };
+
   const selectedEntity =
     selectedEntityIds.length === 1
       ? project?.sketch.entities.find((entity) => entity.id === selectedEntityIds[0]) ?? null
@@ -274,11 +303,12 @@ function App() {
         previewWireframe={previewWireframe}
         onTogglePanel={() => setPanelCollapsed((collapsed) => !collapsed)}
         onResizeStart={handlePanelResizeStart}
-        onSelectEntity={selectEntity}
+        onSelectEntity={handleTreeSelectEntity}
         onSetEditingImageId={setEditingImageId}
         onSetEntityDragTarget={setEntityDragTarget}
         onRemoveSelected={removeSelectedEntities}
         onRemoveOperation={removeOperation}
+        onCreateProfileExtrude={handleCreateProfileExtrude}
         selectedOperationId={selectedOperationId}
         onSelectOperation={selectOperation}
         onUpdateOperation={updateOperation}

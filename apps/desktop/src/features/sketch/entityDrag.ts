@@ -1,4 +1,5 @@
 import type { Entity, Point, SplineControlPoint } from "../../types";
+import { circlePoints } from "./geometry";
 import { sampleSpline } from "./spline";
 
 export interface SplineMove {
@@ -30,6 +31,9 @@ export function applyPointMove(
   world: Point,
   start: Point,
 ): Point[] {
+  if (entity.type === "circle" && entity.center) {
+    return applyEntityMove(entity, world, start);
+  }
   if (pointIndex < 0 || pointIndex >= entity.points.length) return entity.points;
   const dx = world.x - start.x;
   const dy = world.y - start.y;
@@ -63,6 +67,9 @@ export function applySegmentMove(
   world: Point,
   start: Point,
 ): Point[] {
+  if (entity.type === "circle") {
+    return applyEntityMove(entity, world, start);
+  }
   if (segIdx < 0 || segIdx >= entity.points.length) return entity.points;
   const dx = world.x - start.x;
   const dy = world.y - start.y;
@@ -123,7 +130,25 @@ export function applySplineEntityMove(
 
 export interface EntityGeometry {
   points: Point[];
+  center?: Point;
+  radiusMm?: number;
   controlPoints?: SplineControlPoint[];
+}
+
+function translateCircle(
+  entity: Entity,
+  dx: number,
+  dy: number,
+): EntityGeometry | null {
+  if (entity.type !== "circle" || !entity.center || !entity.radiusMm) return null;
+  const center = { x: entity.center.x + dx, y: entity.center.y + dy };
+  const edge = { x: center.x + entity.radiusMm, y: center.y };
+  const segments = entity.samplingSteps ?? (entity.points.length || 96);
+  return {
+    center,
+    radiusMm: entity.radiusMm,
+    points: circlePoints(center, edge, segments),
+  };
 }
 
 /// Translates every point of an entity by (dx, dy).
@@ -132,6 +157,8 @@ export function translateEntityWhole(
   dx: number,
   dy: number,
 ): EntityGeometry {
+  const circle = translateCircle(entity, dx, dy);
+  if (circle) return circle;
   if (entity.type === "spline" && entity.controlPoints) {
     const controlPoints = entity.controlPoints.map((cp) => ({
       point: { x: cp.point.x + dx, y: cp.point.y + dy },
@@ -150,6 +177,8 @@ export function translateEntityVertices(
   dx: number,
   dy: number,
 ): EntityGeometry {
+  const circle = translateCircle(entity, dx, dy);
+  if (circle && indices.has(0)) return circle;
   if (entity.type === "spline" && entity.controlPoints) {
     const controlPoints = entity.controlPoints.map((cp, i) =>
       indices.has(i)
@@ -187,6 +216,20 @@ export function reflectEntity(
   newId: string,
 ): Entity {
   const points = entity.points.map((p) => reflectPointAcrossLine(p, a, b));
+  if (entity.type === "circle" && entity.center && entity.radiusMm) {
+    const center = reflectPointAcrossLine(entity.center, a, b);
+    return {
+      ...entity,
+      id: newId,
+      center,
+      radiusMm: entity.radiusMm,
+      points: circlePoints(
+        center,
+        { x: center.x + entity.radiusMm, y: center.y },
+        entity.samplingSteps ?? (entity.points.length || 96),
+      ),
+    };
+  }
   if (entity.type === "spline" && entity.controlPoints) {
     const controlPoints = entity.controlPoints.map((cp) => {
       const point = reflectPointAcrossLine(cp.point, a, b);

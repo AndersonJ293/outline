@@ -1,6 +1,7 @@
 import type { Entity, Point, Project, SketchImage, ViewportState } from "../../types";
 import { HANDLE_RADIUS, LINE_HIT_RADIUS } from "./constants";
 import { distanceToSegment } from "./geometry";
+import { pointDistance } from "../../types";
 
 export type ImageHandleType =
   | "corner-tl"
@@ -18,10 +19,19 @@ export interface ImageHandleHit {
 }
 
 function displayPoints(entity: Entity): Point[] {
+  if (entity.type === "circle" && entity.center) {
+    return [entity.center];
+  }
   if (entity.type === "spline" && entity.controlPoints) {
     return entity.controlPoints.map((cp) => cp.point);
   }
   return entity.points;
+}
+
+function hitCircleOutline(entity: Entity, world: Point, viewport: ViewportState): boolean {
+  if (entity.type !== "circle" || !entity.center || !entity.radiusMm) return false;
+  const distanceFromOutline = Math.abs(pointDistance(world, entity.center) - entity.radiusMm);
+  return distanceFromOutline * viewport.zoom < LINE_HIT_RADIUS;
 }
 
 export function hitTestEntity(
@@ -37,6 +47,10 @@ export function hitTestEntity(
       if (Math.sqrt(dx * dx + dy * dy) < HANDLE_RADIUS * 3) {
         return entity.id;
       }
+    }
+
+    if (hitCircleOutline(entity, world, viewport)) {
+      return entity.id;
     }
 
     for (let i = 0; i < pts.length; i++) {
@@ -70,6 +84,10 @@ export function hitTestEntityWithPoint(
       if (Math.sqrt(dx * dx + dy * dy) < HANDLE_RADIUS * 3) {
         return { kind: "point", entityId: entity.id, pointIndex: i };
       }
+    }
+
+    if (hitCircleOutline(entity, world, viewport)) {
+      return { kind: "segment", entityId: entity.id, segIdx: 0 };
     }
 
     for (let i = 0; i < pts.length; i++) {

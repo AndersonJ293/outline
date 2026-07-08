@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Entity, Mesh, Operation, Project, SketchImage } from "../../../types";
 import type { InspectorPanelProps } from "./types";
+import { ProfileSection } from "./ProfileSection";
 import s from "./ProjectTree.module.css";
 
 type ProjectTreeProps = Pick<
@@ -16,9 +17,10 @@ type ProjectTreeProps = Pick<
   | "onRemoveOperation"
   | "selectedOperationId"
   | "onSelectOperation"
+  | "onCreateProfileExtrude"
 >;
 
-type CategoryId = "sketch" | "images" | "operations" | "mesh";
+type CategoryId = "sketch" | "profiles" | "images" | "operations" | "mesh";
 
 interface CategoryDef {
   id: CategoryId;
@@ -28,6 +30,7 @@ interface CategoryDef {
 
 const CATEGORIES: CategoryDef[] = [
   { id: "sketch", label: "Sketch", icon: "✎" },
+  { id: "profiles", label: "Profiles", icon: "▧" },
   { id: "images", label: "Images", icon: "▣" },
   { id: "operations", label: "Operations", icon: "⊞" },
   { id: "mesh", label: "Mesh", icon: "◇" },
@@ -35,6 +38,7 @@ const CATEGORIES: CategoryDef[] = [
 
 const COLLAPSED_DEFAULT: Record<CategoryId, boolean> = {
   sketch: false,
+  profiles: false,
   images: false,
   operations: true,
   mesh: true,
@@ -52,6 +56,7 @@ export function ProjectTree({
   onRemoveOperation,
   selectedOperationId,
   onSelectOperation,
+  onCreateProfileExtrude,
 }: ProjectTreeProps) {
   const [collapsed, setCollapsed] = useState<Record<CategoryId, boolean>>(COLLAPSED_DEFAULT);
 
@@ -90,6 +95,18 @@ export function ProjectTree({
             />
           ))
         )}
+      </Category>
+
+      <Category
+        id="profiles"
+        collapsed={collapsed.profiles}
+        count={entities.filter((entity) => entity.closed).length}
+        onToggle={() => toggle("profiles")}
+      >
+        <ProfileSection
+          sketch={project?.sketch ?? null}
+          onCreateExtrude={onCreateProfileExtrude}
+        />
       </Category>
 
       <Category
@@ -204,10 +221,15 @@ function EntityRow({ entity, selected, onSelect, onRemove }: EntityRowProps) {
   const icon =
     entity.type === "rectangle"
       ? "▭"
+      : entity.type === "circle"
+        ? "○"
       : entity.type === "spline"
         ? "〰"
         : "✎";
-  const label = `${entity.type} · ${entity.points.length} pts`;
+  const label =
+    entity.type === "circle" && entity.radiusMm
+      ? `circle · Ø ${(entity.radiusMm * 2).toFixed(1)} mm`
+      : `${entity.type} · ${entity.points.length} pts`;
   return (
     <div className={`${s["tree-row"]} ${selected ? s.selected : ""}`}>
       <button

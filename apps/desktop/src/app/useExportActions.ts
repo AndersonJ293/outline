@@ -10,6 +10,19 @@ interface UseExportActionsArgs {
   setError: (text: string | null) => void;
 }
 
+export function mergeMeshes(meshes: Mesh[]): Mesh {
+  const vertices: Mesh["vertices"] = [];
+  const triangles: Mesh["triangles"] = [];
+  for (const mesh of meshes) {
+    const offset = vertices.length;
+    vertices.push(...mesh.vertices);
+    for (const tri of mesh.triangles) {
+      triangles.push([tri[0] + offset, tri[1] + offset, tri[2] + offset]);
+    }
+  }
+  return { id: "merged_export", vertices, triangles };
+}
+
 export function useExportActions({ project, bodies, setStatus, setError }: UseExportActionsArgs) {
   const handleExportStl = useCallback(async () => {
     const bodyEntries = Object.values(bodies);
@@ -26,7 +39,7 @@ export function useExportActions({ project, bodies, setStatus, setError }: UseEx
         filters: [{ name: "STL", extensions: ["stl"] }],
       });
       if (!filePath) return;
-      const result = await commands.exportStl(bodyEntries[0], filePath);
+      const result = await commands.exportStl(mergeMeshes(bodyEntries), filePath);
       setStatus(result);
       setError(null);
     } catch (err) {

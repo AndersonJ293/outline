@@ -1,24 +1,27 @@
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef } from "react";
 
-interface RefScalePopupProps {
-  popup: { imageId: string; lengthMm: number; screenX: number; screenY: number };
-  inputRef: RefObject<HTMLInputElement>;
-  onConfirm: (realLengthMm: number) => void;
-  onPointerDown: (event: React.MouseEvent) => void;
+export interface OffsetPopupState {
+  entityId: string;
+  /// Present when reopening an existing offset to edit its distance.
+  dimId?: string;
+  current: number;
+  screenX: number;
+  screenY: number;
 }
 
-export function RefScalePopup({
-  popup,
-  inputRef,
-  onConfirm,
-  onPointerDown,
-}: RefScalePopupProps) {
+interface OffsetPopupProps {
+  popup: OffsetPopupState;
+  onConfirm: (value: number) => void;
+  onCancel: () => void;
+}
+
+export function OffsetPopup({ popup, onConfirm, onCancel }: OffsetPopupProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    const input = inputRef.current;
-    if (!input) return;
-    input.focus();
-    input.select();
-  }, [inputRef, popup.imageId, popup.lengthMm]);
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [popup.entityId]);
 
   return (
     <div
@@ -35,24 +38,20 @@ export function RefScalePopup({
         flexDirection: "column",
         gap: 6,
         boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-        minWidth: 200,
+        minWidth: 190,
       }}
       onClick={(event) => event.stopPropagation()}
-      onMouseDown={onPointerDown}
+      onMouseDown={(event) => event.stopPropagation()}
     >
-      <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-        Linha: <strong style={{ color: "#ff9800" }}>{popup.lengthMm.toFixed(2)} mm</strong>
-      </span>
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <span style={{ fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
-          Tamanho real:
+          Offset:
         </span>
         <input
           ref={inputRef}
           type="number"
-          min={0.1}
           step={0.5}
-          defaultValue={popup.lengthMm.toFixed(1)}
+          defaultValue={popup.current.toFixed(1)}
           style={{
             width: 80,
             background: "var(--bg-tertiary)",
@@ -64,13 +63,15 @@ export function RefScalePopup({
             outline: "none",
           }}
           onKeyDown={(event) => {
-            if (event.key !== "Enter") return;
-            event.preventDefault();
-            event.stopPropagation();
-            const value = parseFloat((event.target as HTMLInputElement).value);
-            if (value > 0) {
-              onConfirm(value);
+            if (event.key === "Escape") {
+              event.stopPropagation();
+              onCancel();
+              return;
             }
+            if (event.key !== "Enter") return;
+            event.stopPropagation();
+            const value = parseFloat((event.target as HTMLInputElement).value.replace(",", "."));
+            if (Number.isFinite(value) && value !== 0) onConfirm(value);
           }}
         />
         <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>mm</span>

@@ -4,7 +4,7 @@ import type { EntityDragTarget, Vertex } from "../../stores/types";
 import { renderStatic } from "./renderStatic";
 
 interface UseStaticRendererArgs {
-  canvasRef: RefObject<HTMLCanvasElement>;
+  canvasRef: RefObject<HTMLCanvasElement | null>;
   project: Project | null;
   viewport: ViewportState;
   selectedEntityIds: string[];

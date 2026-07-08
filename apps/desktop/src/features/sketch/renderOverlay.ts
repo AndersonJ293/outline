@@ -82,7 +82,7 @@ export function renderOverlay({
 
   // Snap visuals only belong to the drawing tools — not select/move/etc.
   const isDrawingTool =
-    toolMode === "polyline" || toolMode === "spline" || toolMode === "rectangle";
+    toolMode === "polyline" || toolMode === "spline" || toolMode === "rectangle" || toolMode === "circle";
   if (isDrawingTool) {
     drawSnapInference(
       ctx, viewport, snapTarget.current, snapKind.current, snapGuides.current, snapMarker.current,

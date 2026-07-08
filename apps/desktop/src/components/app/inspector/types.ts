@@ -1,4 +1,4 @@
-import type { Entity, Mesh, Operation, Project, SketchImage } from "../../../types";
+import type { Entity, Mesh, Operation, Project, SketchImage, SketchProfile } from "../../../types";
 import type { EntityDragTarget } from "../../../stores/types";
 
 export interface InspectorPanelProps {
@@ -24,6 +24,7 @@ export interface InspectorPanelProps {
   onRemoveOperation: (id: string) => void;
   selectedOperationId: string | null;
   onSelectOperation: (id: string | null) => void;
+  onCreateProfileExtrude: (profile: SketchProfile) => void;
   onUpdateOperation: (id: string, updates: Partial<Operation>) => void;
   onUpdateImage: (id: string, updates: Partial<SketchImage>) => void;
   onToggleImageLockAspect: () => void;

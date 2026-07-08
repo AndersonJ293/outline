@@ -85,6 +85,52 @@ pub fn generate_wall_mesh(entity: &Entity, operation: &Operation) -> CommandResu
     }
 }
 
+pub fn offset_sketch_entity(
+    entity: &Entity,
+    distance_mm: f64,
+    new_entity_id: &str,
+) -> CommandResult<Entity> {
+    if distance_mm == 0.0 {
+        return CommandResult::err("OFFSET_ZERO_DISTANCE", "Offset distance must be non-zero.");
+    }
+
+    let points: Vec<geo_entities::Point> = entity
+        .points
+        .iter()
+        .map(|point| geo_entities::Point {
+            x: point.x,
+            y: point.y,
+        })
+        .collect();
+
+    let offset = if entity.closed {
+        geometry::offset::compute_offset(&points, distance_mm)
+    } else {
+        geometry::offset::compute_open_offset(&points, distance_mm)
+    };
+
+    match offset {
+        Some(offset_points) => CommandResult::ok(Entity {
+            id: new_entity_id.to_string(),
+            entity_type: "polyline".to_string(),
+            points: offset_points
+                .into_iter()
+                .map(|point| crate::project::Point {
+                    x: point.x,
+                    y: point.y,
+                })
+                .collect(),
+            closed: entity.closed,
+            control_points: None,
+            sampling_steps: None,
+        }),
+        None => CommandResult::err(
+            "OFFSET_FAILED",
+            "Could not create offset. Check the profile and distance.",
+        ),
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RebuildBody {
     #[serde(rename = "operationId")]
@@ -507,6 +553,43 @@ mod tests {
         assert_eq!(profiles[1].area_mm2, 500.0);
         assert_eq!(profiles[2].id, "profile:inner");
         assert_eq!(profiles[2].area_mm2, 400.0);
+    }
+
+    #[test]
+    fn test_offset_sketch_entity_closed_loop() {
+        let entity = square_entity("outer", 0.0, 40.0);
+        let result = offset_sketch_entity(&entity, 2.0, "offset1");
+        assert!(result.ok);
+        let offset = result.value.unwrap();
+        assert_eq!(offset.id, "offset1");
+        assert_eq!(offset.entity_type, "polyline");
+        assert!(offset.closed);
+        assert_eq!(offset.points.len(), 4);
+        assert!(offset.points[0].x > 0.0);
+        assert!(offset.points[0].y > 0.0);
+    }
+
+    #[test]
+    fn test_offset_sketch_entity_open_path() {
+        let entity: Entity = serde_json::from_str(
+            r#"{"id":"line1","type":"polyline","points":[{"x":0,"y":0},{"x":10,"y":0}],"closed":false}"#,
+        )
+        .unwrap();
+        let result = offset_sketch_entity(&entity, 1.5, "offset1");
+        assert!(result.ok);
+        let offset = result.value.unwrap();
+        assert!(!offset.closed);
+        assert_eq!(offset.points.len(), 2);
+        assert_eq!(offset.points[0].y, 1.5);
+        assert_eq!(offset.points[1].y, 1.5);
+    }
+
+    #[test]
+    fn test_offset_sketch_entity_zero_distance_errors() {
+        let entity = square_entity("outer", 0.0, 40.0);
+        let result = offset_sketch_entity(&entity, 0.0, "offset1");
+        assert!(!result.ok);
+        assert_eq!(result.error.unwrap().code, "OFFSET_ZERO_DISTANCE");
     }
 
     #[test]

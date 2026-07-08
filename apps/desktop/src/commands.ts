@@ -8,6 +8,7 @@ import type {
   SketchProfile,
   ValidateProfileResult,
   GenerateMeshResult,
+  OffsetEntityResult,
   RebuildInput,
   RebuildOutput,
 } from "./types";
@@ -35,6 +36,18 @@ export async function generateWallMesh(
   return invoke<GenerateMeshResult>("generate_wall_mesh", {
     entityJson: JSON.stringify(entity),
     operationJson: JSON.stringify(operation),
+  });
+}
+
+export async function offsetSketchEntity(
+  entity: Entity,
+  distanceMm: number,
+  newEntityId: string,
+): Promise<OffsetEntityResult> {
+  return invoke<OffsetEntityResult>("offset_sketch_entity", {
+    entityJson: JSON.stringify(entity),
+    distanceMm,
+    newEntityId,
   });
 }
 

@@ -1,10 +1,9 @@
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useStore } from "../stores/useStore";
 import type { Point } from "../types";
 import { screenToWorld as toWorld } from "../features/sketch/geometry";
 import { computeSnap, type SnapResult } from "../features/sketch/snapping";
 import { finishButtonAt } from "../features/sketch/renderInteraction";
-import { RefScalePopup } from "../features/sketch/RefScalePopup";
 import { useImageState } from "../features/sketch/useImageState";
 import { useSketchRefs } from "../features/sketch/useSketchRefs";
 import { useViewportStore } from "../features/sketch/useViewportStore";
@@ -14,7 +13,9 @@ import { useEntityDragTool } from "../features/sketch/tools/useEntityDragTool";
 import { useMoveTool } from "../features/sketch/tools/useMoveTool";
 import { useMirrorTool } from "../features/sketch/tools/useMirrorTool";
 import { useDimensionTool } from "../features/sketch/tools/useDimensionTool";
-import { DimensionPopup, type DimensionPopupState } from "../features/sketch/DimensionPopup";
+import { useOffsetTool } from "../features/sketch/tools/useOffsetTool";
+import { useCircleTool } from "../features/sketch/tools/useCircleTool";
+import type { DimensionPopupState } from "../features/sketch/DimensionPopup";
 import { translateEntityWhole } from "../features/sketch/entityDrag";
 import { hitTestEntityWithPoint } from "../features/sketch/hitTest";
 import { usePanTool } from "../features/sketch/tools/usePanTool";
@@ -24,9 +25,8 @@ import { useSelectionTool } from "../features/sketch/tools/useSelectionTool";
 import { useSplineHandleDragTool } from "../features/sketch/tools/useSplineHandleDragTool";
 import { useSplineTool } from "../features/sketch/tools/useSplineTool";
 import { useCanvasKeyboardShortcuts } from "../features/sketch/useCanvasKeyboardShortcuts";
-import { useStaticRenderer } from "../features/sketch/useStaticRenderer";
-import { useOverlayRenderer } from "../features/sketch/useOverlayRenderer";
-import { useCanvasResize } from "../features/sketch/useCanvasResize";
+import { useLockedLengthInput } from "../features/sketch/useLockedLengthInput";
+import { useSketchCanvasRenderers } from "../features/sketch/useSketchCanvasRenderers";
 import { useSketchViewportReset } from "../features/sketch/useSketchViewportReset";
 import { useCanvasShortcuts } from "../features/sketch/useCanvasShortcuts";
 import { useThreeScene } from "../features/viewport/useThreeScene";
@@ -35,7 +35,8 @@ import { useFaceSelection } from "../features/viewport/useFaceSelection";
 import { usePlanePicker3D } from "../features/viewport/usePlanePicker3D";
 import { useEntity3DSelect } from "../features/viewport/useEntity3DSelect";
 import { useExtrudeTool } from "../features/viewport/useExtrudeTool";
-import s from "./Canvas2D.module.css";
+import { useOperationDeleteShortcut } from "../features/viewport/useOperationDeleteShortcut";
+import { ViewportChrome } from "./ViewportChrome";
 
 export default function UnifiedViewport() {
   const threeContainerRef = useRef<HTMLDivElement>(null);
@@ -43,17 +44,17 @@ export default function UnifiedViewport() {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const sketchRefs = useSketchRefs();
   const {
     drawingPoints, isDrawing, isPanning, panStart, closeToStart, pendingRectangle,
-    isSelectDragging, selectDragStart, selectDragEnd,
-    isEntityDragging, entityDragMode, entityDragEntityId, entityDragPointIndex,
-    entityDragSegIdx, entityDragStart, entityPushUndoDone, lastClickTime, lastClickKey,
-    splineState, isHandleDragging, handleDragEntityId, handleDragAnchorIndex,
-    handleDragStart, handlePushUndoDone, altKeyPressed, cursorWorld, snapTarget,
-    snapActive, snapKind, snapGuides, snapMarker, drawLengthInput,
-    isMoving, movePlan, moveStart, movePushUndoDone,
-    isPasteFloating, pasteIds, pasteLast,
-  } = useSketchRefs();
+    isSelectDragging, selectDragStart, selectDragEnd, isEntityDragging, entityDragMode,
+    entityDragEntityId, entityDragPointIndex, entityDragSegIdx, entityDragStart,
+    entityPushUndoDone, lastClickTime, lastClickKey, splineState, isHandleDragging,
+    handleDragEntityId, handleDragAnchorIndex, handleDragStart, handlePushUndoDone,
+    altKeyPressed, cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker,
+    drawLengthInput, isMoving, movePlan, moveStart, movePushUndoDone, isPasteFloating,
+    pasteIds, pasteLast,
+  } = sketchRefs;
   const {
     imageCache, isImageMoving, imageMoveStartId, imageMoveStartPos,
     isImageResizing, imageResizeId, imageResizeStart, imageResizeOrigSize,
@@ -109,7 +110,7 @@ export default function UnifiedViewport() {
       const a = splineState.current.anchors;
       return a[a.length - 1];
     }
-    if (toolMode === "rectangle" && drawingPoints.current.length > 0) {
+    if ((toolMode === "rectangle" || toolMode === "circle") && drawingPoints.current.length > 0) {
       return drawingPoints.current[0];
     }
     return null;
@@ -216,44 +217,13 @@ export default function UnifiedViewport() {
     setError,
   });
 
-  const { requestRender: requestStaticRender } = useStaticRenderer({
-    canvasRef: staticCanvasRef,
-    project,
-    viewport,
-    selectedEntityIds,
-    selectedVertices,
-    editingImageId,
-    entityDragTarget,
-    imageCache,
-    isImageResizing,
-    imageResizeId,
-  });
-
-  useCanvasResize(containerRef, [staticCanvasRef, overlayCanvasRef], requestStaticRender);
-
-  const { requestRender } = useOverlayRenderer({
-    canvasRef: overlayCanvasRef,
-    viewport,
-    toolMode,
-    isDrawing,
-    drawingPoints,
-    closeToStart,
-    isSelectDragging,
-    selectDragStart,
-    selectDragEnd,
-    pendingRectangle,
-    splineState,
-    cursorWorld,
-    snapTarget,
-    snapActive,
-    snapKind,
-    snapGuides,
-    snapMarker,
-    drawLengthInput,
-    imageRefLineStart,
-    imageRefLineEnd,
-    refScalePopup,
-    snapToGridEnabled,
+  const { requestRender } = useSketchCanvasRenderers({
+    containerRef, staticCanvasRef, overlayCanvasRef, project, viewport, toolMode,
+    selectedEntityIds, selectedVertices, editingImageId, entityDragTarget, imageCache,
+    isImageResizing, imageResizeId, isDrawing, drawingPoints, closeToStart,
+    isSelectDragging, selectDragStart, selectDragEnd, pendingRectangle, splineState,
+    cursorWorld, snapTarget, snapActive, snapKind, snapGuides, snapMarker, drawLengthInput,
+    imageRefLineStart, imageRefLineEnd, refScalePopup, snapToGridEnabled,
   });
 
   const { startPan, updatePan, stopPan, handleWheel } = usePanTool({
@@ -287,8 +257,20 @@ export default function UnifiedViewport() {
     project, viewport, addDimension, setDimPopup, setStatus,
   });
 
+  const { handleOffsetMouseDown, offsetPopup, confirmOffset, cancelOffset } = useOffsetTool({
+    project, viewport, addEntity, updateEntity, addDimension, updateDimensionValue,
+    pushUndo, setStatus, setError,
+  });
+
+  useEffect(() => {
+    if (toolMode !== "offset" && offsetPopup) cancelOffset();
+  }, [toolMode, offsetPopup, cancelOffset]);
+
   const { handlePolylineMouseDown, finishPolyline, cancelPolyline, popPolylinePoint } =
     usePolylineTool({ viewport, project, drawingPoints, isDrawing, closeToStart, addEntity, setStatus });
+
+  const { handleCircleMouseDown, updateCirclePreview } =
+    useCircleTool({ drawingPoints, isDrawing, addEntity, setStatus });
 
   const { handleSplineMouseDown, finishSpline, cancelSpline, popSplineAnchor } = useSplineTool({
     viewport, project, isDrawing, splineState, addEntity, setStatus,
@@ -318,46 +300,22 @@ export default function UnifiedViewport() {
     startOrUpdateReferenceLine, updateReferenceLine, finishReferenceLine,
     confirmRefScale, cancelRefScale, cancelReferenceLine,
   } = useImageRefScaleTool({
-    containerRef, project, viewport, imageRefScaleMode, imageRefLineStart, imageRefLineEnd,
+    containerRef, project, viewport, imageRefScaleMode, activeImageId: editingImageId,
+    imageRefLineStart, imageRefLineEnd,
     imageRefScaleImageId, refScalePopup, setRefScalePopup, updateImage, pushUndo,
     setImageRefScaleMode, setStatus,
   });
 
-  // Recompute the preview endpoint from the typed length along the current
-  // cursor direction, so the rubber-band updates as digits are typed (without
-  // needing a mouse move).
-  const applyLockedLength = useCallback(() => {
-    const anchor = drawingAnchor();
-    const len = parseFloat(drawLengthInput.current);
-    if (!anchor || !(len > 0)) return;
-    const dx = snapTarget.current.x - anchor.x;
-    const dy = snapTarget.current.y - anchor.y;
-    const d = Math.hypot(dx, dy);
-    if (d > 1e-6) {
-      snapTarget.current = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
-    }
-  }, [drawingAnchor, drawLengthInput, snapTarget]);
-
-  // Place a point at the typed length, in the current cursor direction.
-  const commitLockedLength = useCallback((): boolean => {
-    const anchor = drawingAnchor();
-    const len = parseFloat(drawLengthInput.current);
-    if (!anchor || !(len > 0)) return false;
-    const dx = snapTarget.current.x - anchor.x;
-    const dy = snapTarget.current.y - anchor.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 1e-6) return false;
-    const p = { x: anchor.x + (dx / d) * len, y: anchor.y + (dy / d) * len };
-    if (toolMode === "polyline") handlePolylineMouseDown(p);
-    else if (toolMode === "spline") handleSplineMouseDown(p);
-    else return false;
-    drawLengthInput.current = "";
-    requestRender();
-    return true;
-  }, [
-    drawingAnchor, snapTarget, drawLengthInput, toolMode,
-    handlePolylineMouseDown, handleSplineMouseDown, requestRender,
-  ]);
+  const { commitLockedLength } = useLockedLengthInput({
+    active: isSketching,
+    toolMode,
+    drawLengthInput,
+    snapTarget,
+    drawingAnchor,
+    handlePolylineMouseDown,
+    handleSplineMouseDown,
+    requestRender,
+  });
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (startPan(e)) return;
@@ -382,6 +340,10 @@ export default function UnifiedViewport() {
       handleDimensionMouseDown(world, sx, sy);
       return;
     }
+    if (toolMode === "offset") {
+      handleOffsetMouseDown(world);
+      return;
+    }
 
     if (toolMode === "select") {
       if (e.shiftKey) {
@@ -392,6 +354,10 @@ export default function UnifiedViewport() {
         return;
       }
       if (startOrUpdateReferenceLine(world)) return;
+      if (editingImageId) {
+        const imageResult = startImageTransform(world, e.shiftKey);
+        if (imageResult === "started" || imageResult === "locked") return;
+      }
       if (tryStartHandleDrag(world)) return;
       if (tryStartEntityDrag(world)) return;
       const imageResult = startImageTransform(world, e.shiftKey);
@@ -423,15 +389,18 @@ export default function UnifiedViewport() {
       drawLengthInput.current = "";
       return;
     }
+    if (toolMode === "circle") { handleCircleMouseDown(snapped); return; }
     if (toolMode === "rectangle") { startRectangle(snapped); return; }
     requestRender();
   }, [
     screenToWorld, resolveSnap, applySnapRefs, setStatus, toolMode, viewport,
     startPan, startSelectionDrag, handlePendingRectangleClick,
-    handlePolylineMouseDown, finishPolyline, setToolMode, handleSplineMouseDown, startRectangle,
+    handlePolylineMouseDown, finishPolyline, setToolMode, handleSplineMouseDown,
+    handleCircleMouseDown, startRectangle,
     startImageTransform, startOrUpdateReferenceLine, tryStartHandleDrag,
     tryStartEntityDrag, tryStartMove, handleMirrorMouseDown, handleDimensionMouseDown,
-    project, toggleVertex, selectEntity, requestRender, commitLockedLength, drawLengthInput,
+    handleOffsetMouseDown,
+    project, toggleVertex, selectEntity, editingImageId, requestRender, commitLockedLength, drawLengthInput,
   ]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -471,6 +440,7 @@ export default function UnifiedViewport() {
     }
 
     if (toolMode === "rectangle" && updateRectanglePreview(snapped)) return;
+    if (toolMode === "circle" && updateCirclePreview(snapped)) return;
     if (toolMode === "move" && updateMove(world)) return;
     if (updateHandleDrag(world)) return;
     if (updateEntityDrag(world)) return;
@@ -482,7 +452,7 @@ export default function UnifiedViewport() {
     if (canvas) canvas.style.cursor = toolMode === "select" ? "default" : "crosshair";
   }, [
     screenToWorld, resolveSnap, applySnapRefs, drawingAnchor, toolMode, updatePan, updateSelectionDrag,
-    updateRectanglePreview, updateHandleDrag, updateEntityDrag,
+    updateRectanglePreview, updateCirclePreview, updateHandleDrag, updateEntityDrag,
     updateImageTransform, updateReferenceLine, updateMove, updateEntity, requestRender,
   ]);
 
@@ -502,68 +472,12 @@ export default function UnifiedViewport() {
     setEditingImageId, requestRender,
   ]);
 
-  // Type a length while drawing (Fusion-style): digits build the value,
-  // Enter/Tab places the point, Esc clears, Backspace deletes a digit.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!isSketching) return;
-      if (toolMode !== "polyline" && toolMode !== "spline") return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const active = document.activeElement;
-      if (active instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) {
-        return;
-      }
-      if (!drawingAnchor()) return;
-      const k = e.key;
-      if ((k >= "0" && k <= "9") || k === ".") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if (k === "." && drawLengthInput.current.includes(".")) return;
-        drawLengthInput.current += k;
-        applyLockedLength();
-        requestRender();
-      } else if (k === "Backspace" && drawLengthInput.current.length > 0) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        drawLengthInput.current = drawLengthInput.current.slice(0, -1);
-        applyLockedLength();
-        requestRender();
-      } else if ((k === "Enter" || k === "Tab") && drawLengthInput.current.length > 0) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        commitLockedLength();
-      } else if (k === "Escape" && drawLengthInput.current.length > 0) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        drawLengthInput.current = "";
-        requestRender();
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [isSketching, toolMode, drawingAnchor, drawLengthInput, applyLockedLength, commitLockedLength, requestRender]);
-
-  useEffect(() => {
-    drawLengthInput.current = "";
-  }, [toolMode, drawLengthInput]);
-
-  // Delete the selected operation (solid body) from the 3D view.
-  useEffect(() => {
-    if (isSketching) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Delete" && e.key !== "Backspace") return;
-      const active = document.activeElement;
-      if (active instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) {
-        return;
-      }
-      if (!selectedOperationId) return;
-      e.preventDefault();
-      removeOperation(selectedOperationId);
-      setStatus("Operation removed");
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isSketching, selectedOperationId, removeOperation, setStatus]);
+  useOperationDeleteShortcut({
+    active: !isSketching,
+    selectedOperationId,
+    removeOperation,
+    setStatus,
+  });
 
   useCanvasKeyboardShortcuts({
     pendingRectangle, splineState, drawingPoints, refScalePopup,
@@ -574,62 +488,33 @@ export default function UnifiedViewport() {
   });
 
   return (
-    <div
-      ref={containerRef}
-      className={s.viewport}
+    <ViewportChrome
+      containerRef={containerRef}
+      threeContainerRef={threeContainerRef}
+      staticCanvasRef={staticCanvasRef}
+      overlayCanvasRef={overlayCanvasRef}
+      isSketching={isSketching}
+      refScalePopup={refScalePopup}
+      refScaleInputRef={refScaleInputRef}
+      confirmRefScale={confirmRefScale}
+      dimPopup={dimPopup}
+      onConfirmDimension={(value) => {
+        if (!dimPopup) return;
+        updateDimensionValue(dimPopup.dimId, value);
+        setDimPopup(null);
+        setStatus(`Dimension set to ${value.toFixed(1)} mm`);
+      }}
+      onCancelDimension={() => setDimPopup(null)}
+      offsetPopup={offsetPopup}
+      onConfirmOffset={(value) => {
+        void confirmOffset(value);
+      }}
+      onCancelOffset={cancelOffset}
+      faceSelectionActive={faceSelectionActive}
       onMouseDown={isSketching ? handleMouseDown : undefined}
       onMouseMove={isSketching ? handleMouseMove : undefined}
       onMouseUp={isSketching ? handleMouseUp : undefined}
       onWheel={isSketching ? handleWheel : undefined}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      <div ref={threeContainerRef} style={{ position: "absolute", inset: 0 }} />
-      <canvas
-        ref={staticCanvasRef}
-        className={s.static}
-        style={{ pointerEvents: "none", display: isSketching ? "block" : "none" }}
-      />
-      <canvas
-        ref={overlayCanvasRef}
-        className={s.overlay}
-        style={{ pointerEvents: isSketching ? "auto" : "none", display: isSketching ? "block" : "none" }}
-      />
-      {refScalePopup && (
-        <RefScalePopup
-          popup={refScalePopup}
-          inputRef={refScaleInputRef}
-          onConfirm={confirmRefScale}
-          onPointerDown={(event) => event.stopPropagation()}
-        />
-      )}
-      {dimPopup && (
-        <DimensionPopup
-          popup={dimPopup}
-          onConfirm={(value) => {
-            updateDimensionValue(dimPopup.dimId, value);
-            setDimPopup(null);
-            setStatus(`Dimension set to ${value.toFixed(1)} mm`);
-          }}
-          onCancel={() => setDimPopup(null)}
-        />
-      )}
-      {faceSelectionActive && (
-        <div style={{
-          position: "absolute",
-          bottom: 40,
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "rgba(0,0,0,0.85)",
-          color: "#fff",
-          padding: "8px 16px",
-          borderRadius: 6,
-          fontSize: 13,
-          pointerEvents: "none",
-          zIndex: 10,
-        }}>
-          Click on a solid face to use as sketch plane
-        </div>
-      )}
-    </div>
+    />
   );
 }

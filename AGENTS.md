@@ -30,8 +30,8 @@ Before adding behavior in these areas, extract smaller modules/components first.
 
 - React component target: under 300 lines.
 - React component hard limit: 500 lines.
-- Editor canvas component target: under 350 lines.
-- Editor canvas component hard limit: 500 lines.
+- Editor/viewport orchestration component target: under 350 lines.
+- Editor/viewport orchestration component hard limit: 700 lines.
 - Store file target: under 220 lines.
 - Store file hard limit: 300 lines.
 - Domain function target: under 60 lines.

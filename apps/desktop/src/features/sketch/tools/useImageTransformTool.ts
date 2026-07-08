@@ -43,24 +43,34 @@ export function useImageTransformTool({
 }: UseImageTransformToolArgs) {
   const startImageTransform = useCallback(
     (world: Point, shiftKey: boolean): ImageTransformStartResult => {
-      const imageId = hitTestImage(project?.sketch.images, world);
-      if (!imageId || !project?.sketch.images) return null;
+      if (!project?.sketch.images) return null;
+      const editableImage = editingImageId
+        ? project.sketch.images.find((item) => item.id === editingImageId)
+        : null;
+      const hitEditableHandle = editableImage
+        ? hitTestImageHandle(editableImage, world, viewport)
+        : null;
+
+      if (editableImage && hitEditableHandle) {
+        isImageResizing.current = true;
+        imageResizeId.current = editableImage.id;
+        imageResizeHandleType.current = hitEditableHandle;
+        imageResizeStart.current = world;
+        imageResizeOrigSize.current = {
+          w: editableImage.widthMm,
+          h: editableImage.heightMm,
+        };
+        imageResizePushUndoDone.current = false;
+        selectEntity(editableImage.id);
+        return "started";
+      }
+
+      const imageId = hitTestImage(project.sketch.images, world);
+      if (!imageId) return null;
       if (imageId !== editingImageId) return "locked";
 
       const image = project.sketch.images.find((item) => item.id === imageId);
       if (!image) return null;
-
-      const hitHandle = hitTestImageHandle(image, world, viewport);
-      if (hitHandle) {
-        isImageResizing.current = true;
-        imageResizeId.current = imageId;
-        imageResizeHandleType.current = hitHandle;
-        imageResizeStart.current = world;
-        imageResizeOrigSize.current = { w: image.widthMm, h: image.heightMm };
-        imageResizePushUndoDone.current = false;
-        selectEntity(imageId);
-        return "started";
-      }
 
       isImageMoving.current = true;
       imageMoveStartId.current = imageId;

@@ -8,6 +8,7 @@ import {
   applySplineEntityMove,
   applySplinePointMove,
   applySplineSegmentMove,
+  translateEntityWhole,
 } from "../entityDrag";
 import type { EntityDragTarget } from "../../../stores/types";
 
@@ -151,10 +152,18 @@ export function useEntityDragTool({
       if (dx === 0 && dy === 0) return true;
 
       let newPoints: Point[] | null = null;
+      let newCenter: Point | undefined;
+      let newRadiusMm: number | undefined;
       let newControlPoints: Entity["controlPoints"] | undefined;
       const isSpline = entity.type === "spline" && !!entity.controlPoints;
+      const isCircle = entity.type === "circle";
 
-      if (mode === "point" && dragPointIndex.current !== null) {
+      if (isCircle) {
+        const move = translateEntityWhole(entity, dx, dy);
+        newPoints = move.points;
+        newCenter = move.center;
+        newRadiusMm = move.radiusMm;
+      } else if (mode === "point" && dragPointIndex.current !== null) {
         if (isSpline) {
           const move = applySplinePointMove(
             entity,
@@ -213,9 +222,12 @@ export function useEntityDragTool({
       }
       updateEntity(
         entity.id,
-        newControlPoints
-          ? { points: newPoints, controlPoints: newControlPoints }
-          : { points: newPoints },
+        {
+          points: newPoints,
+          ...(newCenter ? { center: newCenter } : {}),
+          ...(newRadiusMm ? { radiusMm: newRadiusMm } : {}),
+          ...(newControlPoints ? { controlPoints: newControlPoints } : {}),
+        },
       );
       dragStart.current = world;
       return true;

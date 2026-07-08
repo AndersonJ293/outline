@@ -46,6 +46,13 @@ export function SketchToolbar({
             ▭
           </button>
           <button
+            className={`${s["toolbar-btn"]} ${toolMode === "circle" ? s.active : ""}`}
+            onClick={() => onToolModeChange("circle")}
+            title="Circle (C)"
+          >
+            ○
+          </button>
+          <button
             className={`${s["toolbar-btn"]} ${toolMode === "spline" ? s.active : ""}`}
             onClick={() => onToolModeChange("spline")}
             title="Spline (B)"
@@ -85,6 +92,13 @@ export function SketchToolbar({
               <path d="M2 5v6M14 5v6M2 8h12" />
               <path d="M4 6.5L2 8l2 1.5M12 6.5L14 8l-2 1.5" />
             </svg>
+          </button>
+          <button
+            className={`${s["toolbar-btn"]} ${toolMode === "offset" ? s.active : ""}`}
+            onClick={() => onToolModeChange("offset")}
+            title="Offset (O) — click a curve and enter offset distance"
+          >
+            ⟲
           </button>
           <div className={s["toolbar-divider"]} />
           <button

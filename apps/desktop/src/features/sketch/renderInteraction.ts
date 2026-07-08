@@ -2,7 +2,7 @@ import type { MutableRefObject } from "react";
 import type { Point, ToolMode, ViewportState } from "../../types";
 import { pointDistance } from "../../types";
 import { CLOSE_THRESHOLD, HANDLE_RADIUS } from "./constants";
-import { rectanglePoints } from "./geometry";
+import { circlePoints, rectanglePoints } from "./geometry";
 import { autoHandleFor, sampleSpline } from "./spline";
 import type { SplineDrawingState } from "./tools/useSplineTool";
 import type { SnapGuide, SnapKind } from "./snapping";
@@ -73,6 +73,11 @@ export function drawDrawingPreview(
     ctx.lineWidth = 2 / viewport.zoom;
     ctx.setLineDash([4 / viewport.zoom, 4 / viewport.zoom]);
     drawRectanglePreview(ctx, viewport, drawingPoints.current[0], drawingPoints.current[1]);
+  } else if (toolMode === "circle" && drawingPoints.current.length === 2) {
+    ctx.strokeStyle = "rgba(79, 195, 247, 0.6)";
+    ctx.lineWidth = 2 / viewport.zoom;
+    ctx.setLineDash([4 / viewport.zoom, 4 / viewport.zoom]);
+    drawCirclePreview(ctx, viewport, drawingPoints.current[0], drawingPoints.current[1]);
   } else {
     // Committed segments of an in-progress polyline render solid, so the
     // line looks real from the first point (Fusion-style).
@@ -90,6 +95,31 @@ export function drawDrawingPreview(
   }
 
   drawClosePreview(ctx, viewport, drawingPoints.current);
+}
+
+function drawCirclePreview(
+  ctx: CanvasRenderingContext2D,
+  viewport: ViewportState,
+  center: Point,
+  edge: Point,
+): void {
+  const points = circlePoints(center, edge, 64);
+  if (points.length === 0) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = "rgba(79, 195, 247, 0.08)";
+  ctx.fill();
+  ctx.stroke();
+
+  const radius = pointDistance(center, edge);
+  ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.font = `${12 / viewport.zoom}px monospace`;
+  ctx.fillText(`Ø ${(radius * 2).toFixed(1)} mm`, edge.x + 8 / viewport.zoom, edge.y - 8 / viewport.zoom);
 }
 
 export function drawSelectionArea(

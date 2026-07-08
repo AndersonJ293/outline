@@ -34,6 +34,20 @@ const line: Entity = {
   ],
 };
 
+const circle: Entity = {
+  id: "circle",
+  type: "circle",
+  closed: true,
+  center: { x: 10, y: 20 },
+  radiusMm: 5,
+  points: [
+    { x: 15, y: 20 },
+    { x: 10, y: 25 },
+    { x: 5, y: 20 },
+    { x: 10, y: 15 },
+  ],
+};
+
 describe("entityDrag", () => {
   describe("applyPointMove", () => {
     it("moves only the targeted point by the delta", () => {
@@ -145,6 +159,13 @@ describe("entityDrag", () => {
         { x: 13, y: 6 },
       ]);
     });
+
+    it("moves a circle center and regenerates sampled points without changing radius", () => {
+      const result = translateEntityWhole(circle, 3, -4);
+      expect(result.center).toEqual({ x: 13, y: 16 });
+      expect(result.radiusMm).toBe(5);
+      expect(result.points[0]).toEqual({ x: 18, y: 16 });
+    });
   });
 
   describe("translateEntityVertices", () => {
@@ -156,6 +177,12 @@ describe("entityDrag", () => {
         { x: 15, y: 10 },
         { x: 0, y: 10 },
       ]);
+    });
+
+    it("treats the circle center as the only editable vertex", () => {
+      const result = translateEntityVertices(circle, new Set([0]), -2, 6);
+      expect(result.center).toEqual({ x: 8, y: 26 });
+      expect(result.radiusMm).toBe(5);
     });
   });
 
@@ -178,6 +205,15 @@ describe("entityDrag", () => {
       expect(r.id).toBe("new");
       expect(r.points.map((p) => p.x)).toEqual([5, 0, -5, -10]);
       expect(r.points.map((p) => p.y)).toEqual([-5, 0, 5, 10]);
+    });
+
+    it("mirrors a circle by moving only its center and preserving radius", () => {
+      const r = reflectEntity(circle, { x: 0, y: 0 }, { x: 0, y: 1 }, "cm");
+      expect(r.id).toBe("cm");
+      expect(r.type).toBe("circle");
+      expect(r.center).toEqual({ x: -10, y: 20 });
+      expect(r.radiusMm).toBe(5);
+      expect(r.points[0]).toEqual({ x: -5, y: 20 });
     });
 
     it("reflects spline anchors and handle vectors", () => {

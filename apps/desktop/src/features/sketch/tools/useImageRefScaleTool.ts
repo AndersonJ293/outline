@@ -14,6 +14,7 @@ interface UseImageRefScaleToolArgs {
   project: Project | null;
   viewport: ViewportState;
   imageRefScaleMode: boolean;
+  activeImageId: string | null;
   imageRefLineStart: MutableRefObject<Point | null>;
   imageRefLineEnd: MutableRefObject<Point | null>;
   imageRefScaleImageId: MutableRefObject<string | null>;
@@ -30,6 +31,7 @@ export function useImageRefScaleTool({
   project,
   viewport,
   imageRefScaleMode,
+  activeImageId,
   imageRefLineStart,
   imageRefLineEnd,
   imageRefScaleImageId,
@@ -42,6 +44,7 @@ export function useImageRefScaleTool({
 }: UseImageRefScaleToolArgs) {
   const startOrUpdateReferenceLine = useCallback((world: Point): boolean => {
     if (!imageRefScaleMode) return false;
+    if (refScalePopup) return true;
 
     if (!imageRefLineStart.current) {
       imageRefLineStart.current = world;
@@ -50,13 +53,14 @@ export function useImageRefScaleTool({
       imageRefLineEnd.current = world;
     }
     return true;
-  }, [imageRefScaleMode, imageRefLineStart, imageRefLineEnd]);
+  }, [imageRefScaleMode, refScalePopup, imageRefLineStart, imageRefLineEnd]);
 
   const updateReferenceLine = useCallback((world: Point): boolean => {
     if (!imageRefScaleMode || !imageRefLineStart.current) return false;
+    if (refScalePopup) return true;
     imageRefLineEnd.current = world;
     return true;
-  }, [imageRefScaleMode, imageRefLineStart, imageRefLineEnd]);
+  }, [imageRefScaleMode, refScalePopup, imageRefLineStart, imageRefLineEnd]);
 
   const finishReferenceLine = useCallback((): boolean => {
     if (!imageRefScaleMode || !imageRefLineStart.current || !imageRefLineEnd.current) return false;
@@ -72,7 +76,7 @@ export function useImageRefScaleTool({
     if (containerRef.current) {
       const endScreen = imageRefLineEnd.current;
       setRefScalePopup({
-        imageId: imageRefScaleImageId.current ?? "",
+        imageId: imageRefScaleImageId.current ?? activeImageId ?? "",
         lengthMm: dist,
         screenX: endScreen.x * viewport.zoom + viewport.offsetX,
         screenY: endScreen.y * viewport.zoom + viewport.offsetY,
@@ -86,6 +90,7 @@ export function useImageRefScaleTool({
     imageRefLineStart,
     imageRefLineEnd,
     imageRefScaleImageId,
+    activeImageId,
     viewport,
     setRefScalePopup,
     setStatus,

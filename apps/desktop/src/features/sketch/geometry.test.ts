@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { distanceToSegment, getSnapStep, rectanglePoints, screenToWorld, snapToGrid, worldToScreen } from "./geometry";
+import {
+  circlePoints,
+  distanceToSegment,
+  getSnapStep,
+  rectanglePoints,
+  screenToWorld,
+  snapToGrid,
+  worldToScreen,
+} from "./geometry";
 import type { ViewportState } from "../../types";
 
 const viewport: ViewportState = { offsetX: 100, offsetY: 50, zoom: 2 };
@@ -43,6 +51,16 @@ describe("sketch geometry helpers", () => {
       { x: 40, y: 20 },
       { x: 40, y: 50 },
       { x: 10, y: 50 },
+    ]);
+  });
+
+  it("builds sampled circle points from center and edge", () => {
+    const points = circlePoints({ x: 0, y: 0 }, { x: 10, y: 0 }, 4);
+    expect(points).toEqual([
+      { x: 10, y: 0 },
+      { x: expect.closeTo(0), y: 10 },
+      { x: -10, y: expect.closeTo(0) },
+      { x: expect.closeTo(0), y: -10 },
     ]);
   });
 

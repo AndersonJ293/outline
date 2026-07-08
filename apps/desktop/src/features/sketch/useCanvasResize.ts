@@ -1,9 +1,9 @@
 import { useEffect, useCallback, type RefObject, type MutableRefObject } from "react";
 
-type CanvasRef = RefObject<HTMLCanvasElement>;
+type CanvasRef = RefObject<HTMLCanvasElement | null>;
 
 export function useCanvasResize(
-  containerRef: RefObject<HTMLDivElement>,
+  containerRef: RefObject<HTMLDivElement | null>,
   canvases: CanvasRef[],
   onResize: () => void,
 ) {

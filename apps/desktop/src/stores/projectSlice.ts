@@ -130,6 +130,9 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       const clone = cloneEntity(entity);
       clone.id = generateId();
       clone.points = clone.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+      if (clone.center) {
+        clone.center = { x: clone.center.x + dx, y: clone.center.y + dy };
+      }
       if (clone.controlPoints) {
         clone.controlPoints = clone.controlPoints.map((cp) => ({
           point: { x: cp.point.x + dx, y: cp.point.y + dy },
@@ -231,12 +234,16 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       point: { x: cp.point.x + dx, y: cp.point.y + dy },
       handleOut: cp.handleOut,
     }));
+    const nextCenter = entity.center
+      ? { x: entity.center.x + dx, y: entity.center.y + dy }
+      : undefined;
     // New array/sketch references so identity-based consumers (the 3D sketch
     // wireframe effect) re-run on every move, not only on event-driven renders.
     const nextEntities = [...project.sketch.entities];
     nextEntities[idx] = {
       ...entity,
       points: nextPoints,
+      center: nextCenter,
       controlPoints: nextControlPoints,
     };
     set({
@@ -263,7 +270,7 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
     project.sketch.entities = project.sketch.entities.filter((e) => !ids.includes(e.id));
     project.sketch.images = (project.sketch.images ?? []).filter((img) => !ids.includes(img.id));
     project.sketch.dimensions = (project.sketch.dimensions ?? []).filter(
-      (d) => !ids.includes(d.entityId),
+      (d) => !ids.includes(d.entityId) && !(d.kind === "offset" && ids.includes(d.offsetEntityId)),
     );
     const editingImageId = get().editingImageId;
     const nextEditingImageId =
@@ -296,10 +303,21 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
 
   updateDimensionValue: (id: string, value: number) => {
     const project = get().project;
-    if (!project || value <= 0) return;
+    if (!project) return;
     const dims = project.sketch.dimensions ?? [];
     const dim = dims.find((d) => d.id === id);
     if (!dim) return;
+
+    if (dim.kind === "offset") {
+      // Geometry for offset curves is recomputed by useOffsetTool (it may
+      // need an async backend call); this just records the new value.
+      if (!Number.isFinite(value) || value === 0) return;
+      project.sketch.dimensions = dims.map((d) => (d.id === id ? { ...d, value } : d));
+      set({ project: { ...project }, bodies: {}, bodyErrors: {} });
+      return;
+    }
+
+    if (value <= 0) return;
     const idx = project.sketch.entities.findIndex((e) => e.id === dim.entityId);
     if (idx === -1) return;
     const updates = applyLinearDimension(project.sketch.entities[idx], dim.segIdx, value);
@@ -336,6 +354,10 @@ export const createProjectSlice: StoreSlice<ProjectSlice> = (set, get) => ({
       const idxs = byEntity.get(entity.id);
       if (!idxs) {
         remaining.push(entity);
+        continue;
+      }
+      if (entity.type === "circle") {
+        if (!idxs.has(0)) remaining.push(entity);
         continue;
       }
       if (entity.type === "spline" && entity.controlPoints) {

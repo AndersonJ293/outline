@@ -31,6 +31,7 @@ export function InspectorPanel({
   onSetEntityDragTarget,
   onRemoveSelected,
   onRemoveOperation,
+  onCreateProfileExtrude,
   selectedOperationId,
   onSelectOperation,
   onUpdateOperation,
@@ -82,6 +83,7 @@ export function InspectorPanel({
               onSetEntityDragTarget={onSetEntityDragTarget}
               onRemoveSelected={onRemoveSelected}
               onRemoveOperation={onRemoveOperation}
+              onCreateProfileExtrude={onCreateProfileExtrude}
               selectedOperationId={selectedOperationId}
               onSelectOperation={onSelectOperation}
             />

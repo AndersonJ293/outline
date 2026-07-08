@@ -5,7 +5,7 @@ import type { SplineDrawingState } from "./tools/useSplineTool";
 import type { SnapGuide, SnapKind } from "./snapping";
 
 interface UseOverlayRendererArgs {
-  canvasRef: RefObject<HTMLCanvasElement>;
+  canvasRef: RefObject<HTMLCanvasElement | null>;
   viewport: ViewportState;
   toolMode: ToolMode;
   isDrawing: MutableRefObject<boolean>;

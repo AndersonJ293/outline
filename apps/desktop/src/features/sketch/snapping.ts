@@ -45,6 +45,9 @@ const RAW: Omit<SnapResult, "point"> = {
 };
 
 function entityVertices(e: Entity): Point[] {
+  if (e.type === "circle" && e.center) {
+    return [e.center];
+  }
   if (e.type === "spline" && e.controlPoints) {
     return e.controlPoints.map((c) => c.point);
   }

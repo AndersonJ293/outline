@@ -6,6 +6,14 @@ import { chainContour, computeChainsMemo } from "./chains";
 const CULL_MARGIN = 50;
 
 function entityBounds(entity: Entity): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  if (entity.type === "circle" && entity.center && entity.radiusMm) {
+    return {
+      minX: entity.center.x - entity.radiusMm,
+      minY: entity.center.y - entity.radiusMm,
+      maxX: entity.center.x + entity.radiusMm,
+      maxY: entity.center.y + entity.radiusMm,
+    };
+  }
   if (entity.points.length === 0) return null;
   let minX = Infinity;
   let minY = Infinity;
@@ -91,7 +99,7 @@ export function drawEntities(
     entityDragTarget?.kind === "entity" ? entityDragTarget : null;
 
   for (const entity of project.sketch.entities) {
-    if (entity.points.length === 0) continue;
+    if (entity.points.length === 0 && entity.type !== "circle") continue;
 
     const bounds = entityBounds(entity);
     if (bounds && !isVisibleInViewport(bounds, ctx.canvas, viewport)) continue;
@@ -103,13 +111,8 @@ export function drawEntities(
     ctx.lineWidth = isSelected ? 3 / viewport.zoom : 2 / viewport.zoom;
     ctx.fillStyle = "rgba(79, 195, 247, 0.1)";
 
-    ctx.beginPath();
-    ctx.moveTo(entity.points[0].x, entity.points[0].y);
-    for (let i = 1; i < entity.points.length; i++) {
-      ctx.lineTo(entity.points[i].x, entity.points[i].y);
-    }
+    drawEntityPath(ctx, entity);
     if (entity.closed) {
-      ctx.closePath();
       ctx.fillStyle = "rgba(79, 195, 247, 0.08)";
       ctx.fill();
     }
@@ -138,18 +141,27 @@ export function drawEntities(
       highlightedSegment &&
       highlightedSegment.entityId === entity.id
     ) {
-      const i = highlightedSegment.segIdx;
-      const a = entity.points[i];
-      const b = entity.points[i + 1] ?? (entity.closed ? entity.points[0] : null);
-      if (b) {
+      if (entity.type === "circle" && entity.center && entity.radiusMm) {
         ctx.save();
         ctx.strokeStyle = "#ff9800";
         ctx.lineWidth = 4 / viewport.zoom;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
+        drawEntityPath(ctx, entity);
         ctx.stroke();
         ctx.restore();
+      } else {
+        const i = highlightedSegment.segIdx;
+        const a = entity.points[i];
+        const b = entity.points[i + 1] ?? (entity.closed ? entity.points[0] : null);
+        if (b) {
+          ctx.save();
+          ctx.strokeStyle = "#ff9800";
+          ctx.lineWidth = 4 / viewport.zoom;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     }
 
@@ -158,19 +170,16 @@ export function drawEntities(
       ctx.strokeStyle = "#ff9800";
       ctx.lineWidth = 2.5 / viewport.zoom;
       ctx.setLineDash([8 / viewport.zoom, 4 / viewport.zoom]);
-      ctx.beginPath();
-      ctx.moveTo(entity.points[0].x, entity.points[0].y);
-      for (let i = 1; i < entity.points.length; i++) {
-        ctx.lineTo(entity.points[i].x, entity.points[i].y);
-      }
-      if (entity.closed) ctx.closePath();
+      drawEntityPath(ctx, entity);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
     }
 
     const displayPoints =
-      entity.type === "spline" && entity.controlPoints
+      entity.type === "circle" && entity.center
+        ? [entity.center]
+        : entity.type === "spline" && entity.controlPoints
         ? entity.controlPoints.map((cp) => cp.point)
         : entity.points;
     for (let i = 0; i < displayPoints.length; i++) {
@@ -209,3 +218,16 @@ export function drawEntities(
   }
 }
 
+function drawEntityPath(ctx: CanvasRenderingContext2D, entity: Entity): void {
+  ctx.beginPath();
+  if (entity.type === "circle" && entity.center && entity.radiusMm) {
+    ctx.arc(entity.center.x, entity.center.y, entity.radiusMm, 0, Math.PI * 2);
+    ctx.closePath();
+    return;
+  }
+  ctx.moveTo(entity.points[0].x, entity.points[0].y);
+  for (let i = 1; i < entity.points.length; i++) {
+    ctx.lineTo(entity.points[i].x, entity.points[i].y);
+  }
+  if (entity.closed) ctx.closePath();
+}

@@ -40,7 +40,7 @@ export interface SketchProfile {
 /// The segment endpoints are `entity.points[segIdx]` and the next point
 /// (wrapping to index 0 when the entity is closed). Editing `value`
 /// repositions the geometry so the segment matches the requested length.
-export interface Dimension {
+export interface LinearDimension {
   id: string;
   kind: "linear";
   entityId: string;
@@ -49,6 +49,18 @@ export interface Dimension {
   /// Perpendicular offset (mm) of the dimension line from the segment.
   offset: number;
 }
+
+/// Annotates an offset curve: `entityId` is the source curve, `offsetEntityId`
+/// is the generated curve, and `value` is the distance (mm) between them.
+export interface OffsetDimension {
+  id: string;
+  kind: "offset";
+  entityId: string;
+  offsetEntityId: string;
+  value: number;
+}
+
+export type Dimension = LinearDimension | OffsetDimension;
 
 export interface Point {
   x: number;
@@ -67,9 +79,11 @@ export interface SplineControlPoint {
 
 export interface Entity {
   id: string;
-  type: "polyline" | "rectangle" | "spline";
+  type: "polyline" | "rectangle" | "spline" | "circle";
   points: Point[];
   closed: boolean;
+  center?: Point;
+  radiusMm?: number;
   controlPoints?: SplineControlPoint[];
   samplingSteps?: number;
 }
@@ -113,6 +127,12 @@ export interface GenerateMeshResult {
   error?: CommandError;
 }
 
+export interface OffsetEntityResult {
+  ok: boolean;
+  entity?: Entity;
+  error?: CommandError;
+}
+
 export interface RebuildInput {
   sketch: Sketch;
   operations: Operation[];
@@ -134,10 +154,12 @@ export type ToolMode =
   | "select"
   | "polyline"
   | "rectangle"
+  | "circle"
   | "spline"
   | "move"
   | "mirror"
-  | "dimension";
+  | "dimension"
+  | "offset";
 
 export type Tool3DMode = "select3d" | "extrude";
 

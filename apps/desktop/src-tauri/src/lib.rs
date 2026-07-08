@@ -81,6 +81,55 @@ fn generate_wall_mesh(
 }
 
 #[tauri::command]
+fn offset_sketch_entity(
+    entity_json: String,
+    distance_mm: f64,
+    new_entity_id: String,
+) -> Result<OffsetEntityResult, String> {
+    let entity: outline_core::project::Entity =
+        serde_json::from_str(&entity_json).map_err(|e| format!("Failed to parse entity: {}", e))?;
+
+    let result = outline_core::commands::offset_sketch_entity(&entity, distance_mm, &new_entity_id);
+
+    match result {
+        outline_core::commands::CommandResult {
+            ok: true,
+            value: Some(entity),
+            ..
+        } => Ok(OffsetEntityResult {
+            ok: true,
+            entity: Some(EntityDto {
+                id: entity.id,
+                entity_type: entity.entity_type,
+                points: entity
+                    .points
+                    .into_iter()
+                    .map(|point| PointDto {
+                        x: point.x,
+                        y: point.y,
+                    })
+                    .collect(),
+                closed: entity.closed,
+                control_points: None,
+                sampling_steps: None,
+            }),
+            error: None,
+        }),
+        outline_core::commands::CommandResult {
+            error: Some(error), ..
+        } => Ok(OffsetEntityResult {
+            ok: false,
+            entity: None,
+            error: Some(CommandErrorDto {
+                code: error.code,
+                message: error.message,
+            }),
+        }),
+        _ => Err("Unexpected result".to_string()),
+    }
+}
+
+#[tauri::command]
 fn export_stl(mesh_json: String, output_path: String) -> Result<String, String> {
     let mesh_dto: MeshDto =
         serde_json::from_str(&mesh_json).map_err(|e| format!("Failed to parse mesh: {}", e))?;
@@ -260,6 +309,7 @@ pub fn run() {
             new_project,
             validate_closed_profile,
             generate_wall_mesh,
+            offset_sketch_entity,
             export_stl,
             save_file,
             read_file,

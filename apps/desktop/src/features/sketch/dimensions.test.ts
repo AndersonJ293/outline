@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { Entity } from "../../types";
-import { applyLinearDimension, measureSegment, dimensionLayout } from "./dimensions";
+import {
+  applyLinearDimension,
+  measureSegment,
+  dimensionLayout,
+  closestPointOnEntity,
+  offsetDimensionLayout,
+} from "./dimensions";
 
 function rect(): Entity {
   return {
@@ -64,5 +70,48 @@ describe("dimensionLayout", () => {
     expect(layout!.da.y).toBeCloseTo(4);
     expect(layout!.db.y).toBeCloseTo(4);
     expect(layout!.length).toBeCloseTo(10);
+  });
+});
+
+function circle(id: string, radiusMm: number): Entity {
+  return {
+    id,
+    type: "circle",
+    center: { x: 0, y: 0 },
+    radiusMm,
+    points: [
+      { x: radiusMm, y: 0 },
+      { x: 0, y: radiusMm },
+      { x: -radiusMm, y: 0 },
+      { x: 0, y: -radiusMm },
+    ],
+    closed: true,
+  };
+}
+
+describe("closestPointOnEntity", () => {
+  it("projects analytically onto a circle", () => {
+    const c = circle("c1", 10);
+    const p = closestPointOnEntity(c, { x: 5, y: 5 });
+    expect(p).not.toBeNull();
+    expect(Math.hypot(p!.x, p!.y)).toBeCloseTo(10);
+  });
+
+  it("finds the nearest point on a polyline segment", () => {
+    const e = rect();
+    const p = closestPointOnEntity(e, { x: 4, y: 100 });
+    expect(p).toEqual({ x: 4, y: 5 });
+  });
+});
+
+describe("offsetDimensionLayout", () => {
+  it("connects concentric circles along the same radial direction", () => {
+    const source = circle("inner", 10);
+    const offset = circle("outer", 14);
+    const layout = offsetDimensionLayout(source, offset);
+    expect(layout).not.toBeNull();
+    // Both anchors sit on the +x axis (circlePoints' angle-0 reference).
+    expect(layout!.a).toEqual({ x: 10, y: 0 });
+    expect(layout!.b).toEqual({ x: 14, y: 0 });
   });
 });

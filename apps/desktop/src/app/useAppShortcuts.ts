@@ -106,6 +106,9 @@ export function useAppShortcuts({
           } else if (key === "r") {
             event.preventDefault();
             setToolMode("rectangle");
+          } else if (key === "c") {
+            event.preventDefault();
+            setToolMode("circle");
           } else if (key === "b") {
             event.preventDefault();
             setToolMode("spline");
@@ -118,6 +121,9 @@ export function useAppShortcuts({
           } else if (key === "d") {
             event.preventDefault();
             setToolMode("dimension");
+          } else if (key === "o") {
+            event.preventDefault();
+            setToolMode("offset");
           }
         } else {
           if (key === "v") {

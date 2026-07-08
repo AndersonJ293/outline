@@ -66,3 +66,16 @@ export function rectanglePoints(p0: Point, p1: Point): Point[] {
     { x: Math.min(p0.x, p1.x), y: Math.max(p0.y, p1.y) },
   ];
 }
+
+export function circlePoints(center: Point, edge: Point, segments = 96): Point[] {
+  const radius = pointDistance(center, edge);
+  const points: Point[] = [];
+  for (let i = 0; i < segments; i++) {
+    const angle = (i / segments) * Math.PI * 2;
+    points.push({
+      x: center.x + Math.cos(angle) * radius,
+      y: center.y + Math.sin(angle) * radius,
+    });
+  }
+  return points;
+}

@@ -123,6 +123,13 @@ pub struct GenerateMeshResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OffsetEntityResult {
+    pub ok: bool,
+    pub entity: Option<EntityDto>,
+    pub error: Option<CommandErrorDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RebuildInputDto {
     pub sketch: SketchDto,
     pub operations: Vec<OperationDto>,
